@@ -1,0 +1,143 @@
+/* RecipeCard Component Styles */
+
+.recipeCard {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Image Container */
+.imageContainer {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: var(--color-gray-lightest);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-base);
+}
+
+.recipeCard:hover .image {
+  transform: scale(1.05);
+}
+
+.placeholderImage {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholderIcon {
+  font-size: 64px;
+  opacity: 0.8;
+}
+
+/* Body */
+.body {
+  padding: var(--spacing-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: bold;
+  color: var(--color-dark);
+  margin: 0;
+  flex: 1;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Metadata */
+.metadata {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.metadataItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+}
+
+.icon {
+  font-size: var(--font-size-base);
+}
+
+.metadataText {
+  white-space: nowrap;
+}
+
+/* Ingredients Preview */
+.ingredientsPreview {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  padding: var(--spacing-sm);
+  background: var(--color-gray-lightest);
+  border-radius: var(--radius-sm);
+}
+
+/* Department */
+.department {
+  margin-top: auto;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-gray-lightest);
+  background: var(--color-white);
+}
+
+.actions button {
+  flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .imageContainer,
+  .placeholderImage {
+    height: 150px;
+  }
+
+  .placeholderIcon {
+    font-size: 48px;
+  }
+
+  .title {
+    font-size: var(--font-size-base);
+  }
+
+  .metadata {
+    gap: var(--spacing-sm);
+  }
+}

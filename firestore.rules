@@ -1,0 +1,182 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the cookbook (format: "user_{uid}")
+    function isOwner(cookbookId) {
+      return isAuthenticated() && cookbookId == 'user_' + request.auth.uid;
+    }
+
+    // Validate recipe document structure
+    function isValidRecipe() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['name'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 500;
+    }
+
+    // Validate string field size
+    function isValidString(field, maxSize) {
+      return !(field in request.resource.data)
+        || request.resource.data[field] == null
+        || (request.resource.data[field] is string
+            && request.resource.data[field].size() <= maxSize);
+    }
+
+    // ============================================
+    // USER-ISOLATED COOKBOOK DATA
+    // Each user can only access their own data
+    // ============================================
+
+    // Recipes - only owner can read/write, with validation
+    match /cookbooks/{cookbookId}/recipes/{recipeId} {
+      allow read: if isOwner(cookbookId);
+      allow create: if isOwner(cookbookId) && isValidRecipe();
+      allow update: if isOwner(cookbookId) && isValidRecipe();
+      allow delete: if isOwner(cookbookId);
+    }
+
+    // Categories - only owner can read/write
+    match /cookbooks/{cookbookId}/categories/{categoryId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // Departments - only owner can read/write
+    match /cookbooks/{cookbookId}/departments/{departmentId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // Ingredients - only owner can read/write (legacy)
+    match /cookbooks/{cookbookId}/ingredients/{ingredientId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // Invoices - only owner can read/write
+    match /cookbooks/{cookbookId}/invoices/{invoiceId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // ============================================
+    // INVENTORY MANAGEMENT (Cloud Sync)
+    // ============================================
+
+    // Vendors - only owner can read/write
+    match /cookbooks/{cookbookId}/vendors/{vendorId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // Inventory Items - only owner can read/write
+    match /cookbooks/{cookbookId}/inventoryItems/{itemId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // Invoice Line Items - only owner can read/write
+    match /cookbooks/{cookbookId}/invoiceLineItems/{lineId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // Price History - only owner can read/write
+    match /cookbooks/{cookbookId}/priceHistory/{historyId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // Stock Transactions - only owner can read/write
+    match /cookbooks/{cookbookId}/stockTransactions/{txId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // Purchase Orders - only owner can read/write
+    match /cookbooks/{cookbookId}/purchaseOrders/{poId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // Purchase Order Lines - only owner can read/write
+    match /cookbooks/{cookbookId}/purchaseOrderLines/{lineId} {
+      allow read, write: if isOwner(cookbookId);
+    }
+
+    // ============================================
+    // USER-SPECIFIC DATA
+    // ============================================
+
+    // User privileges - only the owner can read/write their own privileges
+    match /users/{userId}/privileges/{privilegeId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User settings (business info, preferences) - only owner can read/write
+    match /users/{userId}/settings/{settingId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User tasks - only the owner can read/write their own tasks
+    match /users/{userId}/tasks/{taskId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ============================================
+    // PUBLIC WRITE COLLECTIONS (with validation)
+    // ============================================
+
+    // Waitlist - anyone can add their email (no auth required for beta signups)
+    match /waitlist/{entryId} {
+      allow create: if request.resource.data.keys().hasAll(['email', 'timestamp'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 0
+        && request.resource.data.email.size() <= 254;
+      allow read, update, delete: if false; // Admin only via console
+    }
+
+    // Feedback - authenticated users can submit feedback
+    match /feedback/{feedbackId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasAll(['type', 'message', 'timestamp'])
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 5000;
+      allow read, update, delete: if false; // Admin only via console
+    }
+
+    // ============================================
+    // SYSTEM COLLECTIONS (Cloud Functions only)
+    // ============================================
+
+    // QuickBooks tokens - system only (no direct user access)
+    match /quickbooks_tokens/{tokenId} {
+      allow read, write: if false; // Only accessible via Cloud Functions
+    }
+
+    // ============================================
+    // LEGACY RULES (to be removed after migration)
+    // ============================================
+
+    // Legacy: shared_recipes cookbook (DEPRECATED - deny all)
+    match /cookbooks/shared_recipes/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Legacy: device-based collections (DEPRECATED)
+    match /devices/{deviceId}/recipes/{recipeId} {
+      allow read, write: if false;
+    }
+
+    // ============================================
+    // DEFAULT DENY
+    // ============================================
+
+    // Deny access to everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

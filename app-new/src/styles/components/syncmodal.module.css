@@ -1,0 +1,197 @@
+/* SyncModal Styles */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.closeButton:hover {
+  color: #333;
+}
+
+.content {
+  padding: 20px;
+}
+
+/* Status Section */
+.status {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.statusRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.statusLabel {
+  color: #666;
+  font-size: 14px;
+}
+
+.statusValue {
+  font-weight: 600;
+  color: #333;
+}
+
+.statusConnected {
+  color: #28a745;
+  font-size: 13px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.statusDisconnected {
+  color: #dc3545;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Buttons */
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.syncButton {
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.syncButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.uploadButton {
+  background: #007bff;
+  color: white;
+}
+
+.uploadButton:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.downloadButton {
+  background: #28a745;
+  color: white;
+}
+
+.downloadButton:hover:not(:disabled) {
+  background: #1e7e34;
+}
+
+/* Message */
+.message {
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 15px;
+  background: #e9ecef;
+  color: #495057;
+}
+
+.message.success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.message.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Help Text */
+.helpText {
+  font-size: 12px;
+  color: #666;
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.helpText p {
+  margin: 0 0 6px 0;
+}
+
+.helpText p:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .modal {
+    width: 95%;
+    margin: 10px;
+  }
+
+  .header {
+    padding: 14px 16px;
+  }
+
+  .content {
+    padding: 16px;
+  }
+
+  .syncButton {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+}

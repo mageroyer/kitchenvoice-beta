@@ -1,0 +1,310 @@
+/* Font Preview Page Styles */
+
+.page {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 5px 0;
+  color: #333;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #666;
+  margin: 0 0 25px 0;
+}
+
+/* Controls */
+.controls {
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.controlGroup {
+  margin-bottom: 20px;
+}
+
+.controlGroup label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.fontButtons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.fontButton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px 15px;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.fontButton:hover {
+  border-color: #007bff;
+  background: #f8f9ff;
+}
+
+.fontButton.active {
+  border-color: #007bff;
+  background: #e7f1ff;
+}
+
+.fontName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.fontDesc {
+  font-size: 12px;
+  color: #666;
+  margin-top: 3px;
+}
+
+.controlRow {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.controlItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.controlItem label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.controlItem select {
+  padding: 10px 15px;
+  font-size: 14px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  min-width: 180px;
+}
+
+.controlItem select:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+/* Preview Area */
+.previewArea {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 25px;
+}
+
+.previewHeader {
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.previewHeader h2 {
+  margin: 0 0 5px 0;
+  color: #333;
+}
+
+.previewHeader p {
+  margin: 0;
+  color: #666;
+}
+
+/* Recipe Card Preview */
+.recipeCard {
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.recipeCard h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+}
+
+.recipeMeta {
+  display: flex;
+  gap: 10px;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.section {
+  margin-bottom: 20px;
+}
+
+.section h4 {
+  margin: 0 0 12px 0;
+  color: #333;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+.ingredientList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ingredientList li {
+  display: flex;
+  gap: 15px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+  align-items: baseline;
+}
+
+.metric {
+  min-width: 70px;
+  color: #007bff;
+}
+
+.ingName {
+  flex: 1;
+  color: #333;
+}
+
+.spec {
+  color: #888;
+  font-style: italic;
+}
+
+.methodList {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.methodList li {
+  padding: 8px 0;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* Text Samples */
+.textSamples {
+  background: #fafafa;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.textSamples h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+.sampleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 15px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.sampleLabel {
+  min-width: 120px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+}
+
+/* Numbers Test */
+.numbersTest {
+  background: #fafafa;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.numbersTest h4 {
+  margin: 0 0 12px 0;
+  color: #333;
+}
+
+.numbersTest p {
+  margin: 0 0 8px 0;
+  line-height: 1.8;
+}
+
+/* Summary */
+.summary {
+  background: #2d3748;
+  color: white;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.summary h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+}
+
+.summary code {
+  display: block;
+  background: #1a202c;
+  padding: 15px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page {
+    padding: 15px;
+  }
+
+  .fontButtons {
+    grid-template-columns: 1fr;
+  }
+
+  .controlRow {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .controlItem select {
+    width: 100%;
+  }
+
+  .sampleRow {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .sampleLabel {
+    min-width: auto;
+  }
+}

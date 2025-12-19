@@ -1,0 +1,237 @@
+/* ScaleSettingsModal Component Styles */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md);
+}
+
+.description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-gray-lightest);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-primary);
+}
+
+.error {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+/* Form Layout */
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.hint {
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+/* Price Input with Unit */
+.priceInput {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.priceInput input {
+  flex: 1;
+}
+
+.unitSelect {
+  width: 110px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-gray-lighter);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  cursor: pointer;
+}
+
+/* Select */
+.select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-gray-lighter);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  cursor: pointer;
+}
+
+.select:focus,
+.unitSelect:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* Checkboxes */
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-gray-lightest);
+  border-radius: var(--radius-md);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+/* Sync Status */
+.syncStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-gray-lightest);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.syncLabel {
+  color: var(--color-text-secondary);
+}
+
+.syncBadge {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.syncBadge.synced {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.syncBadge.pending {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.syncBadge.error {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+.syncTime {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-gray-lighter);
+}
+
+.actionsRight {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .priceInput {
+    flex-direction: column;
+  }
+
+  .unitSelect {
+    width: 100%;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actionsRight {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .description {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .label {
+    color: var(--color-white);
+  }
+
+  .hint {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .select,
+  .unitSelect {
+    background: #1a1a2e;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--color-white);
+  }
+
+  .checkboxGroup {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .checkbox {
+    color: var(--color-white);
+  }
+
+  .syncStatus {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .actions {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+}

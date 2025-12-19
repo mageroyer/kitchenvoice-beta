@@ -1,0 +1,542 @@
+/* AssignTaskModal Styles */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+  padding: 20px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--color-white);
+  z-index: 1;
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: var(--color-gray);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color var(--transition-fast);
+}
+
+.closeButton:hover {
+  color: var(--color-text-primary);
+}
+
+/* Form */
+.form {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.formRow {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.formRow .formGroup {
+  flex: 1;
+}
+
+.label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input,
+.select,
+.textarea {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-base);
+  border: 1px solid var(--border-color-input);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  color: var(--color-text-primary);
+  transition: border-color var(--transition-fast);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* Task Input Row */
+.taskInputRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-end;
+}
+
+.taskInputWrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Recipe Row */
+.recipeRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-end;
+}
+
+.recipeSearchWrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.portionsWrapper {
+  width: 70px;
+}
+
+.addBtnWrapper {
+  width: 44px;
+}
+
+/* Recipe Selection */
+.selectedRecipe {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  min-height: 42px;
+}
+
+.selectedRecipeName {
+  font-weight: 500;
+  color: var(--color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.changeBtn {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.changeBtn:hover {
+  color: var(--color-danger);
+}
+
+.recipeSearch {
+  position: relative;
+}
+
+.recipeDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--color-white);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+
+.recipeOption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.recipeOption:last-child {
+  border-bottom: none;
+}
+
+.recipeOption:hover {
+  background: var(--color-primary-light);
+}
+
+.recipeCategory {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-gray-lightest);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.noResults {
+  padding: var(--spacing-md);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Portions Input */
+.portionsInput {
+  width: 100%;
+  padding: var(--spacing-sm);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  border: 1px solid var(--border-color-input);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.portionsInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Add to List Button */
+.addToListBtn {
+  width: 44px;
+  height: 42px;
+  font-size: 24px;
+  font-weight: bold;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.addToListBtn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.addToListBtn:disabled {
+  background: var(--color-gray-light);
+  cursor: not-allowed;
+}
+
+/* Task List */
+.taskList {
+  margin-top: var(--spacing-sm);
+}
+
+.taskListItems {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--spacing-xs);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.taskItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-gray-lightest);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.taskItem.customTask {
+  background: #f0f7ff;
+  border-left: 3px solid var(--color-primary);
+}
+
+.taskType {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-lighter);
+  color: var(--color-text-secondary);
+}
+
+.customTask .taskType {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.taskName {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taskPortions {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.taskPriority {
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+}
+
+.taskPriority.low {
+  background: #e9ecef;
+  color: #6c757d;
+}
+
+.taskPriority.normal {
+  background: #e7f1ff;
+  color: #007bff;
+}
+
+.taskPriority.high {
+  background: #fff3e0;
+  color: #fd7e14;
+}
+
+.taskPriority.urgent {
+  background: #ffebee;
+  color: #dc3545;
+}
+
+.deleteTaskBtn {
+  background: none;
+  border: none;
+  color: var(--color-gray);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.deleteTaskBtn:hover {
+  color: var(--color-danger);
+}
+
+/* Priority Buttons */
+.priorityButtons {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.priorityButton {
+  flex: 1;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.priorityButton:hover {
+  background: var(--color-gray-lightest);
+}
+
+.priorityButton.active {
+  color: white;
+  border-color: transparent;
+}
+
+.priorityButton.low.active {
+  background: #6c757d;
+}
+
+.priorityButton.normal.active {
+  background: #007bff;
+}
+
+.priorityButton.high.active {
+  background: #fd7e14;
+}
+
+.priorityButton.urgent.active {
+  background: #dc3545;
+}
+
+/* Error */
+.error {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.addTaskButton,
+.doneButton {
+  flex: 1;
+  padding: var(--spacing-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.addTaskButton {
+  background: var(--color-gray-lightest);
+  color: var(--color-text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.addTaskButton:hover:not(:disabled) {
+  background: var(--color-gray-light);
+}
+
+.addTaskButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.doneButton {
+  background: var(--color-primary);
+  color: white;
+}
+
+.doneButton:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.doneButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+  .modal {
+    max-width: 100%;
+    margin: 10px;
+  }
+
+  .taskInputRow {
+    flex-wrap: wrap;
+  }
+
+  .taskInputWrapper {
+    flex: 1 1 100%;
+  }
+
+  .recipeRow {
+    flex-wrap: wrap;
+  }
+
+  .recipeSearchWrapper {
+    flex: 1 1 100%;
+  }
+
+  .portionsWrapper {
+    flex: 1;
+  }
+
+  .addBtnWrapper {
+    width: auto;
+  }
+
+  .formRow {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .priorityButtons {
+    flex-wrap: wrap;
+  }
+
+  .priorityButton {
+    flex: 1 1 45%;
+  }
+}

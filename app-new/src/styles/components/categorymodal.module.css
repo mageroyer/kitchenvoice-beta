@@ -1,0 +1,212 @@
+/* CategoryModal Component Styles */
+
+.container {
+  min-height: 400px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--color-gray);
+}
+
+/* Department Section */
+.departmentSection {
+  margin-bottom: 20px;
+}
+
+.departmentTabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--color-gray-lightest);
+}
+
+.departmentTab {
+  padding: 8px 16px;
+  background: var(--color-gray-lightest);
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-dark);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.departmentTab:hover {
+  background: var(--color-gray-lighter);
+}
+
+.departmentTab.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.deleteDept {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.deleteDept:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.addDeptButton {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: white;
+  border: 2px dashed var(--color-gray-lighter);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--color-gray);
+  transition: all 0.2s ease;
+}
+
+.addDeptButton:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.addDeptRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  padding: 15px;
+  background: var(--color-gray-lightest);
+  border-radius: 8px;
+  align-items: center;
+}
+
+.addDeptRow > div:first-child {
+  flex: 1;
+}
+
+/* Categories Section */
+.categoriesSection {
+  margin-top: 20px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-dark);
+  margin: 0 0 15px 0;
+}
+
+.categoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  margin-bottom: 15px;
+}
+
+.categoryItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  background: var(--color-gray-lightest);
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.categoryItem:hover {
+  background: var(--color-gray-lighter);
+}
+
+.categoryName {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-dark);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.defaultBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-gray);
+  background: var(--color-gray-lighter);
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+
+.deleteButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+  padding: 5px;
+}
+
+.deleteButton:hover {
+  opacity: 1;
+}
+
+.emptyState {
+  padding: 30px;
+  text-align: center;
+  color: var(--color-gray);
+  font-size: 14px;
+}
+
+/* Add Category Row */
+.addCategoryRow {
+  display: flex;
+  gap: 10px;
+  padding: 15px;
+  background: white;
+  border: 2px dashed var(--color-gray-lighter);
+  border-radius: 8px;
+  align-items: center;
+}
+
+.addInput {
+  flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .departmentTabs {
+    gap: 6px;
+  }
+
+  .departmentTab {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .categoryList {
+    max-height: 200px;
+  }
+
+  .addCategoryRow {
+    flex-direction: column;
+  }
+
+  .addInput {
+    width: 100%;
+  }
+}

@@ -1,0 +1,100 @@
+/* CSS Custom Properties (Variables) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Color Palette */
+  --color-primary: #3498db;
+  --color-primary-dark: #2980b9;
+  --color-primary-light: #ebf5fb;
+  --color-secondary: #27ae60;
+  --color-secondary-dark: #229954;
+  --color-danger: #e74c3c;
+  --color-danger-light: #fadbd8;
+  --color-warning: #f39c12;
+
+  /* Neutral Colors */
+  --color-dark: #2c3e50;
+  --color-gray: #7f8c8d;
+  --color-gray-light: #95a5a6;
+  --color-gray-lighter: #bdc3c7;
+  --color-gray-lightest: #ecf0f1;
+  --color-gray-bg: #f5f5f5;
+  --color-white: #ffffff;
+
+  /* Background Colors */
+  --color-bg-primary: #fafafa;
+  --color-bg-secondary: #ffffff;
+
+  /* Text Colors */
+  --color-text-primary: #2c3e50;
+  --color-text-secondary: #7f8c8d;
+
+  /* Accent Colors */
+  --color-info: #3498db;
+  --color-info-light: #d6eaf8;
+  --color-info-dark: #1a5276;
+  --color-success: #27ae60;
+  --color-grouped-bg: #e3f2fd;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --font-family-mono: 'Courier New', monospace;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 22px;
+  --font-size-3xl: 28px;
+  --font-size-4xl: 32px;
+
+  /* Spacing */
+  --spacing-xs: 5px;
+  --spacing-sm: 10px;
+  --spacing-md: 15px;
+  --spacing-lg: 20px;
+  --spacing-xl: 30px;
+  --spacing-2xl: 40px;
+  --spacing-3xl: 60px;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+
+  /* Borders */
+  --border-width: 2px;
+  --border-width-thick: 3px;
+  --border-color: var(--color-gray-lightest);
+  --border-color-input: var(--color-gray-lighter);
+  --border-color-hover: var(--color-primary);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 4px 15px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+  /* Z-Index Layers */
+  --z-sticky: 100;
+  --z-timer: 200;
+  --z-dictation: 250;
+  --z-settings: 300;
+  --z-dropdown: 1000;
+
+  /* Transitions */
+  --transition-fast: 0.2s;
+  --transition-normal: 0.3s;
+  --transition-slow: 0.5s;
+
+  /* Layout */
+  --max-width-container: 1200px;
+  --max-width-modal: 500px;
+  --max-width-dictation: 600px;
+  --min-width-dictation: 400px;
+  --min-width-timer: 250px;
+  --min-width-dropdown: 200px;
+}

@@ -1,0 +1,585 @@
+KitchenCommand Coding Standards & Conventions
+A reference document for Claude Code to review before making any code changes. This ensures consistent, maintainable, and high-quality code across all development sessions.
+
+📋 Pre-Coding Checklist
+Before writing any code, confirm:
+□ Which files will be modified?
+□ Does this change affect other components? (Check RELATIONSHIP_MAP)
+□ Are there existing patterns in the codebase to follow?
+□ Will this require database schema changes?
+□ Does this touch voice/audio functionality?
+□ Are there security implications?
+□ What error states need handling?
+
+🏗️ Project Architecture Rules
+File Organization
+src/
+├── components/
+│   ├── common/          # Reusable UI (Button, Input, Modal, Alert, Badge)
+│   ├── layout/          # App structure (MenuBar, navigation)
+│   └── recipes/         # Domain-specific (IngredientList, MethodSteps)
+├── pages/               # Route-level components only
+├── services/
+│   ├── ai/              # Claude API integration
+│   ├── database/        # IndexedDB + Firebase sync
+│   ├── speech/          # Voice recognition
+│   └── settings/        # User preferences
+├── utils/               # Pure helper functions (no side effects)
+├── constants/           # App-wide constants
+└── styles/              # CSS modules
+Component Placement Rules
+If the component...Place in...Is used in 2+ placescomponents/common/Is recipe-domain specificcomponents/recipes/Is a full page/routepages/Contains business logic onlyservices/Is a pure functionutils/
+
+📝 Naming Conventions
+Files & Folders
+javascript// Components: PascalCase
+IngredientList.jsx
+MethodSteps.jsx
+
+// Services: camelCase
+googleCloudVoice.js
+claudeAPI.js
+
+// Utils: camelCase, descriptive
+formatQuantity.js
+validateRecipe.js
+
+// Constants: camelCase file, SCREAMING_SNAKE_CASE exports
+// constants/api.js
+export const API_TIMEOUT_MS = 30000;
+export const MAX_RECIPE_NAME_LENGTH = 100;
+Variables & Functions
+javascript// State: descriptive noun
+const [ingredients, setIngredients] = useState([]);
+const [isRecording, setIsRecording] = useState(false);
+const [syncStatus, setSyncStatus] = useState('idle');
+
+// Booleans: is/has/should prefix
+const isLoading = true;
+const hasError = false;
+const shouldAutoSave = true;
+
+// Handlers: handle + Event + Context
+const handleVoiceStart = () => {};
+const handleIngredientDelete = (index) => {};
+const handleRecipeSave = async () => {};
+
+// Async functions: verb + noun
+const fetchRecipes = async () => {};
+const parseTranscript = async (text) => {};
+const syncToCloud = async (recipe) => {};
+Component Props
+javascript// Props: camelCase, descriptive
+<IngredientList
+  ingredients={ingredients}           // data
+  onChange={handleIngredientsChange}  // callbacks: on + Event
+  isEditable={isUnlocked}             // booleans: is/has prefix
+  micFlag={micFlag}                   // flags match state name
+  scalingFactor={scalingFactor}       // computed values: descriptive
+/>
+
+⚛️ React Patterns
+Component Structure Template
+jsx// 1. Imports (grouped: react, external, internal, styles)
+import React, { useState, useEffect, useRef } from 'react';
+import { someExternalLib } from 'external-lib';
+import { Button } from '../common/Button';
+import { formatQuantity } from '../../utils/format';
+import styles from './ComponentName.module.css';
+
+// 2. Constants (component-specific)
+const DEFAULT_TIMEOUT = 5000;
+
+// 3. Component definition
+function ComponentName({ prop1, prop2, onChange }) {
+  // 3a. Refs first
+  const inputRef = useRef(null);
+  
+  // 3b. State declarations
+  const [localState, setLocalState] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // 3c. Derived/computed values
+  const isValid = localState.length > 0;
+  
+  // 3d. Effects (with cleanup)
+  useEffect(() => {
+    // setup
+    return () => {
+      // cleanup
+    };
+  }, [/* dependencies */]);
+  
+  // 3e. Handlers
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      await someAsyncOperation();
+      onChange(localState);
+    } catch (error) {
+      console.error('[ComponentName] Submit failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // 3f. Render helpers (if needed)
+  const renderItems = () => {
+    return items.map((item, index) => (
+      <div key={item.id || index}>{item.name}</div>
+    ));
+  };
+  
+  // 3g. Main render
+  return (
+    <div className={styles.container}>
+      {/* JSX */}
+    </div>
+  );
+}
+
+// 4. Export
+export default ComponentName;
+useEffect Rules
+javascript// ✅ CORRECT: Declare all dependencies
+useEffect(() => {
+  if (recipeId) {
+    loadRecipe(recipeId);
+  }
+}, [recipeId, loadRecipe]);
+
+// ✅ CORRECT: Cleanup timers/listeners
+useEffect(() => {
+  const timer = setTimeout(autoSave, 2000);
+  return () => clearTimeout(timer);
+}, [recipe]);
+
+// ✅ CORRECT: Cleanup subscriptions
+useEffect(() => {
+  const unsubscribe = onSnapshot(query, handleSnapshot);
+  return () => unsubscribe();
+}, []);
+
+// ❌ WRONG: Missing dependencies
+useEffect(() => {
+  fetchData(userId); // userId not in deps!
+}, []);
+
+// ❌ WRONG: No cleanup for listeners
+useEffect(() => {
+  recognition.start(); // Never stopped!
+}, []);
+State Management Rules
+javascript// ✅ CORRECT: Lift state to common ancestor
+// Parent manages shared state, passes down via props
+
+// ✅ CORRECT: Colocate state with usage
+// Keep state in the component that uses it
+
+// ✅ CORRECT: Derive instead of sync
+const scaledQuantity = baseQuantity * scalingFactor; // Derived
+// NOT: useEffect to sync scaledQuantity state
+
+// ❌ WRONG: Prop drilling more than 2 levels
+// Consider context or restructuring
+
+// ❌ WRONG: Storing derived data in state
+const [scaledQty, setScaledQty] = useState(base * factor);
+// This creates sync bugs
+
+🎤 Voice/Audio Handling Patterns
+Recording Lifecycle
+javascript// REQUIRED: Always follow this pattern
+const voiceServiceRef = useRef(null);
+
+const startRecording = async () => {
+  try {
+    // 1. Create fresh instance
+    voiceServiceRef.current = new GoogleCloudVoiceService();
+    
+    // 2. Set state BEFORE starting
+    setIsRecording(true);
+    setError(null);
+    
+    // 3. Start with callbacks
+    await voiceServiceRef.current.start({
+      onTranscript: handleTranscript,
+      onError: handleError,
+      onSilence: handleSilenceTimeout
+    });
+  } catch (error) {
+    setIsRecording(false);
+    setError(error.message);
+  }
+};
+
+const stopRecording = () => {
+  // 1. Stop service first
+  if (voiceServiceRef.current) {
+    voiceServiceRef.current.stop();
+    voiceServiceRef.current = null;
+  }
+  
+  // 2. Update state after
+  setIsRecording(false);
+};
+
+// REQUIRED: Cleanup on unmount
+useEffect(() => {
+  return () => {
+    if (voiceServiceRef.current) {
+      voiceServiceRef.current.stop();
+    }
+  };
+}, []);
+Audio Permission Handling
+javascript// Always check permission state
+const checkMicrophonePermission = async () => {
+  try {
+    const result = await navigator.permissions.query({ name: 'microphone' });
+    
+    if (result.state === 'denied') {
+      setError('Microphone access denied. Please enable in browser settings.');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    // Firefox doesn't support permission query for microphone
+    // Proceed and handle error on actual request
+    return true;
+  }
+};
+
+🗄️ Database Patterns
+IndexedDB Operations
+javascript// ALWAYS use try/catch with specific error messages
+const saveRecipe = async (recipe) => {
+  try {
+    const id = await recipeDB.update(recipe.id, recipe);
+    console.log('[Database] Recipe saved:', id);
+    return id;
+  } catch (error) {
+    console.error('[Database] Failed to save recipe:', error);
+    throw new Error('Could not save recipe. Please try again.');
+  }
+};
+
+// ALWAYS validate before save
+const validateRecipe = (recipe) => {
+  if (!recipe.name?.trim()) {
+    throw new Error('Recipe name is required');
+  }
+  if (!recipe.category) {
+    throw new Error('Category is required');
+  }
+  return true;
+};
+Cloud Sync Pattern
+javascript// Local-first: Always save locally, then sync
+const saveAndSync = async (recipe) => {
+  // 1. Save to IndexedDB first (fast, offline-capable)
+  await recipeDB.update(recipe.id, recipe);
+  
+  // 2. Then sync to cloud (can fail without data loss)
+  try {
+    await cloudSync.pushRecipe(recipe);
+    setSyncStatus('synced');
+  } catch (error) {
+    console.warn('[Sync] Cloud sync failed, will retry:', error);
+    setSyncStatus('pending');
+    // Data is safe locally, sync will retry
+  }
+};
+
+⚠️ Error Handling Standards
+Error Message Format
+javascript// Console errors: Include component/service name
+console.error('[IngredientList] Failed to parse voice input:', error);
+console.error('[CloudSync] Firebase connection failed:', error);
+console.error('[ClaudeAPI] Parsing request failed:', error);
+
+// User-facing errors: Clear, actionable, no technical jargon
+// ❌ "Error: NETWORK_ERROR code 503"
+// ✅ "Could not connect to voice service. Please check your internet connection."
+
+// ❌ "Firebase permission denied"
+// ✅ "Could not sync your changes. They are saved locally and will sync when connection is restored."
+Try/Catch Template
+javascriptconst performAction = async () => {
+  setIsLoading(true);
+  setError(null);
+  
+  try {
+    const result = await riskyOperation();
+    setData(result);
+    return result;
+    
+  } catch (error) {
+    // 1. Log technical details for debugging
+    console.error('[ComponentName] Operation failed:', error);
+    
+    // 2. Set user-friendly error
+    const userMessage = getUserFriendlyError(error);
+    setError(userMessage);
+    
+    // 3. Optionally rethrow for parent handling
+    // throw error;
+    
+  } finally {
+    // 4. Always reset loading state
+    setIsLoading(false);
+  }
+};
+
+// Error message mapper
+const getUserFriendlyError = (error) => {
+  const errorMap = {
+    'NETWORK_ERROR': 'Connection lost. Please check your internet.',
+    'PERMISSION_DENIED': 'Access denied. Please check your permissions.',
+    'QUOTA_EXCEEDED': 'Storage full. Please delete some recipes.',
+    'TIMEOUT': 'Request timed out. Please try again.',
+  };
+  
+  return errorMap[error.code] || 'Something went wrong. Please try again.';
+};
+
+🔒 Security Rules
+Never Do
+javascript// ❌ NEVER: Log sensitive data
+console.log('API Key:', apiKey);
+console.log('User data:', userData);
+
+// ❌ NEVER: Store secrets in code
+const API_KEY = 'sk-ant-xxxxx'; // Hardcoded secret!
+
+// ❌ NEVER: Trust user input without validation
+const query = `SELECT * FROM recipes WHERE name = '${userInput}'`;
+
+// ❌ NEVER: Use innerHTML with user content
+element.innerHTML = userProvidedContent;
+
+// ❌ NEVER: Disable security features
+// eslint-disable-next-line security/detect-object-injection
+Always Do
+javascript// ✅ ALWAYS: Sanitize user input
+import DOMPurify from 'dompurify';
+const cleanContent = DOMPurify.sanitize(userInput);
+
+// ✅ ALWAYS: Use environment variables for secrets
+const apiKey = process.env.VITE_CLAUDE_API_KEY;
+
+// ✅ ALWAYS: Validate data structure
+const isValidRecipe = (data) => {
+  return (
+    typeof data.name === 'string' &&
+    Array.isArray(data.ingredients) &&
+    typeof data.portions === 'number'
+  );
+};
+
+// ✅ ALWAYS: Use parameterized queries
+const recipe = await db.recipes.where('name').equals(userInput).first();
+
+🧪 Testing Expectations
+When Adding New Code
+javascript// Every new utility function needs tests
+// utils/formatQuantity.js
+export const formatQuantity = (value, scale) => { ... };
+
+// utils/formatQuantity.test.js
+describe('formatQuantity', () => {
+  it('scales integer quantities correctly', () => {
+    expect(formatQuantity('500g', 2)).toBe('1000g');
+  });
+  
+  it('handles decimal quantities', () => {
+    expect(formatQuantity('1.5kg', 2)).toBe('3kg');
+  });
+  
+  it('returns original value if no number found', () => {
+    expect(formatQuantity('some', 2)).toBe('some');
+  });
+  
+  it('handles empty input', () => {
+    expect(formatQuantity('', 2)).toBe('');
+    expect(formatQuantity(null, 2)).toBe(null);
+  });
+});
+Test Coverage Requirements
+Code TypeMinimum CoverageUtils/Helpers90%Services80%Components (logic)70%Components (render)Optional
+
+📊 Performance Guidelines
+Avoid Re-render Triggers
+javascript// ❌ WRONG: Creating new objects in render
+<Component style={{ color: 'red' }} />  // New object every render!
+<Component data={items.filter(x => x.active)} />  // New array every render!
+
+// ✅ CORRECT: Stable references
+const style = useMemo(() => ({ color: 'red' }), []);
+const activeItems = useMemo(() => items.filter(x => x.active), [items]);
+
+<Component style={style} />
+<Component data={activeItems} />
+Memoization Rules
+javascript// Use React.memo for:
+// - Components receiving complex props
+// - Components in lists
+// - Components that render frequently
+
+const IngredientRow = React.memo(function IngredientRow({ ingredient, onDelete }) {
+  return (
+    <div>
+      {ingredient.name}
+      <button onClick={() => onDelete(ingredient.id)}>Delete</button>
+    </div>
+  );
+});
+
+// Use useMemo for:
+// - Expensive calculations
+// - Derived data that doesn't need to recalculate every render
+
+const scaledIngredients = useMemo(() => {
+  return ingredients.map(ing => ({
+    ...ing,
+    scaledQuantity: scaleQuantity(ing.quantity, scalingFactor)
+  }));
+}, [ingredients, scalingFactor]);
+
+// Use useCallback for:
+// - Handlers passed to memoized children
+// - Handlers used in useEffect dependencies
+
+const handleDelete = useCallback((id) => {
+  setIngredients(prev => prev.filter(ing => ing.id !== id));
+}, []);
+
+📝 Documentation Requirements
+Component Documentation
+javascript/**
+ * IngredientList - Displays and manages recipe ingredients
+ * 
+ * Features:
+ * - Voice input for bulk ingredient entry
+ * - Inline editing with auto-save
+ * - Quantity scaling based on portions
+ * 
+ * @param {Array} ingredients - Array of ingredient objects
+ * @param {Function} onChange - Callback when ingredients change
+ * @param {boolean} isEditable - Whether editing is enabled
+ * @param {boolean} micFlag - Whether voice input is enabled
+ * @param {number} scalingFactor - Multiplier for quantities (default: 1)
+ * 
+ * @example
+ * <IngredientList
+ *   ingredients={recipe.ingredients}
+ *   onChange={setIngredients}
+ *   isEditable={true}
+ *   micFlag={true}
+ *   scalingFactor={2}
+ * />
+ */
+function IngredientList({ ingredients, onChange, isEditable, micFlag, scalingFactor = 1 }) {
+Function Documentation
+javascript/**
+ * Parses bulk voice transcript into structured ingredient objects
+ * 
+ * @param {string} transcript - Raw transcript from voice recognition
+ * @returns {Promise<Array<Ingredient>>} Parsed ingredients with metric/tool/name/spec
+ * @throws {Error} If Claude API fails or returns invalid structure
+ * 
+ * @example
+ * const ingredients = await parseBulkIngredients("500g beef, 3 garlic cloves");
+ * // Returns: [{ metric: "500g", name: "beef" }, { metric: "3", name: "garlic cloves" }]
+ */
+async function parseBulkIngredients(transcript) {
+
+✅ Code Review Checklist
+Before submitting any code change, verify:
+Functionality
+
+ Feature works as intended
+ Edge cases handled (empty, null, undefined)
+ Loading states implemented
+ Error states handled with user-friendly messages
+
+Code Quality
+
+ Follows naming conventions
+ No hardcoded values (use constants)
+ No console.log (use console.error for errors only)
+ No commented-out code
+ Functions are single-purpose
+
+React Specific
+
+ useEffect has correct dependencies
+ useEffect has cleanup if needed
+ No state updates on unmounted components
+ Keys are stable and unique in lists
+
+Performance
+
+ No unnecessary re-renders
+ Large lists are virtualized or paginated
+ Heavy computations are memoized
+
+Security
+
+ User input is validated/sanitized
+ No sensitive data in console logs
+ No secrets in code
+
+Accessibility
+
+ Interactive elements are keyboard accessible
+ ARIA labels on icon-only buttons
+ Color is not the only indicator
+
+
+🚨 Common Mistakes to Avoid
+javascript// ❌ Mutation instead of immutable update
+ingredients[0].name = 'new name';
+setIngredients(ingredients);
+
+// ✅ Correct immutable update
+setIngredients(prev => prev.map((ing, i) => 
+  i === 0 ? { ...ing, name: 'new name' } : ing
+));
+
+// ❌ Using index as key for dynamic lists
+{ingredients.map((ing, index) => <Row key={index} />)}
+
+// ✅ Use stable unique identifier
+{ingredients.map(ing => <Row key={ing.id} />)}
+
+// ❌ State update in render
+if (someCondition) {
+  setSomeState(value); // This causes infinite loop!
+}
+
+// ✅ State update in effect or handler
+useEffect(() => {
+  if (someCondition) {
+    setSomeState(value);
+  }
+}, [someCondition]);
+
+// ❌ Async in useEffect without handling
+useEffect(() => {
+  fetchData(); // Promise returned but not handled
+}, []);
+
+// ✅ Proper async in useEffect
+useEffect(() => {
+  const load = async () => {
+    try {
+      const data = await fetchData();
+      setData(data);
+    } catch (error) {
+      setError(error);
+    }
+  };
+  load();
+}, []);

@@ -1,0 +1,48 @@
+/* Beta Banner Styles */
+
+.banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  color: white;
+  font-size: 13px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.icon {
+  font-size: 16px;
+}
+
+.text {
+  line-height: 1.4;
+}
+
+.text strong {
+  font-weight: 600;
+}
+
+/* Adjust body to account for banner height */
+:global(body.has-beta-banner) {
+  padding-top: 40px;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .banner {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .icon {
+    font-size: 14px;
+  }
+}

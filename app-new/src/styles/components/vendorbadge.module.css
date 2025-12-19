@@ -1,0 +1,154 @@
+/* VendorBadge Component Styles */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-gray-lightest);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-gray-lighter);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+
+/* Size Variants */
+.normal {
+  padding: 4px 10px;
+  font-size: var(--font-size-sm);
+}
+
+.small {
+  padding: 2px 6px;
+  font-size: var(--font-size-xs);
+}
+
+.small .star {
+  font-size: 10px;
+}
+
+/* Vendor Name */
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Primary Vendor Star */
+.star {
+  color: #f1c40f;
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Primary Vendor Style */
+.primary {
+  background: linear-gradient(135deg, #fef9e7 0%, #fcf3cf 100%);
+  border-color: #f7dc6f;
+}
+
+/* Empty/No Vendor State */
+.empty {
+  color: var(--color-gray);
+  font-style: italic;
+  background: transparent;
+  border-style: dashed;
+}
+
+/* Clickable State */
+.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.clickable:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+.clickable:active {
+  transform: scale(0.98);
+}
+
+.clickable:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.clickable:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.clickable.primary:hover {
+  background: linear-gradient(135deg, #fef5e7 0%, #fdebd0 100%);
+  border-color: #f5b041;
+}
+
+/* Button Reset (when clickable) */
+button.badge {
+  font-family: inherit;
+  line-height: inherit;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .badge {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .primary {
+    background: rgba(241, 196, 15, 0.15);
+    border-color: rgba(241, 196, 15, 0.4);
+  }
+
+  .clickable:hover {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: var(--color-primary);
+  }
+
+  .empty {
+    color: rgba(255, 255, 255, 0.5);
+    background: transparent;
+  }
+}
+
+/* High contrast mode */
+@media (forced-colors: active) {
+  .badge {
+    border: 2px solid CanvasText;
+  }
+
+  .primary {
+    border-style: double;
+  }
+
+  .clickable:hover,
+  .clickable:focus {
+    border-color: Highlight;
+    color: Highlight;
+  }
+
+  .star {
+    color: CanvasText;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .badge {
+    transition: none;
+  }
+
+  .clickable:active {
+    transform: none;
+  }
+}

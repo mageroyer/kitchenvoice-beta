@@ -1,0 +1,310 @@
+/* RecipeEditor Page - Compact Layout */
+
+.editorPage {
+  padding: 0;
+  max-width: 100%;
+  min-height: 100vh;
+  background: var(--color-bg-primary);
+}
+
+/* View Only Banner */
+.viewOnlyBanner {
+  background: linear-gradient(90deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+  text-align: center;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Compact Header Row - 10px from MenuBar */
+.compactHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Recipe Name Input - ~50% width */
+.recipeName {
+  flex: 1 1 50%;
+  min-width: 200px;
+}
+
+/* Category Dropdown - ~20% width */
+.category {
+  flex: 1 1 20%;
+  min-width: 120px;
+}
+
+/* Department Dropdown - ~15% width */
+.department {
+  flex: 1 1 15%;
+  min-width: 100px;
+}
+
+/* Portion Box Container */
+.portionBox {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.portionBox label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* Portion Input - 5 characters max width */
+.portionInput {
+  width: 70px !important;
+  min-width: 70px !important;
+  max-width: 70px !important;
+}
+
+/* Portion Unit Dropdown - compact unit selector */
+.portionUnit {
+  width: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
+  flex-shrink: 0;
+}
+
+/* Scaling Notice */
+.scalingNotice {
+  padding: 8px 20px;
+  background: var(--color-info-light);
+  color: var(--color-info-dark);
+  font-size: 13px;
+  text-align: center;
+  border-bottom: 1px solid var(--color-info);
+}
+
+/* Section Spacing */
+.section {
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Optional Sections - Subtle Buttons */
+.optionalSections {
+  display: flex;
+  gap: 15px;
+  padding: 15px 20px;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.addOptionalBtn {
+  background: #f5f5f5;
+  border: 2px dashed #d0d0d0;
+  color: #666;
+  padding: 14px 24px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.addOptionalBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+/* Scale button when configured */
+.scaleConfigured {
+  border-style: solid;
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background: rgba(39, 174, 96, 0.1);
+}
+
+.scaleConfigured:hover {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background: rgba(39, 174, 96, 0.2);
+}
+
+/* Production mode button when active */
+.productionActive {
+  border-style: solid;
+  border-color: var(--color-warning, #f39c12);
+  color: var(--color-warning, #f39c12);
+  background: rgba(243, 156, 18, 0.1);
+}
+
+.productionActive:hover {
+  border-color: var(--color-warning, #f39c12);
+  color: var(--color-warning, #f39c12);
+  background: rgba(243, 156, 18, 0.2);
+}
+
+/* Action Buttons (New Recipe Mode) */
+.actionButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px;
+  background: var(--color-bg-secondary);
+  border-top: 2px solid var(--color-border);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+/* Auto-save Info (Edit Mode) */
+.autoSaveInfo {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px;
+  background: var(--color-bg-secondary);
+  border-top: 2px solid var(--color-border);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+.autoSaveText {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  transition: color 0.2s ease;
+}
+
+.autoSaveError {
+  color: var(--color-danger, #dc3545);
+  font-weight: 500;
+}
+
+/* Loading State */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: var(--color-text-secondary);
+}
+
+/* Image Upload Section */
+.imageSection {
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.imageUpload {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
+}
+
+.uploadImageBtn {
+  background: #f5f5f5;
+  border: 2px dashed #d0d0d0;
+  color: #666;
+  padding: 14px 24px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.uploadImageBtn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.uploadImageBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.imagePreview {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+}
+
+.recipeImage {
+  max-width: 100%;
+  max-height: 400px;
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border);
+  object-fit: contain;
+  background: var(--color-white);
+}
+
+.imageActions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .compactHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .recipeName {
+    flex: 1 1 100%;
+  }
+
+  .category {
+    flex: 1 1 calc(100% - 160px);
+  }
+
+  .portionBox {
+    flex: 0 0 auto;
+  }
+}
+
+/* Tablet Portrait */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .recipeName {
+    flex: 1 1 45%;
+  }
+
+  .category {
+    flex: 1 1 30%;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .compactHeader {
+    border-bottom: 2px solid #000;
+  }
+
+  .actionButtons,
+  .autoSaveInfo,
+  .optionalSections {
+    display: none;
+  }
+
+  .section {
+    page-break-inside: avoid;
+  }
+}

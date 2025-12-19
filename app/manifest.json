@@ -1,0 +1,26 @@
+{
+  "name": "Kitchen Recipe Manager",
+  "short_name": "Recipes",
+  "description": "Voice-enabled recipe manager for restaurant kitchens",
+  "start_url": "./recipe-manager-voice.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2c3e50",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%232c3e50' width='192' height='192'/%3E%3Ccircle cx='96' cy='96' r='70' fill='%23fff'/%3E%3Cpath d='M70 80 Q70 60 90 60 L102 60 Q122 60 122 80 L122 100 Q122 120 102 120 L90 120 Q70 120 70 100 Z' fill='%232c3e50'/%3E%3Crect x='94' y='90' width='4' height='25' fill='%232c3e50'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect fill='%232c3e50' width='512' height='512'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%23fff'/%3E%3Cpath d='M200 230 Q200 190 240 190 L272 190 Q312 190 312 230 L312 270 Q312 310 272 310 L240 310 Q200 310 200 270 Z' fill='%232c3e50'/%3E%3Crect x='252' y='245' width='8' height='60' fill='%232c3e50'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["food", "productivity", "business"],
+  "screenshots": []
+}

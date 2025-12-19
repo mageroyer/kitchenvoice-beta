@@ -1,0 +1,609 @@
+DOCUMENT 2: TECHNICAL SPECIFICATION
+For Claude Code Development Reference
+
+TECHNICAL SPECIFICATION: Invoice Processing Platform
+Development Reference Document
+Version: 2.0
+Last Updated: November 2024
+Target: AI-Assisted Development (Claude Code)
+
+🎯 PRODUCT OVERVIEW
+What We're Building: Two-sided platform where accountants process restaurant invoices (for bookkeeping) and restaurants use that data for recipe costing.
+Development Priority: Accountants FIRST (Phase 1), restaurants SECOND (Phase 2)
+
+📋 PHASE 1 FEATURES (Months 1-6)
+Accounting Invoice Processor
+Priority: HIGH - Build these first
+1. Invoice Upload System
+Requirements:
+
+Multiple upload methods:
+
+Photo upload (mobile camera)
+PDF upload (drag & drop)
+Email forwarding (forward@ourplatform.com)
+
+
+Supported formats: JPG, PNG, PDF
+Max file size: 10MB per file
+Batch upload: Up to 20 files at once
+Progress indicators for uploads
+Error handling for corrupted files
+
+Technical:
+
+Frontend: File upload component with drag-drop
+Backend: File storage (S3 or similar)
+Image preprocessing: Convert to optimal format for AI
+PDF handling: Extract pages, convert to images if needed
+
+
+2. AI Invoice Extraction
+Requirements:
+
+Extract from invoices:
+
+Vendor name
+Invoice number
+Invoice date
+Line items (description, quantity, unit, price, total)
+Subtotal
+Tax amount
+Total amount
+Account number (if present)
+
+
+
+Technical:
+
+Use Claude API (model: claude-sonnet-4-20250514)
+Send invoice image/PDF as document input
+Structured JSON output format:
+
+json{
+  "vendor": "Sysco Montreal",
+  "invoice_number": "12345678",
+  "date": "2024-11-20",
+  "items": [
+    {
+      "description": "TOMATOES ROMA FRESH 25LB",
+      "quantity": 2,
+      "unit": "case",
+      "unit_price": 61.25,
+      "total": 122.50
+    }
+  ],
+  "subtotal": 1217.45,
+  "tax": 121.75,
+  "total": 1339.20,
+  "confidence": 0.95
+}
+
+Handle extraction errors gracefully
+Return confidence scores
+Support French and English invoices (Quebec market)
+
+Prompt Engineering:
+
+Normalize units (convert "cs" to "case", "ea" to "each", etc.)
+Handle price formats ($1,234.56 vs 1234.56 vs 1.234,56)
+Extract item specifications from descriptions ("TOMATOES ROMA FRESH" → item: "Tomatoes, Roma", spec: "Fresh")
+Flag low-confidence extractions for manual review
+
+
+3. Review & Correction Interface
+Requirements:
+
+Display extracted data in editable table
+Highlight low-confidence fields (confidence < 0.8)
+Allow manual corrections
+Side-by-side view: Original invoice image | Extracted data
+Keyboard shortcuts for fast editing (Tab, Enter navigation)
+Save corrections
+Mark invoice as "reviewed and approved"
+
+Technical:
+
+Frontend: Editable data grid
+Real-time save (debounced)
+Track corrections for ML improvement later
+Store original image reference with extracted data
+
+
+4. Client Management (Multi-Restaurant)
+Requirements:
+
+Accountant can manage multiple restaurant clients
+Add new restaurant client (name, contact, email)
+Assign invoices to specific restaurants
+Filter/search invoices by restaurant
+Dashboard showing:
+
+Total invoices processed per client this month
+Time saved per client
+Invoice processing status (pending, reviewed, exported)
+
+
+
+Technical:
+
+Database schema:
+
+accounting_firms table (accountant accounts)
+restaurants table (restaurant clients)
+invoices table (links to restaurant_id)
+
+
+Role-based access: Accountant sees all their clients, restaurant sees only their data
+
+
+5. Export to Accounting Software
+Requirements:
+
+Export invoice data to:
+
+CSV (immediate, Phase 1)
+QuickBooks Online API (Phase 2)
+Xero API (Phase 2)
+
+
+
+CSV Export Format (Phase 1):
+csvDate,Vendor,Invoice Number,Description,Amount,Tax,Total
+2024-11-20,Sysco Montreal,12345678,Food Supplies,1217.45,121.75,1339.20
+API Integration (Phase 2):
+
+QuickBooks Online API v3
+Xero API v2
+OAuth 2.0 authentication
+Create bill/expense entries automatically
+Map vendors to Chart of Accounts
+
+
+6. Authentication & User Management
+Requirements:
+
+Email/password authentication
+Role types:
+
+accountant (can manage multiple restaurants)
+restaurant (Phase 2)
+
+
+Password reset flow
+Email verification
+Session management
+
+Technical:
+
+Use Clerk.com or Auth0 (don't build from scratch)
+JWT tokens for API authentication
+Secure password storage (bcrypt)
+
+
+📋 PHASE 2 FEATURES (Months 6-12)
+Restaurant Recipe Management
+Priority: MEDIUM - Build after Phase 1 complete
+7. Recipe CRUD Operations
+Requirements:
+
+Create new recipe (name, category, portions)
+Edit recipe details
+Delete recipe (with confirmation)
+Duplicate recipe
+Search recipes by name
+Filter by category
+
+Data Model:
+javascriptRecipe {
+  id: string
+  name: string
+  category: string
+  portions: number
+  ingredients: Ingredient[]
+  method: string[]
+  plating: string[]
+  created_at: timestamp
+  updated_at: timestamp
+  restaurant_id: string  // Links to restaurant account
+}
+
+Ingredient {
+  metric: string      // "800gr"
+  tool: string        // "3.5 cups"
+  name: string        // "Tomatoes"
+  spec: string        // "crushed"
+  cost_per_unit: number  // Auto-populated from invoices
+  last_invoice_date: date  // Track freshness
+}
+```
+
+---
+
+### **8. Ingredient Database (Auto-Built)**
+
+**Requirements:**
+- Automatically populated from invoices processed by accountant
+- Each ingredient has:
+  - Name (normalized)
+  - Current price (from most recent invoice)
+  - Price history (track changes over time)
+  - Last purchase date
+  - Status: Active (bought recently) | Occasional | Inactive (not seen 3+ months)
+  
+**Intelligent Matching:**
+- When chef adds ingredient to recipe, suggest from existing database
+- Use AI to match variations:
+  - "tomatoes" matches "TOMATOES ROMA FRESH"
+  - "olive oil" matches "OIL OLIVE EXTRA VIRGIN 3L"
+- Handle units intelligently:
+  - Invoice has "25LB case"
+  - Recipe needs "800gr"
+  - System converts automatically
+
+**Technical:**
+- Ingredient matching with Claude API
+- Unit conversion library (grams ↔ pounds ↔ cups ↔ tablespoons)
+- Price calculation: (invoice price / quantity) = cost per unit
+
+---
+
+### **9. Cost Calculator**
+
+**Requirements:**
+- Calculate total cost of recipe based on current ingredient prices
+- Show cost per portion
+- Update automatically when ingredient prices change
+- Show cost breakdown (ingredient costs + percentages)
+- Flag ingredients with old prices (no recent invoice)
+
+**Display:**
+```
+Classic Tomato Sauce (4 portions)
+────────────────────────────────
+Tomatoes (800gr)    $3.20  (40%)
+Olive Oil (30ml)    $0.85  (11%)
+Salt (5gr)          $0.05  (1%)
+────────────────────────────────
+Total Cost:         $4.10
+Cost per Portion:   $1.03
+
+10. Portion Scaling
+Requirements:
+
+Change portion count (e.g., 4 → 8 portions)
+All ingredients auto-scale proportionally
+Both metric AND tool measurements scale
+Handle decimal precision (round to sensible values)
+
+Logic:
+javascriptnewValue = originalValue × (newPortions / originalPortions)
+// Round intelligently:
+// 2.7gr → 3gr
+// 127ml → 125ml (nicer number)
+
+11. Voice Input
+Requirements:
+
+Voice-to-text for ANY editable field
+Use Web Speech API (browser built-in)
+Works on:
+
+Recipe names
+Ingredient amounts
+Method steps
+Plating instructions
+
+
+
+User Flow:
+
+User clicks field to edit
+Microphone button appears
+User clicks mic → starts listening (button pulses)
+User speaks: "two hundred fifty grams"
+Text appears in real-time
+User clicks ✓ to save or ✗ to cancel
+
+Technical:
+
+window.SpeechRecognition or window.webkitSpeechRecognition
+Continuous recognition
+Interim results (show text as speaking)
+Auto-stop after 2 seconds of silence
+Works in Chrome/Edge only (browser limitation)
+Requires http://localhost or https:// (security requirement)
+
+Already implemented in prototype - reference existing code
+
+12. Menu Profitability Analysis
+Requirements:
+
+List all recipes with:
+
+Food cost
+Suggested selling price (3x food cost as guideline)
+Current selling price (if entered)
+Profit margin
+
+
+Sort by profitability
+Flag money-losing dishes (selling price < 3x food cost)
+
+
+🏗️ TECHNICAL ARCHITECTURE
+Tech Stack (Recommended)
+Frontend:
+
+React 18 (already used in prototype)
+Vercel for hosting (free tier)
+Tailwind CSS for styling
+Shadcn/ui for components
+
+Backend:
+
+Python FastAPI or Node.js Express
+Railway.app for hosting ($5-20/month)
+PostgreSQL database (Supabase free tier)
+
+APIs & Services:
+
+Claude API (Anthropic) - invoice extraction
+Clerk.com - authentication ($25/month)
+Stripe - payments (2.9% + 30¢)
+Postmark - email receiving for invoice forwarding
+
+File Storage:
+
+AWS S3 or Cloudflare R2
+Store original invoice images
+Store extracted JSON data
+
+
+Database Schema (PostgreSQL)
+sql-- Accounting firms
+CREATE TABLE accounting_firms (
+  id UUID PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  company_name VARCHAR(255),
+  subscription_status VARCHAR(50),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Restaurants (clients of accountants)
+CREATE TABLE restaurants (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  accounting_firm_id UUID REFERENCES accounting_firms(id),
+  subscription_status VARCHAR(50),  -- For Phase 2
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Invoices
+CREATE TABLE invoices (
+  id UUID PRIMARY KEY,
+  restaurant_id UUID REFERENCES restaurants(id),
+  uploaded_by UUID REFERENCES accounting_firms(id),
+  vendor_name VARCHAR(255),
+  invoice_number VARCHAR(100),
+  invoice_date DATE,
+  subtotal DECIMAL(10,2),
+  tax DECIMAL(10,2),
+  total DECIMAL(10,2),
+  file_url TEXT,  -- S3 URL
+  extracted_data JSONB,  -- Full extraction result
+  status VARCHAR(50),  -- 'pending', 'reviewed', 'exported'
+  reviewed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Invoice line items
+CREATE TABLE invoice_items (
+  id UUID PRIMARY KEY,
+  invoice_id UUID REFERENCES invoices(id),
+  description TEXT,
+  quantity DECIMAL(10,2),
+  unit VARCHAR(50),
+  unit_price DECIMAL(10,2),
+  total DECIMAL(10,2),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Ingredients (auto-built from invoices)
+CREATE TABLE ingredients (
+  id UUID PRIMARY KEY,
+  restaurant_id UUID REFERENCES restaurants(id),
+  name VARCHAR(255),
+  normalized_name VARCHAR(255),  -- For matching
+  current_price DECIMAL(10,2),
+  price_per_unit VARCHAR(50),  -- "per lb", "per kg", etc.
+  last_invoice_date DATE,
+  status VARCHAR(50),  -- 'active', 'occasional', 'inactive'
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Recipes (Phase 2)
+CREATE TABLE recipes (
+  id UUID PRIMARY KEY,
+  restaurant_id UUID REFERENCES restaurants(id),
+  name VARCHAR(255) NOT NULL,
+  category VARCHAR(100),
+  portions INT DEFAULT 4,
+  ingredients JSONB,  -- Array of ingredient objects
+  method JSONB,  -- Array of method steps
+  plating JSONB,  -- Array of plating instructions
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+### **API Endpoints**
+
+**Phase 1 (Accounting):**
+```
+POST   /api/invoices/upload          # Upload invoice file
+POST   /api/invoices/:id/extract     # Trigger AI extraction
+GET    /api/invoices                 # List invoices (filtered by restaurant)
+GET    /api/invoices/:id             # Get invoice details
+PUT    /api/invoices/:id             # Update extracted data
+POST   /api/invoices/:id/approve     # Mark as reviewed
+GET    /api/invoices/export/csv      # Export to CSV
+
+POST   /api/restaurants              # Add restaurant client
+GET    /api/restaurants              # List restaurant clients
+GET    /api/restaurants/:id          # Get restaurant details
+```
+
+**Phase 2 (Recipes):**
+```
+POST   /api/recipes                  # Create recipe
+GET    /api/recipes                  # List recipes
+GET    /api/recipes/:id              # Get recipe details
+PUT    /api/recipes/:id              # Update recipe
+DELETE /api/recipes/:id              # Delete recipe
+
+GET    /api/ingredients              # List ingredients for dropdown
+GET    /api/ingredients/:id/price    # Get current price
+GET    /api/recipes/:id/cost         # Calculate recipe cost
+
+🎯 DEVELOPMENT PRIORITIES
+Sprint 1 (Week 1-2): Core Infrastructure
+
+ Set up project structure (frontend + backend)
+ Database schema implementation
+ Authentication (Clerk integration)
+ Basic user dashboard
+
+Sprint 2 (Week 3-4): Invoice Upload & Storage
+
+ File upload component (photo/PDF)
+ S3/R2 storage integration
+ Invoice list view
+ Invoice detail view
+
+Sprint 3 (Week 5-6): AI Extraction
+
+ Claude API integration
+ Extraction prompt engineering
+ JSON parsing and validation
+ Error handling
+
+Sprint 4 (Week 7-8): Review Interface
+
+ Editable data grid
+ Side-by-side image viewer
+ Manual correction flow
+ Approval workflow
+
+Sprint 5 (Week 9-10): Client Management
+
+ Add restaurant clients
+ Assign invoices to restaurants
+ Filter by restaurant
+ Dashboard stats
+
+Sprint 6 (Week 11-12): Export & Polish
+
+ CSV export
+ Email notifications
+ UI polish
+ Bug fixes
+ LAUNCH TO ACCOUNTANTS
+
+Sprint 7-12 (Months 4-6): Phase 2 - Recipes
+
+ Recipe CRUD
+ Ingredient database
+ Cost calculator
+ Voice input
+ Portion scaling
+ Menu profitability
+ LAUNCH TO RESTAURANTS
+
+
+⚙️ CONFIGURATION & ENVIRONMENT
+Environment Variables:
+bash# Database
+DATABASE_URL=postgresql://...
+
+# Claude API
+ANTHROPIC_API_KEY=sk-ant-...
+
+# File Storage
+S3_BUCKET_NAME=invoices-prod
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+
+# Authentication
+CLERK_SECRET_KEY=...
+
+# Stripe (Phase 2)
+STRIPE_SECRET_KEY=...
+
+📊 SUCCESS METRICS
+Track in database:
+For Accountants:
+
+Invoices processed per month
+Average time saved per invoice (assume 28 minutes saved)
+Accuracy rate (% of invoices that need corrections)
+Monthly active accountants
+
+For Restaurants (Phase 2):
+
+Recipes created
+Recipe cost calculations performed
+Active users per week
+Voice input usage rate
+
+
+🚨 CRITICAL TECHNICAL REQUIREMENTS
+
+AI Extraction Accuracy: Must be 90%+ accurate or accountants won't trust it
+Speed: Invoice extraction should take <10 seconds
+Mobile-Friendly: Accountants may upload from phone/tablet on-site
+Security: Invoice data is sensitive financial information
+Scalability: One accountant may upload 50-100 invoices at once
+
+
+🔒 SECURITY CONSIDERATIONS
+
+HTTPS only (no HTTP)
+Encrypt files at rest (S3 encryption)
+Row-level security (accountants only see their clients)
+Audit logs (track who accessed what)
+GDPR/privacy compliance (allow data deletion)
+API rate limiting (prevent abuse)
+
+
+🛠️ TESTING REQUIREMENTS
+Must test:
+
+Invoice extraction with 50+ real invoice samples
+
+Sysco, GFS, US Foods formats
+French and English invoices
+Different layouts and formats
+
+
+Upload with large files (10MB PDFs)
+Multi-client scenarios (accountant with 20 restaurants)
+Concurrent uploads (10 invoices at once)
+Edge cases (corrupted files, handwritten invoices, photos at angles)
+
+
+📝 NOTES FOR AI-ASSISTED DEVELOPMENT
+When building with Claude Code:
+
+Start simple: Build MVP features first, polish later
+Use existing libraries: Don't reinvent wheel (use Clerk, not custom auth)
+Test with real data: Use actual invoice samples, not fake data
+Iterate on prompts: AI extraction will need prompt tuning
+Mobile-first: Many invoices will be uploaded from phones
+Performance matters: Accountants will compare to manual entry speed
+Error handling: Assume everything will fail (network, AI, uploads)
+
+
+END OF TECHNICAL SPECIFICATION

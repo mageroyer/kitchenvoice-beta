@@ -1,0 +1,225 @@
+/* EditAccountModal Component Styles */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border-color-light);
+  margin-bottom: var(--spacing-md);
+}
+
+.tab {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--color-gray);
+  transition: all var(--transition-fast);
+}
+
+.tab:hover {
+  color: var(--color-primary);
+}
+
+.tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Tab Content */
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* Fields */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-dark);
+}
+
+.hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray);
+}
+
+.errorHint {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+}
+
+/* Select */
+.select {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color-input);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  background: var(--color-white);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.select:hover {
+  border-color: var(--color-primary);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Password Strength */
+.strengthBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.strengthBar::before {
+  content: '';
+  flex: 1;
+  height: 4px;
+  background: var(--color-gray-light);
+  border-radius: 2px;
+  position: relative;
+}
+
+.strengthFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 4px;
+  border-radius: 2px;
+  transition: width var(--transition-fast), background-color var(--transition-fast);
+}
+
+.strengthBar {
+  position: relative;
+  height: 20px;
+}
+
+.strengthBar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 100%;
+  max-width: 200px;
+  height: 4px;
+  background: var(--color-gray-light);
+  border-radius: 2px;
+}
+
+.strengthFill {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  max-width: 200px;
+  height: 4px;
+  border-radius: 2px;
+  transition: width var(--transition-fast), background-color var(--transition-fast);
+}
+
+.strengthLabel {
+  position: absolute;
+  left: 210px;
+  top: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Password Requirements */
+.passwordRequirements {
+  background: var(--color-gray-lightest);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+}
+
+.passwordRequirements p {
+  margin: 0 0 8px 0;
+  font-weight: 600;
+}
+
+.passwordRequirements ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.passwordRequirements li {
+  margin-bottom: 4px;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color-light);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .tabs {
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+  }
+
+  .strengthBar {
+    flex-direction: column;
+    align-items: flex-start;
+    height: auto;
+  }
+
+  .strengthBar::before {
+    position: static;
+    width: 100%;
+    max-width: none;
+  }
+
+  .strengthFill {
+    position: static;
+    max-width: none;
+  }
+
+  .strengthLabel {
+    position: static;
+    margin-top: 4px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}

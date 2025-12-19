@@ -1,0 +1,222 @@
+STRATEGIC OVERVIEW
+For Your Business Documentation
+
+Invoice Processing Platform - Strategic Plan
+Two-Sided Market Strategy: Accountants → Restaurants
+Last Updated: November 2024
+Version: 2.0 (Accounting-First Strategy)
+
+🎯 CORE INSIGHT
+Restaurant accountants process invoices weekly as part of their bookkeeping job. By building tools for accountants FIRST, we automatically populate restaurant databases with zero effort from restaurant owners. This solves the #1 adoption barrier in restaurant management software.
+
+💡 THE STRATEGY
+Phase 1: Launch for Accountants (Months 1-6)
+Target Customer: Accounting firms / bookkeepers serving restaurants
+Value Proposition: "Process restaurant invoices 15x faster with AI extraction. Automatic export to QuickBooks/Xero."
+Product: Invoice processing only
+
+Upload invoices (photo/PDF/email)
+AI extraction (vendor, date, items, prices, totals, tax)
+QuickBooks/Xero integration
+Client management (one account serves multiple restaurants)
+Accuracy review/correction interface
+
+Pricing: $299/month per accounting firm
+Sales Approach: "Show-it" product
+
+30-second demo with real invoice
+Instant ROI visualization (190 hours saved/month)
+No complex pitch needed
+
+Goal: 10 accounting firms = $3k MRR (processing invoices for 200+ restaurants)
+
+Phase 2: Upsell to Restaurants (Months 6-12)
+Target Customer: Restaurants whose accountants use the platform
+Value Proposition: "Your accountant already processes your invoices through us. Your ingredient database is already built and updated weekly. Add recipe costing for $99/month—zero data entry required."
+Product: Recipe management features
+
+Recipe CRUD operations
+Cost calculator (using data accountant already entered)
+Portion scaling
+Voice input
+Menu profitability analysis
+Ingredient lifecycle tracking
+
+Pricing:
+
+$99/month per restaurant (add-on to accountant tier)
+$149/month standalone (if restaurant wants direct access without accountant)
+
+Sales Approach: Zero-friction adoption
+
+Database is pre-built by accountant
+No manual data entry required
+Just "turn on" recipe features
+Easy yes because setup is already done
+
+Goal: 50 restaurants = $5k MRR
+Total Phase 2 MRR: $8k ($3k accountants + $5k restaurants)
+
+Phase 3: Scale Both Sides (Months 12-24)
+Target:
+
+50 accounting firms × $299 = $15k MRR
+500 restaurants × $99 = $49.5k MRR
+Total: $64.5k MRR = $774k ARR
+
+
+🔄 NETWORK EFFECTS
+The Flywheel:
+1. Sign one accountant ($299/month)
+   ↓
+2. Accountant processes invoices for 20 restaurant clients
+   ↓
+3. Ingredient databases build automatically for those 20 restaurants
+   ↓
+4. Upsell recipe features to 10 of them ($99/month each = $990)
+   ↓
+5. Those restaurants refer friends/competitors
+   ↓
+6. New restaurants ask their accountants to use platform
+   ↓
+7. Sign more accountants
+   ↓
+REPEAT (accelerating growth)
+Result: Each accountant relationship is worth $1,300-1,800/month in potential revenue
+
+💪 COMPETITIVE ADVANTAGES
+vs. MarginEdge, PlateIQ, ChefTec:
+
+Distribution Channel: We sell through accountants who become our sales force
+Zero Setup Friction: Restaurant databases build automatically (accountants do the work)
+Two Revenue Streams: Same technology generates revenue from both sides
+Network Effects: More accountants → more restaurants, more restaurants → more accountants
+Lower CAC: One accountant sale = 20+ potential restaurant customers
+Higher Retention: Accountants won't switch (workflow dependent), restaurants won't switch (no effort to use)
+
+Competitors sell direct-to-restaurant:
+
+High friction (manual setup required)
+Low adoption (<5%)
+One revenue stream
+High CAC
+No network effects
+
+We sell through accountants:
+
+Zero friction (automatic setup)
+High adoption (no effort required)
+Two revenue streams
+Low CAC (accountants bring restaurants)
+Compounding network effects
+
+
+📊 UNIT ECONOMICS
+Accountant Customer:
+
+Revenue: $299/month
+Value to them: $14,000/month in time saved (190 hours × $75/hour)
+CAC: $200 (demo-driven sales, low touch)
+Payback: <1 month
+LTV: $10,764 (36-month retention)
+
+Restaurant Customer:
+
+Revenue: $99/month
+Value to them: Recipe costing with zero data entry
+CAC: $50 (warm intro through accountant)
+Payback: <1 month
+LTV: $2,970 (30-month retention)
+
+Combined (1 Accountant + 10 Restaurants):
+
+Total MRR: $1,289
+Total CAC: $700
+Payback: <1 month
+Total LTV: $40,464
+
+
+🎯 GO-TO-MARKET
+Finding Accountants:
+
+LinkedIn: "accountant restaurant bookkeeper [city]"
+Restaurant association directories
+QuickBooks/Xero partner directories
+Accounting conferences/events
+Cold email: "Built tool that processes invoices in 30 seconds"
+
+Converting Accountants:
+
+Reply to inquiry → Schedule 15-min demo
+Show live invoice extraction (30 seconds)
+Show time savings math ($14k/month value for $299)
+Offer 30-day free trial
+Onboard (teach invoice upload process)
+
+Upselling Restaurants (6 months later):
+
+Email through accountant: "Your data is already in our system"
+Show chef their pre-built ingredient database
+Demo recipe costing feature
+"$99/month, no data entry required"
+Turn on access
+
+
+🚀 MILESTONES
+Month 1-2: Build accounting MVP
+
+Invoice upload (photo/PDF)
+AI extraction with Claude API
+Basic review interface
+Export to CSV (QuickBooks integration comes later)
+
+Month 3-4: First 3 paying accountants ($900 MRR)
+
+Validate AI accuracy with real invoices
+Iterate on extraction prompts
+Build client management features
+
+Month 5-6: 10 accountants ($3k MRR)
+
+Add QuickBooks/Xero integration
+Processing 2,000+ invoices/month
+200 restaurant databases built automatically
+
+Month 7-9: Build recipe features
+
+Recipe CRUD
+Cost calculator
+Voice input
+Portion scaling
+
+Month 10-12: First 50 restaurants ($5k MRR)
+
+Upsell through existing accountant relationships
+Total: $8k MRR
+Prove two-sided model works
+
+Month 12-24: Scale to $64.5k MRR
+
+50 accountants
+500 restaurants
+Fundable metrics achieved
+
+
+🎪 POSITIONING
+Tagline: "The invoice processing platform for the restaurant industry"
+For Accountants: "Process restaurant invoices 15x faster. AI extraction to QuickBooks in 30 seconds."
+For Restaurants: "Recipe costing with zero data entry. Your accountant already built your database."
+For Investors: "Two-sided platform. Accountants populate the data, restaurants get the value. Network effects drive viral growth."
+
+✅ WHY THIS WORKS
+
+Solves Real Pain: Accountants waste 10+ hours per client per month on manual entry
+Instant ROI: 30-second demo proves value immediately
+Zero Friction: Restaurants get value with no work required
+Network Effects: Each side makes the other more valuable
+Defensible: Competitors can't easily copy this distribution strategy
+Timing: AI now makes invoice extraction reliable (wasn't possible 2 years ago)
+Founder Advantage: 25 years restaurant experience + ability to build with AI tools
+
+
+END OF STRATEGIC DOCUMENT

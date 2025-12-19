@@ -1,0 +1,540 @@
+/* AddInventoryItemModal Component Styles */
+
+/* Overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal */
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal:focus {
+  outline: none;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-gray-lighter);
+  background: var(--color-gray-lightest);
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--color-white);
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--color-gray);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+              color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.closeButton:hover {
+  background: var(--color-gray-lighter);
+  color: var(--color-text-primary);
+}
+
+.closeButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.closeButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Content */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+/* Section */
+.section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.section:last-of-type {
+  margin-bottom: var(--spacing-md);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 var(--spacing-md) 0;
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-gray-lightest);
+}
+
+/* Field Grid */
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.fieldGrid:last-child {
+  margin-bottom: 0;
+}
+
+/* Field */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.field.hasError .input,
+.field.hasError .select,
+.field.hasError .textarea {
+  border-color: var(--color-danger);
+}
+
+.field.hasError .input:focus,
+.field.hasError .select:focus,
+.field.hasError .textarea:focus {
+  box-shadow: 0 0 0 3px var(--color-danger-light);
+}
+
+.field.hasDuplicate .input,
+.field.hasDuplicate .select {
+  border-color: var(--color-warning);
+}
+
+.field.hasDuplicate .input:focus,
+.field.hasDuplicate .select:focus {
+  box-shadow: 0 0 0 3px var(--color-warning-light);
+}
+
+/* Label */
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.required {
+  color: var(--color-danger);
+  margin-left: 2px;
+}
+
+/* Input, Select, Textarea */
+.input,
+.select,
+.textarea {
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  border: 2px solid var(--border-color-input);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+
+.input:hover,
+.select:hover,
+.textarea:hover {
+  border-color: var(--color-gray);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  background: var(--color-gray-lightest);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--color-gray);
+}
+
+.select {
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Help Text */
+.helpText {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray);
+}
+
+/* Error Text */
+.errorText {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+}
+
+/* Duplicate Warning Text */
+.duplicateText {
+  font-size: var(--font-size-xs);
+  color: var(--color-warning-dark);
+}
+
+/* Submit Error */
+.submitError {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-danger-dark);
+  background: var(--color-danger-light);
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-md);
+}
+
+.submitError svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-gray-lighter);
+  background: var(--color-gray-lightest);
+  flex-shrink: 0;
+}
+
+.cancelButton,
+.saveButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-width: 100px;
+}
+
+.cancelButton {
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-lighter);
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: var(--color-gray-lightest);
+  border-color: var(--color-gray);
+}
+
+.cancelButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.cancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.saveButton {
+  color: var(--color-white);
+  background: var(--color-primary);
+  border: none;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.saveButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.saveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.saveButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-white);
+  border-top-color: transparent;
+  border-radius: var(--radius-full);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+
+  .header {
+    padding: var(--spacing-md);
+  }
+
+  .title {
+    font-size: var(--font-size-lg);
+  }
+
+  .content {
+    padding: var(--spacing-md);
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer {
+    padding: var(--spacing-md);
+    flex-direction: column;
+  }
+
+  .cancelButton,
+  .saveButton {
+    width: 100%;
+  }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .modal {
+    background: #16213e;
+  }
+
+  .header {
+    background: #1a1a2e;
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .title,
+  .label {
+    color: var(--color-white);
+  }
+
+  .closeButton {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .closeButton:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--color-white);
+  }
+
+  .sectionTitle {
+    color: rgba(255, 255, 255, 0.6);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .input,
+  .select,
+  .textarea {
+    background: #1a1a2e;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--color-white);
+  }
+
+  .input:hover,
+  .select:hover,
+  .textarea:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .input:disabled,
+  .select:disabled,
+  .textarea:disabled {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .input::placeholder,
+  .textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+  }
+
+  .helpText {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .footer {
+    background: #1a1a2e;
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .cancelButton {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--color-white);
+  }
+
+  .cancelButton:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+  }
+
+  .modal {
+    animation: none;
+  }
+
+  .spinner {
+    animation: none;
+  }
+
+  .input,
+  .select,
+  .textarea,
+  .closeButton,
+  .cancelButton,
+  .saveButton {
+    transition: none;
+  }
+}
+
+/* High Contrast Mode */
+@media (forced-colors: active) {
+  .modal {
+    border: 2px solid CanvasText;
+  }
+
+  .input,
+  .select,
+  .textarea {
+    border: 2px solid ButtonText;
+  }
+
+  .field.hasError .input,
+  .field.hasError .select,
+  .field.hasError .textarea {
+    border: 2px solid Mark;
+  }
+
+  .closeButton,
+  .cancelButton,
+  .saveButton {
+    border: 2px solid ButtonText;
+  }
+
+  .submitError {
+    border: 2px solid Mark;
+  }
+}

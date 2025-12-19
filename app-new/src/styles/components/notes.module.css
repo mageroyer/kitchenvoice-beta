@@ -1,0 +1,265 @@
+/* Notes Component Styles */
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* Bulk Voice Active Indicator */
+.bulkVoiceIndicator {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-sm);
+}
+
+.bulkVoiceMic {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: #27ae60;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: micPulse 1s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7);
+}
+
+.bulkVoiceMic:hover {
+  background: #219a52;
+}
+
+@keyframes micPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(39, 174, 96, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0);
+  }
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: bold;
+  color: var(--color-dark);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* List */
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.listItem {
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+}
+
+/* Editable Item */
+.editableItem {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  padding: 0;
+  background: #fafafa;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+  overflow: hidden;
+}
+
+.noteNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  color: var(--color-gray);
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+  padding-left: 10px;
+}
+
+.noteInput {
+  flex: 1;
+  min-width: 200px;
+}
+
+.noteInput input {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  white-space: normal;
+  word-wrap: break-word;
+  min-height: 36px;
+  height: auto;
+}
+
+.actionButtons {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  padding-right: 4px;
+}
+
+.moveButton {
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--color-gray) !important;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.moveButton:hover:not(:disabled) {
+  opacity: 1;
+  color: var(--color-primary) !important;
+}
+
+.moveButton:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.removeButton {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  color: var(--color-gray) !important;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.removeButton:hover {
+  opacity: 1;
+  color: var(--color-danger) !important;
+}
+
+/* Read-Only Item */
+.readOnlyItem {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.readOnlyItem:hover {
+  background: var(--color-gray-lightest);
+}
+
+.noteText {
+  color: var(--color-dark);
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+  margin: 0;
+  flex: 1;
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  background: var(--color-gray-lightest);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.emptyText {
+  color: var(--color-gray);
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+
+/* Add Section */
+.addSection {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-white);
+  border: 2px dashed var(--border-color-input);
+  border-radius: var(--radius-md);
+}
+
+.addNoteNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 8px;
+  color: var(--color-gray-light);
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.addButton {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+  }
+
+  .editableItem,
+  .readOnlyItem,
+  .addSection {
+    flex-direction: column;
+  }
+
+  .noteNumber,
+  .addNoteNumber {
+    align-self: flex-start;
+  }
+
+  .noteInput {
+    width: 100%;
+  }
+
+  .addButton {
+    width: 100%;
+  }
+}

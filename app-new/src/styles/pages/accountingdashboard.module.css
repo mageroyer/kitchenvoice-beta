@@ -1,0 +1,567 @@
+/**
+ * Accounting Dashboard Page Styles
+ */
+
+.dashboard {
+  padding: var(--spacing-lg);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Loading State */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: var(--spacing-md);
+  color: var(--color-gray);
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+}
+
+.title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.subtitle {
+  font-size: var(--font-size-base);
+  color: var(--color-gray);
+  margin: var(--spacing-xs) 0 0 0;
+}
+
+.headerActions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* Stats Grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) !important;
+}
+
+.statIcon {
+  font-size: 2rem;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+}
+
+.statContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.statValue {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.statLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+}
+
+/* Main Grid */
+.mainGrid {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: var(--spacing-lg);
+}
+
+/* Invoices Section */
+.invoicesSection {
+  min-width: 0; /* Prevent overflow */
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.sectionHeader h2 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0;
+}
+
+.sectionActions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.emptyState p {
+  color: var(--color-gray);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Invoices List */
+.invoicesList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.invoiceRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-gray-lightest);
+  border-radius: var(--radius-md);
+  transition: background 0.2s;
+}
+
+.invoiceRow:hover {
+  background: var(--color-gray-lighter);
+}
+
+.invoiceRow.selected {
+  background: var(--color-primary-light);
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.invoiceInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.invoiceVendor {
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoiceNumber {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+}
+
+.invoiceDate {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  min-width: 60px;
+}
+
+.invoiceAmount {
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 100px;
+  text-align: right;
+}
+
+.invoiceActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.qbBillId {
+  font-size: var(--font-size-xs);
+  color: var(--color-success);
+  background: var(--color-success-light);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.viewAll {
+  text-align: center;
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-gray-light);
+}
+
+/* Sidebar */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* QuickBooks Card */
+.qbCard {
+  padding: var(--spacing-lg) !important;
+}
+
+.qbHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xs);
+}
+
+.qbTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.qbIcon {
+  font-size: 1.5rem;
+}
+
+.qbCard h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0;
+}
+
+.qbSubtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.qbLoading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) 0;
+  color: var(--color-gray);
+  font-size: var(--font-size-sm);
+}
+
+.qbActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+/* Connected Box */
+.qbConnectedBox {
+  background: #f0fdf4;
+  border: 1px dashed #86efac;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.qbConnectedHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-sm);
+}
+
+.qbCheckIcon {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+/* Disconnected Box */
+.qbDisconnectedBox {
+  background: var(--color-gray-lightest);
+  border: 1px dashed var(--color-gray-light);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.qbDisconnectedText {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-dark);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+/* Feature List */
+.qbFeatureList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.qbFeatureList li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-dark);
+  padding: var(--spacing-xs) 0;
+}
+
+.checkmark {
+  color: #22c55e;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.qbConnectBtn {
+  width: 100%;
+  margin-top: var(--spacing-sm);
+}
+
+/* Environment Section */
+.envSection {
+  margin-bottom: var(--spacing-md);
+}
+
+.envLabel {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-sm);
+}
+
+.envOptions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.envOption {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  flex: 1;
+  background: white;
+  border: 2px solid var(--color-gray-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.envOption input {
+  accent-color: var(--color-primary);
+  width: 16px;
+  height: 16px;
+}
+
+.envContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.envName {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.envDesc {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray);
+}
+
+.envOption:hover {
+  border-color: var(--color-gray);
+}
+
+.envOption.envSelected {
+  background: #f0fdf4;
+  border-color: #22c55e;
+}
+
+.envOption.envUnselected {
+  opacity: 0.7;
+}
+
+/* Price Changes Card */
+.priceCard h3 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.noPriceChanges {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  text-align: center;
+  padding: var(--spacing-md);
+}
+
+.priceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--color-gray-lighter);
+}
+
+.priceRow:last-child {
+  border-bottom: none;
+}
+
+.priceName {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.priceChange {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.priceValue {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.pricePercent {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.pricePercent.up {
+  color: #c0392b;
+  background: #fdecea;
+}
+
+.pricePercent.down {
+  color: #27ae60;
+  background: #e8f8f0;
+}
+
+.viewAllBtn {
+  margin-top: var(--spacing-sm);
+  width: 100%;
+}
+
+/* Quick Actions Card */
+.actionsCard h3 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.quickActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.actionBtn {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+  }
+}
+
+@media (max-width: 900px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sidebar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard {
+    padding: var(--spacing-md);
+  }
+
+  .header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .headerActions button {
+    flex: 1;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .statCard {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .invoiceRow {
+    flex-wrap: wrap;
+  }
+
+  .invoiceAmount {
+    min-width: auto;
+  }
+
+  .invoiceActions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: var(--spacing-xs);
+  }
+}

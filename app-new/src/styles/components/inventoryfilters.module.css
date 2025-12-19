@@ -1,0 +1,506 @@
+/* InventoryFilters Component Styles */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Search Row */
+.searchRow {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: stretch;
+}
+
+/* Search Input Wrapper */
+.searchWrapper {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--color-gray);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 40px 10px 40px;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-gray-lightest);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast),
+              background var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+
+.searchInput::placeholder {
+  color: var(--color-gray);
+}
+
+.searchInput:hover {
+  background: var(--color-white);
+  border-color: var(--color-gray-lighter);
+}
+
+.searchInput:focus {
+  outline: none;
+  background: var(--color-white);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.clearSearch {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--color-gray);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+              color var(--transition-fast);
+}
+
+.clearSearch:hover {
+  background: var(--color-gray-lightest);
+  color: var(--color-text-primary);
+}
+
+.clearSearch:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.clearSearch svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* View Mode Toggle */
+.viewModes {
+  display: flex;
+  gap: 0;
+  background: var(--color-gray-lightest);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.viewModeButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.viewModeButton:hover {
+  color: var(--color-text-primary);
+  background: var(--color-white);
+}
+
+.viewModeButton.active {
+  color: var(--color-white);
+  background: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.viewModeButton:focus {
+  outline: none;
+}
+
+.viewModeButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.viewModeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.viewModeIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.viewModeLabel {
+  display: inline;
+}
+
+/* Filter Row */
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  align-items: flex-end;
+}
+
+/* Filter Group */
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 150px;
+  flex: 1;
+  max-width: 200px;
+}
+
+.filterLabel {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filterSelect {
+  padding: 10px 32px 10px 12px;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  border: 2px solid var(--border-color-input);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  appearance: none;
+  transition: border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+
+.filterSelect:hover {
+  border-color: var(--color-gray);
+}
+
+.filterSelect:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* Clear All Button */
+.clearAllButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 10px var(--spacing-md);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-danger);
+  background: transparent;
+  border: 2px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+              color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.clearAllButton:hover {
+  background: var(--color-danger);
+  color: var(--color-white);
+}
+
+.clearAllButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.3);
+}
+
+.clearAllButton:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
+}
+
+.clearIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Active Filters Summary */
+.activeFilters {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-gray-lightest);
+}
+
+.activeFiltersLabel {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filterTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.filterTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-dark);
+  background: var(--color-primary-light);
+  border-radius: var(--radius-full);
+}
+
+.removeTag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin-left: 2px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--color-primary-dark);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+              color var(--transition-fast);
+}
+
+.removeTag:hover {
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.removeTag:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.removeTag svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .searchRow {
+    flex-direction: column;
+  }
+
+  .searchWrapper {
+    width: 100%;
+  }
+
+  .viewModes {
+    width: 100%;
+  }
+
+  .viewModeButton {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .filterRow {
+    flex-direction: column;
+  }
+
+  .filterGroup {
+    width: 100%;
+    max-width: none;
+  }
+
+  .clearAllButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: var(--spacing-sm);
+  }
+
+  .viewModeLabel {
+    display: none;
+  }
+
+  .viewModeButton {
+    padding: 8px 16px;
+  }
+
+  .viewModeIcon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .activeFilters {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .container {
+    background: #16213e;
+  }
+
+  .searchInput {
+    background: #1a1a2e;
+    color: var(--color-white);
+  }
+
+  .searchInput::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .searchInput:hover,
+  .searchInput:focus {
+    background: #1a1a2e;
+  }
+
+  .searchIcon {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .clearSearch {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .clearSearch:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-white);
+  }
+
+  .viewModes {
+    background: #1a1a2e;
+  }
+
+  .viewModeButton {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .viewModeButton:hover {
+    color: var(--color-white);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .viewModeButton.active {
+    color: var(--color-white);
+    background: var(--color-primary);
+  }
+
+  .filterLabel {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .filterSelect {
+    background-color: #1a1a2e;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--color-white);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+  }
+
+  .filterSelect:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .activeFilters {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .activeFiltersLabel {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .filterTag {
+    background: rgba(52, 152, 219, 0.2);
+    color: #7dd3fc;
+  }
+
+  .removeTag {
+    color: #7dd3fc;
+  }
+
+  .removeTag:hover {
+    background: var(--color-primary);
+    color: var(--color-white);
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .searchInput,
+  .filterSelect,
+  .viewModeButton,
+  .clearSearch,
+  .clearAllButton,
+  .removeTag {
+    transition: none;
+  }
+}
+
+/* High Contrast Mode */
+@media (forced-colors: active) {
+  .container {
+    border: 2px solid CanvasText;
+  }
+
+  .searchInput,
+  .filterSelect {
+    border: 2px solid ButtonText;
+  }
+
+  .viewModeButton.active {
+    border: 2px solid Highlight;
+  }
+
+  .clearAllButton {
+    border: 2px solid ButtonText;
+  }
+
+  .filterTag {
+    border: 1px solid CanvasText;
+  }
+}

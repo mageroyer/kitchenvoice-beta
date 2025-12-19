@@ -1,0 +1,236 @@
+/**
+ * FixPriceModal Component Styles
+ * Modal for fixing missing pricePerG on inventory items
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.error {
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.375rem;
+  color: #991b1b;
+  text-align: center;
+}
+
+.errorMessage {
+  padding: 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.375rem;
+  color: #991b1b;
+  font-size: 0.875rem;
+}
+
+/* Sections */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text, #1f2937);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border-light, #f3f4f6);
+}
+
+/* Inventory Item Info */
+.itemInfo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--color-surface-secondary, #f9fafb);
+  border-radius: 0.375rem;
+}
+
+.itemName {
+  font-weight: 600;
+  color: var(--color-text, #1f2937);
+}
+
+.itemVendor {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.itemPrice {
+  font-size: 0.875rem;
+  color: var(--color-text-tertiary, #9ca3af);
+  margin-left: auto;
+}
+
+/* Line Selector */
+.lineSelector {
+  margin-bottom: 0.5rem;
+}
+
+/* Line Item Info */
+.lineInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.75rem;
+  background: var(--color-surface-secondary, #f9fafb);
+  border-radius: 0.375rem;
+}
+
+.lineRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.lineLabel {
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.lineValue {
+  font-weight: 500;
+  color: var(--color-text, #1f2937);
+}
+
+.lineValue.missing {
+  color: #e67e22;
+  font-weight: 600;
+}
+
+/* No Lines State */
+.noLines {
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--color-surface-secondary, #f9fafb);
+  border-radius: 0.375rem;
+}
+
+.noLines p {
+  margin: 0 0 0.5rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-tertiary, #9ca3af);
+  font-style: italic;
+  margin: 0;
+}
+
+.autoExtracted {
+  font-size: 0.8125rem;
+  color: #059669;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #ecfdf5;
+  border-radius: 0.375rem;
+  border-left: 3px solid #10b981;
+}
+
+/* Weight Input */
+.weightInput {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.weightNumber {
+  width: 100px;
+}
+
+.weightUnitSelect {
+  width: 150px;
+}
+
+.perUnit {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* Preview */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.375rem;
+}
+
+.previewRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.previewRow.previewResult {
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+  border-top: 1px dashed #86efac;
+  font-weight: 600;
+  color: var(--color-text, #1f2937);
+}
+
+.priceResult {
+  font-size: 1.125rem;
+  color: #16a34a;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  margin-top: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .weightInput {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .weightNumber,
+  .weightUnitSelect {
+    width: 100%;
+  }
+
+  .perUnit {
+    text-align: center;
+  }
+
+  .footer {
+    flex-direction: column;
+  }
+
+  .footer button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,259 @@
+/* PIN Modal Styles */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 340px;
+  padding: var(--spacing-lg);
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: var(--color-gray);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color var(--transition-fast);
+}
+
+.closeButton:hover {
+  color: var(--color-text-primary);
+}
+
+/* PIN Display */
+.pinDisplay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.pinDots {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.pinDot {
+  width: 40px;
+  height: 48px;
+  border: 2px solid var(--border-color-input);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  font-family: var(--font-family-mono);
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  transition: all var(--transition-fast);
+}
+
+.pinDot.filled {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.pinDot.filled:not(:empty) {
+  /* When showing PIN */
+}
+
+.pinDot.filled:empty::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background: var(--color-primary);
+  border-radius: 50%;
+}
+
+.showPinButton {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  transition: color var(--transition-fast);
+}
+
+.showPinButton:hover {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
+/* Error Message */
+.error {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  margin-bottom: var(--spacing-md);
+}
+
+/* Keypad */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.keypadButton {
+  height: 56px;
+  background: var(--color-gray-lightest);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xl);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.keypadButton:hover:not(:disabled) {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+}
+
+.keypadButton:active:not(:disabled) {
+  transform: scale(0.95);
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.keypadButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.keypadButton.keypadAction {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-gray);
+}
+
+.keypadButton.keypadAction:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+/* Submit Button */
+.submitButton {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-white);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* View Only Button */
+.viewOnlyButton {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: transparent;
+  border: none;
+  color: var(--color-gray);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  margin-top: var(--spacing-md);
+  transition: color var(--transition-fast);
+}
+
+.viewOnlyButton:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
+.viewOnlyButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+  .modal {
+    max-width: 100%;
+    margin: var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+
+  .pinDot {
+    width: 32px;
+    height: 40px;
+    font-size: var(--font-size-base);
+  }
+
+  .keypadButton {
+    height: 48px;
+    font-size: var(--font-size-lg);
+  }
+}

@@ -1,0 +1,326 @@
+/* MenuBar Component Styles */
+
+.menuBar {
+  background: var(--color-dark);
+  color: var(--color-white);
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  box-shadow: var(--shadow-sm);
+}
+
+/* App Name Section with User Info */
+.appNameSection {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.appName {
+  font-size: var(--font-size-xl);
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+}
+
+.syncIndicator {
+  font-size: var(--font-size-sm);
+  margin-left: 10px;
+  opacity: 0.8;
+  cursor: default;
+}
+
+.syncIndicator.syncing {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* User Info Line */
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-xs);
+}
+
+.userName {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.accessBadge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.accessBadge.viewer {
+  background: var(--color-gray);
+  color: var(--color-white);
+}
+
+.accessBadge.editor {
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.accessBadge.owner {
+  background: var(--color-warning);
+  color: var(--color-dark);
+}
+
+/* Department Selector */
+.deptSelector {
+  position: relative;
+  margin-right: auto;
+}
+
+.deptButton {
+  font-size: var(--font-size-sm);
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-white);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--transition-fast);
+}
+
+.deptButton.clickable {
+  cursor: pointer;
+}
+
+.deptButton.clickable:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.deptArrow {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.deptDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 5px;
+  background: var(--color-white);
+  min-width: 200px;
+  box-shadow: var(--shadow-dropdown);
+  border-radius: var(--radius-md);
+  z-index: var(--z-dropdown);
+  overflow: hidden;
+}
+
+.deptOption {
+  padding: 10px 16px;
+  cursor: pointer;
+  border: none;
+  background: var(--color-white);
+  width: 100%;
+  text-align: left;
+  font-size: var(--font-size-sm);
+  color: var(--color-dark);
+  transition: background var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deptOption:hover {
+  background: var(--color-gray-lightest);
+}
+
+.deptOption.active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Legacy - keep for compatibility */
+.departmentBadge {
+  font-size: var(--font-size-sm);
+  margin-left: 10px;
+  padding: 5px 12px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  border-radius: 15px;
+  font-weight: normal;
+  cursor: pointer;
+  display: inline-block;
+  transition: all var(--transition-fast);
+}
+
+.departmentBadge:hover {
+  background: var(--color-primary-dark);
+}
+
+.menuButton {
+  background: none;
+  border: var(--border-width) solid var(--color-white);
+  color: var(--color-white);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  transition: all var(--transition-normal);
+  min-width: 50px;
+}
+
+.menuButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Hidden button - invisible but keeps space */
+.menuButton.hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.menuButton.active {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.menuButton.flag {
+  background: none;
+}
+
+.menuButton.flag.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* Dropdown Menu */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdownContent {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 5px;
+  background: var(--color-white);
+  min-width: var(--min-width-dropdown);
+  box-shadow: var(--shadow-dropdown);
+  border-radius: var(--radius-lg);
+  z-index: var(--z-dropdown);
+  overflow: hidden;
+}
+
+.dropdownContent.show {
+  display: block;
+}
+
+.dropdownItem {
+  padding: 12px 20px;
+  cursor: pointer;
+  border: none;
+  background: var(--color-white);
+  width: 100%;
+  text-align: left;
+  font-size: var(--font-size-base);
+  color: var(--color-dark);
+  transition: background var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dropdownItem:hover {
+  background: var(--color-gray-lightest);
+}
+
+.dropdownItem.danger {
+  color: var(--color-danger);
+}
+
+.dropdownItem.danger:hover {
+  background: var(--color-danger-light);
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: var(--color-gray-lightest);
+  margin: 5px 0;
+}
+
+/* Inventory Badge Styles */
+.inventoryBadge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.inventoryBadge.critical {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  animation: criticalPulse 2s ease-in-out infinite;
+}
+
+.inventoryBadge.low {
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+  color: var(--color-dark);
+}
+
+.inventoryBadge:hover {
+  transform: scale(1.05);
+}
+
+.inventoryCount {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
+
+.pulse {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-danger);
+  border-radius: 50%;
+  animation: pulseDot 1.5s ease-in-out infinite;
+}
+
+@keyframes criticalPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+  }
+}
+
+@keyframes pulseDot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+}

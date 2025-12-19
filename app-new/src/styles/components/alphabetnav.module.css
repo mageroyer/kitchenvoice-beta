@@ -1,0 +1,100 @@
+/* AlphabetNav Component Styles */
+
+.alphabetNav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 8px;
+  background: transparent;
+  border-radius: var(--radius-md);
+  height: fit-content;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  overflow-x: visible;
+  position: sticky;
+  top: 10px;
+  min-width: 50px;
+}
+
+/* Scrollbar styling */
+.alphabetNav::-webkit-scrollbar {
+  width: 8px;
+}
+
+.alphabetNav::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+  border-radius: 4px;
+}
+
+.alphabetNav::-webkit-scrollbar-thumb:hover {
+  background: #b0b0b0;
+}
+
+.alphabetNav::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.letterBtn {
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #808080;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  min-width: 36px;
+}
+
+/* Letters with recipes available */
+.letterBtn:not(.disabled) {
+  font-weight: 400;
+  color: #808080;
+}
+
+/* Hover effect for available letters */
+.letterBtn:not(.disabled):hover {
+  background: #ebebeb;
+  border-color: var(--color-primary);
+  color: #606060;
+}
+
+/* Active (selected) letter */
+.letterBtn.active {
+  background: var(--color-primary);
+  color: white;
+  font-weight: 500;
+  border-color: var(--color-primary);
+}
+
+/* Disabled (no recipes) letters */
+.letterBtn.disabled {
+  cursor: default;
+  opacity: 0.4;
+  color: #b0b0b0;
+  background: #fafafa;
+  border-color: #f0f0f0;
+}
+
+/* Responsive: Horizontal layout on mobile */
+@media (max-width: 768px) {
+  .alphabetNav {
+    flex-direction: row;
+    max-height: none;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    position: static;
+    padding: 10px;
+    gap: 5px;
+  }
+
+  .letterBtn {
+    flex-shrink: 0;
+    min-width: 32px;
+    padding: 6px 8px;
+  }
+}

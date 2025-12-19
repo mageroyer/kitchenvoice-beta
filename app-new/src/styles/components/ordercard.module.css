@@ -1,0 +1,271 @@
+/**
+ * OrderCard Component Styles
+ */
+
+.card {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.card.clickable {
+  cursor: pointer;
+}
+
+.card.clickable:hover {
+  border-color: var(--color-primary, #3b82f6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card.clickable:focus {
+  outline: 2px solid var(--color-primary, #3b82f6);
+  outline-offset: 2px;
+}
+
+.card.selected {
+  border-color: var(--color-primary, #3b82f6);
+  background: var(--color-primary-light, #eff6ff);
+}
+
+.card.compact {
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.card.cancelled {
+  opacity: 0.7;
+  background: var(--color-surface-muted, #f8fafc);
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.compact .header {
+  margin-bottom: 0;
+  flex: 0 0 auto;
+}
+
+.orderInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.compact .orderInfo {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.orderNumber {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text, #1e293b);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.statusIcon {
+  font-size: 0.875rem;
+}
+
+.statusDraft {
+  background: var(--color-gray-100, #f1f5f9);
+  color: var(--color-gray-700, #334155);
+}
+
+.statusPending {
+  background: var(--color-warning-light, #fef3c7);
+  color: var(--color-warning-dark, #92400e);
+}
+
+.statusApproved {
+  background: var(--color-info-light, #dbeafe);
+  color: var(--color-info-dark, #1e40af);
+}
+
+.statusSent {
+  background: var(--color-primary-light, #eff6ff);
+  color: var(--color-primary, #3b82f6);
+}
+
+.statusConfirmed {
+  background: var(--color-success-light, #dcfce7);
+  color: var(--color-success-dark, #166534);
+}
+
+.statusPartial {
+  background: var(--color-warning-light, #fef3c7);
+  color: var(--color-warning-dark, #92400e);
+}
+
+.statusReceived {
+  background: var(--color-success-light, #dcfce7);
+  color: var(--color-success-dark, #166534);
+}
+
+.statusCancelled {
+  background: var(--color-danger-light, #fee2e2);
+  color: var(--color-danger, #dc2626);
+}
+
+.statusClosed {
+  background: var(--color-gray-100, #f1f5f9);
+  color: var(--color-gray-600, #475569);
+}
+
+/* Quick Actions */
+.quickActions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.actionButton {
+  padding: 0.375rem;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--color-text-muted, #64748b);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.actionButton:hover {
+  background: var(--color-gray-100, #f1f5f9);
+  color: var(--color-primary, #3b82f6);
+}
+
+.actionButton svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Vendor */
+.vendor {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-text-muted, #64748b);
+  font-size: 0.875rem;
+}
+
+.compact .vendor {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.vendorIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.vendorName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Stats */
+.stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.statValue {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text, #1e293b);
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.compact .footer {
+  flex: 0 0 auto;
+}
+
+.dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.dateItem {
+  display: flex;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.dateLabel {
+  color: var(--color-text-muted, #64748b);
+}
+
+.dateValue {
+  color: var(--color-text, #1e293b);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dateValue.overdue {
+  color: var(--color-danger, #dc2626);
+}
+
+.daysUntil {
+  color: var(--color-warning, #f59e0b);
+  font-weight: 500;
+}
+
+.overdueBadge {
+  background: var(--color-danger-light, #fee2e2);
+  color: var(--color-danger, #dc2626);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.createdBy {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #64748b);
+}

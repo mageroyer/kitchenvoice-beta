@@ -19,6 +19,14 @@ import { searchItems, createItem as createInventoryItem, normalizeName } from '.
 import { addStockFromInvoice } from './stockService';
 import { extractWeightFromName } from '../../utils/format';
 import { detectToolUnit, getUnitFactorForPrice } from '../../utils/unitConversion';
+import {
+  parsePackagingInfo,
+  parseContainerFormat,
+  extractContainerCapacity,
+  extractProductDimensions,
+  isContainerProduct,
+  isLinearProduct
+} from '../../utils/packagingParser';
 
 // ============================================
 // Unit Parsing Helper
@@ -590,6 +598,39 @@ export async function createItemFromLine(lineId, additionalData = {}) {
   const itemName = line.description || line.rawDescription || '';
   const extractedWeight = extractWeightFromName(itemName);
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // CONTAINER/PACKAGING FORMAT PARSING
+  // For packaging distributors like Carrousel Emballage
+  // ═══════════════════════════════════════════════════════════════════════
+  const rawFormat = line.format || line.packagingFormat || null;
+  const packagingInfo = parsePackagingInfo({
+    description: itemName,
+    format: rawFormat,
+    quantity: line.quantity || 1
+  });
+
+  // Extract container capacity (for containers/lids - NOT product weight)
+  const containerCapacityInfo = extractContainerCapacity(itemName);
+
+  // Extract product dimensions (35X50, 8X8, etc.)
+  const dimensionInfo = extractProductDimensions(itemName);
+
+  // Log packaging parsing results
+  if (rawFormat) {
+    console.log(`[InvoiceLineService] Packaging format "${rawFormat}" parsed:`, {
+      type: packagingInfo.packaging.packagingType,
+      packCount: packagingInfo.packaging.packCount,
+      unitsPerPack: packagingInfo.packaging.unitsPerPack,
+      totalUnitsPerCase: packagingInfo.packaging.totalUnitsPerCase,
+      rollsPerCase: packagingInfo.packaging.rollsPerCase,
+      calculatedTotalUnits: packagingInfo.calculatedTotalUnits
+    });
+  }
+
+  if (containerCapacityInfo) {
+    console.log(`[InvoiceLineService] Container capacity detected (NOT product weight):`, containerCapacityInfo);
+  }
+
   // Calculate pricePerG or pricePerML if we have weight info
   let pricePerG = null;
   let pricePerML = null;
@@ -638,7 +679,39 @@ export async function createItemFromLine(lineId, additionalData = {}) {
     ...(extractedWeight && {
       weightPerUnit: extractedWeight.value,
       weightPerUnitUnit: extractedWeight.unit,
-    })
+    }),
+    // ═══════════════════════════════════════════════════════════════════
+    // Container/Packaging Fields
+    // ═══════════════════════════════════════════════════════════════════
+    ...(rawFormat && {
+      packagingFormat: rawFormat,
+      packagingType: packagingInfo.packaging.packagingType,
+      packCount: packagingInfo.packaging.packCount,
+      unitsPerPack: packagingInfo.packaging.unitsPerPack,
+      totalUnitsPerCase: packagingInfo.packaging.totalUnitsPerCase,
+      ...(packagingInfo.packaging.rollsPerCase && {
+        rollsPerCase: packagingInfo.packaging.rollsPerCase,
+        lengthPerRoll: packagingInfo.packaging.lengthPerRoll,
+        lengthUnit: packagingInfo.packaging.lengthUnit,
+      }),
+    }),
+    // Container capacity (IMPORTANT: this is NOT product weight)
+    ...(containerCapacityInfo && {
+      containerCapacity: containerCapacityInfo.capacity,
+      containerCapacityUnit: containerCapacityInfo.unit,
+      containerType: containerCapacityInfo.containerType,
+    }),
+    // Product dimensions and specs
+    ...(dimensionInfo.dimensions && {
+      productDimensions: dimensionInfo.dimensions,
+    }),
+    ...(dimensionInfo.width && {
+      productWidth: dimensionInfo.width,
+      productWidthUnit: dimensionInfo.widthUnit,
+    }),
+    ...(dimensionInfo.specs && {
+      productSpecs: dimensionInfo.specs,
+    }),
   };
 
   // Create the inventory item
@@ -726,33 +799,77 @@ export async function applyLineToInventory(lineId, { appliedBy = null } = {}) {
   //   - line.totalWeight or line.weight = 100 (total weight)
   //   - OR line.weightPerUnit = 50 (per unit weight)
   //
-  // Use the TOTAL value (weight or count) for stock, not just the quantity.
+  // For container formats like "10/100" with quantity 1:
+  //   - line.quantity = 1 (cases)
+  //   - line.totalUnitsPerCase = 1000 (10 packs × 100 units)
+  //   - Total stock = 1 × 1000 = 1000 units
+  //
+  // Use the TOTAL value (weight, units, or count) for stock, not just the quantity.
   // ═══════════════════════════════════════════════════════════════════════
   let stockQuantity = line.quantity;
   let stockWeight = null;
+  let stockUnits = null;  // For container format (total pieces/units)
+  let stockLength = null; // For roll products (total linear feet/meters)
 
-  // Priority 1: Use totalWeight if available (calculated from pack format)
-  if (line.totalWeight != null && line.totalWeight > 0) {
+  // ═══════════════════════════════════════════════════════════════════════
+  // CONTAINER FORMAT HANDLING (10/100, 6/RL, 1/500 notation)
+  // ═══════════════════════════════════════════════════════════════════════
+  const rawFormat = line.format || line.packagingFormat || item.packagingFormat || null;
+
+  if (rawFormat) {
+    // Parse the format to get packaging info
+    const packagingInfo = parsePackagingInfo({
+      description: line.description || item.name || '',
+      format: rawFormat,
+      quantity: line.quantity || 1
+    });
+
+    // For nested units (10/100) or simple (1/500): calculate total units
+    if (packagingInfo.packaging.packagingType === 'nested_units' ||
+        packagingInfo.packaging.packagingType === 'simple') {
+      stockUnits = packagingInfo.calculatedTotalUnits;
+      console.log(`[InvoiceLineService] Container format "${rawFormat}": ${line.quantity} case(s) × ${packagingInfo.packaging.totalUnitsPerCase} units/case = ${stockUnits} total units`);
+    }
+
+    // For rolls (6/RL): calculate total length if available
+    if (packagingInfo.packaging.packagingType === 'rolls') {
+      stockQuantity = line.quantity * packagingInfo.packaging.rollsPerCase;
+      if (packagingInfo.calculatedTotalLength) {
+        stockLength = packagingInfo.calculatedTotalLength;
+        console.log(`[InvoiceLineService] Roll format "${rawFormat}": ${line.quantity} case(s) × ${packagingInfo.packaging.rollsPerCase} rolls × ${packagingInfo.packaging.lengthPerRoll}${packagingInfo.packaging.lengthUnit || 'ft'} = ${stockLength} total length`);
+      } else {
+        console.log(`[InvoiceLineService] Roll format "${rawFormat}": ${line.quantity} case(s) × ${packagingInfo.packaging.rollsPerCase} rolls = ${stockQuantity} total rolls`);
+      }
+    }
+  }
+
+  // Priority 1: Use container format units if available
+  if (stockUnits != null && stockUnits > 0) {
+    stockQuantity = stockUnits;
+    console.log(`[InvoiceLineService] Using container format units: ${stockQuantity}`);
+  }
+  // Priority 2: Use totalWeight if available (calculated from pack format)
+  else if (line.totalWeight != null && line.totalWeight > 0) {
     stockWeight = line.totalWeight;
     console.log(`[InvoiceLineService] Using totalWeight: ${stockWeight}`);
   }
-  // Priority 2: Use weight field if available
+  // Priority 3: Use weight field if available
   else if (line.weight != null && line.weight > 0) {
     stockWeight = line.weight;
     console.log(`[InvoiceLineService] Using weight: ${stockWeight}`);
   }
-  // Priority 3: Calculate from quantity × weightPerUnit
+  // Priority 4: Calculate from quantity × weightPerUnit
   else if (line.weightPerUnit != null && line.weightPerUnit > 0 && line.quantity > 0) {
     stockWeight = line.quantity * line.weightPerUnit;
     console.log(`[InvoiceLineService] Calculated weight: ${line.quantity} × ${line.weightPerUnit} = ${stockWeight}`);
   }
-  // Priority 4: Calculate from quantity × packCount × packWeight (4/5LB format)
+  // Priority 5: Calculate from quantity × packCount × packWeight (4/5LB format)
   else if (line.packCount != null && line.packWeight != null && line.quantity > 0) {
     stockWeight = line.quantity * line.packCount * line.packWeight;
     console.log(`[InvoiceLineService] Pack weight: ${line.quantity} × ${line.packCount} × ${line.packWeight} = ${stockWeight}`);
   }
 
-  // Use weight for stock if item is weight-based, otherwise use quantity
+  // Use weight for stock if item is weight-based, otherwise use quantity (or units from container format)
   const isWeightBased = item.unit?.toLowerCase()?.match(/^(lb|lbs|kg|g|oz)$/i) ||
                         item.stockWeightUnit?.toLowerCase()?.match(/^(lb|lbs|kg|g|oz)$/i);
   const finalStockQty = (isWeightBased && stockWeight != null) ? stockWeight : stockQuantity;
@@ -762,6 +879,8 @@ export async function applyLineToInventory(lineId, { appliedBy = null } = {}) {
   // Add stock from invoice with dual tracking
   // - unitQuantity: number of units (e.g., 2 sacs)
   // - totalWeight: total weight (e.g., 100lb for 2×50lb sacs)
+  // - containerUnits: total units from container format (e.g., 1000 gloves)
+  // - totalLength: total linear length for roll products
   const transaction = await addStockFromInvoice(
     line.inventoryItemId,
     finalStockQty,
@@ -771,8 +890,12 @@ export async function applyLineToInventory(lineId, { appliedBy = null } = {}) {
       unitCost: line.unitPrice,
       createdBy: appliedBy,
       // Dual stock tracking
-      unitQuantity: stockQuantity,  // Unit count (e.g., 2 sacs)
-      totalWeight: stockWeight      // Total weight (e.g., 100lb)
+      unitQuantity: line.quantity,       // Case/order count (e.g., 1 case)
+      totalWeight: stockWeight,          // Total weight (e.g., 100lb)
+      // Container format tracking
+      containerUnits: stockUnits,        // Total units from container format (e.g., 1000 gloves)
+      containerFormat: rawFormat,        // Format string (e.g., "10/100")
+      totalLength: stockLength           // Total linear length for roll products
     }
   );
 

@@ -44,6 +44,7 @@ const COLUMN_TYPES = [
   { key: 'packageFormat', label: 'Package Format (weight embedded)' },
   { key: 'packageUnits', label: 'Package Format (units per case)' },
   { key: 'packFormat', label: 'Pack (distributor: 4/5LB, 1/50LB)' },
+  { key: 'containerFormat', label: 'Container Format (10/100, 6/RL, 1/500)' },
   { key: 'unitPrice', label: 'Unit Price' },
   { key: 'totalPrice', label: 'Line Total' },
   { key: 'ignoreRow', label: '⚠️ Ignore rows (header/footer)' },
@@ -170,7 +171,12 @@ function VendorProfileWizard({
     weightInDescription: false,
     weightInPackageFormat: false,  // e.g., "Caisse 25lbs" in FORMAT column
     skuInDescription: false,
-    multiplePages: false
+    multiplePages: false,
+    // Container/packaging distributor settings
+    isContainerDistributor: false,  // e.g., Carrousel Emballage - uses 10/100, 6/RL notation
+    hasNestedUnits: false,          // Format uses nested unit notation (10/100)
+    hasRollProducts: false,         // Vendor sells roll products (6/RL)
+    hasContainerCapacity: false     // Products have capacity specs (2.25LB = capacity, not weight)
   });
 
   // Step 3: Column Mapping - tracks user's column assignments
@@ -471,6 +477,8 @@ function VendorProfileWizard({
       const hasPackageFormatUnits = columnMappings.some(c => c.userLabel === 'packageUnits');
       // Distributor pack format: "4/5LB", "1/50LB", "12CT" - contains both pack count and unit weight
       const hasPackFormat = columnMappings.some(c => c.userLabel === 'packFormat');
+      // Container format: "10/100", "6/RL", "1/500" - packaging distributor notation
+      const hasContainerFormat = columnMappings.some(c => c.userLabel === 'containerFormat');
 
       const profile = {
         version: PROFILE_VERSION,
@@ -503,7 +511,12 @@ function VendorProfileWizard({
           weightInDescription: quirks.weightInDescription,
           weightInPackageFormat: quirks.weightInPackageFormat,
           skuInDescription: quirks.skuInDescription,
-          multiplePages: quirks.multiplePages
+          multiplePages: quirks.multiplePages,
+          // Container/packaging distributor settings
+          isContainerDistributor: quirks.isContainerDistributor || hasContainerFormat,
+          hasNestedUnits: quirks.hasNestedUnits,
+          hasRollProducts: quirks.hasRollProducts,
+          hasContainerCapacity: quirks.hasContainerCapacity
         },
 
         // Store sample lines for future reference
@@ -842,6 +855,100 @@ function VendorProfileWizard({
                   <span className={styles.quirkLabel}>Often spans multiple pages</span>
                 </label>
               </div>
+            </div>
+
+            {/* Container/Packaging Distributor Section */}
+            <div className={styles.containerDistributorSection}>
+              <div className={styles.containerToggle}>
+                <label className={styles.containerToggleLabel}>
+                  <input
+                    type="checkbox"
+                    checked={quirks.isContainerDistributor}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setQuirks(prev => ({
+                        ...prev,
+                        isContainerDistributor: checked,
+                        // Auto-enable sub-options when toggled on
+                        hasNestedUnits: checked ? true : prev.hasNestedUnits,
+                        hasRollProducts: checked ? true : prev.hasRollProducts,
+                        hasContainerCapacity: checked ? true : prev.hasContainerCapacity
+                      }));
+                    }}
+                  />
+                  <span className={styles.containerToggleText}>
+                    <span className={styles.containerToggleIcon}>📦</span>
+                    <strong>Container/Packaging Distributor</strong>
+                  </span>
+                </label>
+                <p className={styles.containerToggleDesc}>
+                  Enable for vendors like Carrousel Emballage that use special packaging notation
+                </p>
+              </div>
+
+              {quirks.isContainerDistributor && (
+                <div className={styles.containerOptions}>
+                  <div className={styles.containerInfo}>
+                    <div className={styles.containerInfoHeader}>
+                      <span className={styles.containerInfoIcon}>ℹ️</span>
+                      <span>Container Format Parsing</span>
+                    </div>
+                    <p className={styles.containerInfoText}>
+                      When enabled, the system will parse special format notations in the Format column:
+                    </p>
+                    <div className={styles.containerExamples}>
+                      <div className={styles.containerExample}>
+                        <code>10/100</code>
+                        <span>→ 10 packs × 100 units = 1000 units/case</span>
+                      </div>
+                      <div className={styles.containerExample}>
+                        <code>6/RL</code>
+                        <span>→ 6 rolls per case</span>
+                      </div>
+                      <div className={styles.containerExample}>
+                        <code>1/500</code>
+                        <span>→ 500 units per case</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.containerSubOptions}>
+                    <label className={styles.containerSubOption}>
+                      <input
+                        type="checkbox"
+                        checked={quirks.hasNestedUnits}
+                        onChange={(e) => setQuirks(prev => ({ ...prev, hasNestedUnits: e.target.checked }))}
+                      />
+                      <span>Nested unit notation (10/100, 4/250)</span>
+                    </label>
+
+                    <label className={styles.containerSubOption}>
+                      <input
+                        type="checkbox"
+                        checked={quirks.hasRollProducts}
+                        onChange={(e) => setQuirks(prev => ({ ...prev, hasRollProducts: e.target.checked }))}
+                      />
+                      <span>Roll products (6/RL, 4/RL)</span>
+                    </label>
+
+                    <label className={styles.containerSubOption}>
+                      <input
+                        type="checkbox"
+                        checked={quirks.hasContainerCapacity}
+                        onChange={(e) => setQuirks(prev => ({ ...prev, hasContainerCapacity: e.target.checked }))}
+                      />
+                      <span>Container capacity in description (2.25LB = capacity, not weight)</span>
+                    </label>
+                  </div>
+
+                  <div className={styles.containerWarning}>
+                    <span className={styles.containerWarningIcon}>⚠️</span>
+                    <span>
+                      For container products like lids/bowls, weight notation (e.g., "2.25LB") refers to the <strong>container capacity</strong>, not product weight.
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

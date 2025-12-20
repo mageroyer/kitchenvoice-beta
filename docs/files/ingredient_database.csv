@@ -1,0 +1,81 @@
+vendor_code,item_code,description_fr,description_en,category,pack_size,unit_price,unit_type,vendor_name
+NORREF,SF-10234,SAUMON ATLANTIQUE FRAIS 10-12LB,Atlantic Salmon Fresh 10-12LB,Seafood,1/PC,14.85,PC,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10241,SAUMON ATLANTIQUE FILET S/P,Atlantic Salmon Fillet Skinless,Seafood,KG,22.50,KG,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10312,TRUITE ARC-EN-CIEL PORTION 6OZ,Rainbow Trout Portion 6OZ,Seafood,1/10LB,45.75,CASE,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10425,CREVETTES 16/20 TIGRE CRUES,Tiger Shrimp 16/20 Raw,Seafood,2/5LB,89.50,CASE,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10426,CREVETTES 21/25 TIGRE CUITES,Tiger Shrimp 21/25 Cooked,Seafood,2/5LB,78.25,CASE,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10512,HOMARD VIVANT 1.25LB,Live Lobster 1.25LB,Seafood,PC,28.95,PC,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10623,MOULES DE L'IPE 2LB,PEI Mussels 2LB,Seafood,1/2LB,8.45,BAG,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10731,PÉTONCLES U10 DRY PACK,Scallops U10 Dry Pack,Seafood,1/5LB,125.00,CASE,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10745,PÉTONCLES 20/30 IQF,Scallops 20/30 IQF,Seafood,2/5LB,68.50,CASE,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10821,FILET MORUE FRAÎCHE,Fresh Cod Fillet,Seafood,KG,18.75,KG,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10834,FILET AIGLEFIN FRAIS,Fresh Haddock Fillet,Seafood,KG,19.50,KG,Les Pêcheries Norref Québec Inc.
+NORREF,SF-10912,THON ALBACORE LOIN AAA,Albacore Tuna Loin AAA,Seafood,KG,38.50,KG,Les Pêcheries Norref Québec Inc.
+NORREF,SF-11023,CALMAR TUBE & TENTACULE,Squid Tube & Tentacle,Seafood,2/2.5KG,32.75,CASE,Les Pêcheries Norref Québec Inc.
+NORREF,SF-11134,CRABE DORMEUR SECT.,Dungeness Crab Sections,Seafood,1/5LB,42.50,CASE,Les Pêcheries Norref Québec Inc.
+NORREF,SF-11245,HUÎTRES MALPEQUE #1,Malpeque Oysters #1,Seafood,100CT,85.00,CASE,Les Pêcheries Norref Québec Inc.
+DISTROBEC,VD-20145,BOEUF AAA FILET MIGNON 8OZ,AAA Beef Filet Mignon 8OZ,Meat - Beef,1/10LB,185.00,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-20156,BOEUF AAA CÔTE DE BOEUF,AAA Beef Prime Rib,Meat - Beef,KG,32.50,KG,Les Aliments Distrobec Inc.
+DISTROBEC,VD-20234,BOEUF AAA BAVETTE MARINÉE,AAA Beef Marinated Flank,Meat - Beef,2/5KG,89.75,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-20312,BOEUF HACHÉ MI-MAIGRE,Medium Lean Ground Beef,Meat - Beef,2/5KG,42.50,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-20345,BOEUF AAA STRIPLOIN,AAA Beef Striploin,Meat - Beef,KG,28.75,KG,Les Aliments Distrobec Inc.
+DISTROBEC,VD-30123,VEAU ESCALOPE 4OZ,Veal Cutlet 4OZ,Meat - Veal,1/5KG,125.00,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-30156,VEAU OSSO BUCO 2",Veal Osso Buco 2",Meat - Veal,1/10KG,95.50,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-30234,VEAU CÔTELETTE FRENCHED,Veal Chop Frenched,Meat - Veal,1/5KG,145.00,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-40123,PORC LONGE DÉSOSSÉE,Boneless Pork Loin,Meat - Pork,KG,12.85,KG,Les Aliments Distrobec Inc.
+DISTROBEC,VD-40234,PORC CÔTE LEVÉE BB,Baby Back Ribs,Meat - Pork,1/20KG,118.50,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-40312,PORC BACON TRANCHÉ,Sliced Bacon,Meat - Pork,5KG,45.75,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-50123,AGNEAU CARRÉ FRENCHED,Frenched Lamb Rack,Meat - Lamb,1/PC,68.50,PC,Les Aliments Distrobec Inc.
+DISTROBEC,VD-50234,AGNEAU GIGOT DÉSOSSÉ,Boneless Leg of Lamb,Meat - Lamb,KG,24.75,KG,Les Aliments Distrobec Inc.
+DISTROBEC,VD-60123,CANARD MAGRET FRAIS,Fresh Duck Breast,Meat - Poultry,1/PC,18.95,PC,Les Aliments Distrobec Inc.
+DISTROBEC,VD-60234,CANARD CUISSE CONFITE,Duck Leg Confit,Meat - Poultry,4/12PC,85.00,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-70123,POULET POITRINE S/P S/O,Chicken Breast Skinless Boneless,Meat - Poultry,2/5KG,52.50,CASE,Les Aliments Distrobec Inc.
+DISTROBEC,VD-70234,POULET CUISSE DÉSOSSÉE,Boneless Chicken Thigh,Meat - Poultry,2/5KG,38.75,CASE,Les Aliments Distrobec Inc.
+COURCHESNE,CL-80123,TOMATE ITALIENNE CAISSE,Roma Tomatoes Case,Produce - Vegetables,1/25LB,28.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80134,TOMATE CERISE ROUGE,Red Cherry Tomatoes,Produce - Vegetables,12/DRY PT,32.75,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80145,TOMATE GRAPE MIXTE,Mixed Grape Tomatoes,Produce - Vegetables,12/DRY PT,35.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80212,LAITUE ROMAINE 24CT,Romaine Lettuce 24CT,Produce - Vegetables,1/24CT,38.75,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80223,MESCLUN BIO,Organic Mesclun Mix,Produce - Vegetables,4/2.5LB,42.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80234,ÉPINARD BÉBÉ,Baby Spinach,Produce - Vegetables,4/2.5LB,38.25,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80312,CAROTTE NANTAISE,Nantes Carrots,Produce - Vegetables,1/50LB,32.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80323,CAROTTE BÉBÉ PELÉE,Peeled Baby Carrots,Produce - Vegetables,4/5LB,28.75,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80412,OIGNON ESPAGNOL JUMBO,Jumbo Spanish Onion,Produce - Vegetables,1/50LB,25.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80423,OIGNON ROUGE,Red Onion,Produce - Vegetables,1/25LB,22.75,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80434,ÉCHALOTE FRANÇAISE,French Shallots,Produce - Vegetables,1/5KG,45.00,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80512,POMME DE TERRE IDAHO,Idaho Potatoes,Produce - Vegetables,1/50LB,28.95,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80523,POMME DE TERRE GRELOT,Fingerling Potatoes,Produce - Vegetables,1/50LB,35.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80612,POIVRON ROUGE,Red Bell Pepper,Produce - Vegetables,1/25LB,52.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80623,POIVRON JAUNE,Yellow Bell Pepper,Produce - Vegetables,1/25LB,55.75,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80634,POIVRON VERT,Green Bell Pepper,Produce - Vegetables,1/25LB,28.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80712,CHAMPIGNON BLANC TRANCHÉ,Sliced White Mushrooms,Produce - Vegetables,4/5LB,42.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80723,CHAMPIGNON CREMINI,Cremini Mushrooms,Produce - Vegetables,4/5LB,48.75,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80734,CHAMPIGNON SHIITAKE,Shiitake Mushrooms,Produce - Vegetables,1/5LB,32.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80812,BROCOLI COURONNE,Broccoli Crowns,Produce - Vegetables,14CT,28.75,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80823,CHOU-FLEUR,Cauliflower,Produce - Vegetables,12CT,32.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80912,COURGETTE VERTE,Green Zucchini,Produce - Vegetables,1/22LB,24.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-80923,AUBERGINE ITALIENNE,Italian Eggplant,Produce - Vegetables,1/22LB,28.75,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-81012,AIL PELÉ ENTIER,Peeled Whole Garlic,Produce - Vegetables,6/3LB,42.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-81023,GINGEMBRE FRAIS,Fresh Ginger,Produce - Vegetables,1/30LB,65.00,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-81112,HERBES FRAÎCHES MIXTES,Fresh Mixed Herbs,Produce - Herbs,12CT,28.50,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-81123,BASILIC FRAIS,Fresh Basil,Produce - Herbs,12CT,22.75,CASE,Courchesne Larose Ltée
+COURCHESNE,CL-81134,CORIANDRE FRAÎCHE,Fresh Cilantro,Produce - Herbs,30CT,18.50,CASE,Courchesne Larose Ltée
+CARROUSEL,CE-90123,CONTENANT ALUM. 2.25LB RECT,Aluminum Container 2.25LB Rect,Packaging - Containers,1/500,65.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90134,CONTENANT ALUM. 1LB ROND,Aluminum Container 1LB Round,Packaging - Containers,1/500,52.75,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90145,COUVERCLE ALUM. 2.25LB,Aluminum Lid 2.25LB,Packaging - Containers,1/500,38.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90212,SAC SOUS-VIDE 8X12,Vacuum Bag 8X12,Packaging - Bags,1/1000,45.75,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90223,SAC SOUS-VIDE 10X14,Vacuum Bag 10X14,Packaging - Bags,1/1000,58.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90312,FILM ÉTIRABLE 18",Stretch Film 18",Packaging - Wrap,4/RL,85.00,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90323,PAPIER CIRÉ 12",Wax Paper 12",Packaging - Wrap,6/RL,72.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90412,BOÎTE PIZZA 12" KRAFT,Pizza Box 12" Kraft,Packaging - Boxes,1/50,42.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90423,BOÎTE PIZZA 16" KRAFT,Pizza Box 16" Kraft,Packaging - Boxes,1/50,55.75,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90512,CONTENANT CLAM 8X8 3COMP,Clamshell 8X8 3-Comp,Packaging - Takeout,1/200,68.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90523,CONTENANT CLAM 9X9 1COMP,Clamshell 9X9 1-Comp,Packaging - Takeout,1/200,52.75,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90612,BOL SOUPE 16OZ + COUV,Soup Bowl 16OZ + Lid,Packaging - Takeout,1/250,45.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90623,BOL SOUPE 32OZ + COUV,Soup Bowl 32OZ + Lid,Packaging - Takeout,1/250,58.75,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90712,USTENSILES COMBO HVY,Heavy Duty Cutlery Combo,Packaging - Disposables,1/500,72.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90723,SERVIETTE DÎNER 2PLY,Dinner Napkins 2-Ply,Packaging - Disposables,1/3000,45.00,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90812,GANTS NITRILE M,Nitrile Gloves Medium,Supplies - Safety,10/100,85.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90823,GANTS NITRILE L,Nitrile Gloves Large,Supplies - Safety,10/100,85.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-90912,SAC POUBELLE 35X50 BLK,Garbage Bag 35X50 Black,Supplies - Cleaning,1/100,35.75,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-91012,DÉGRAISSEUR CONCENTRÉ,Concentrated Degreaser,Supplies - Cleaning,4/4L,48.50,CASE,Carrousel Emballage Inc.
+CARROUSEL,CE-91023,DÉSINFECTANT QUAT,Quaternary Disinfectant,Supplies - Cleaning,4/4L,52.75,CASE,Carrousel Emballage Inc.

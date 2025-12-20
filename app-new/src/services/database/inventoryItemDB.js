@@ -63,6 +63,23 @@ import { classifyUnit } from '../../utils/unitConversion.js';
  * @property {string} createdBy - User ID who created the record
  * @property {RecipeTool[]} recipeTools - User-defined measurement tools for this item
  *
+ * // Container/Packaging Fields (for packaging distributors like Carrousel)
+ * @property {string} packagingFormat - Raw format string from invoice (e.g., "10/100", "6/RL")
+ * @property {'nested_units' | 'rolls' | 'simple' | 'unknown'} packagingType - Type of packaging notation
+ * @property {number} packCount - Outer pack count (e.g., 10 in "10/100")
+ * @property {number} unitsPerPack - Units per inner pack (e.g., 100 in "10/100")
+ * @property {number} totalUnitsPerCase - Calculated total units per case (e.g., 1000)
+ * @property {number} rollsPerCase - For roll products (e.g., 6 in "6/RL")
+ * @property {number} lengthPerRoll - Length per roll for linear products
+ * @property {string} lengthUnit - Unit for length (ft, m, in)
+ * @property {number} containerCapacity - Container capacity value (e.g., 2.25 for "2.25LB" container)
+ * @property {string} containerCapacityUnit - Container capacity unit (lb, oz, ml)
+ * @property {string} containerType - Type of container (lid, bowl, container, cup, plate)
+ * @property {number} productWidth - Width specification (e.g., 18 for "18"" film)
+ * @property {string} productWidthUnit - Width unit (in, cm)
+ * @property {string} productDimensions - Dimension string (e.g., "35X50", "8X8")
+ * @property {string} productSpecs - Additional specs (e.g., "3COMP", "2PLY", "HVY")
+ *
  * @typedef {Object} RecipeTool
  * @property {string} id - Unique identifier (nanoid)
  * @property {string} name - Display name (e.g., "cup", "sac", "botte")
@@ -420,6 +437,23 @@ export const inventoryItemDB = {
 
       // Recipe Tools - user-defined measurement tools
       recipeTools: Array.isArray(item.recipeTools) ? item.recipeTools : [],
+
+      // Container/Packaging Fields (for packaging distributors)
+      packagingFormat: item.packagingFormat?.trim() || null,
+      packagingType: item.packagingType || null,
+      packCount: typeof item.packCount === 'number' ? item.packCount : null,
+      unitsPerPack: typeof item.unitsPerPack === 'number' ? item.unitsPerPack : null,
+      totalUnitsPerCase: typeof item.totalUnitsPerCase === 'number' ? item.totalUnitsPerCase : null,
+      rollsPerCase: typeof item.rollsPerCase === 'number' ? item.rollsPerCase : null,
+      lengthPerRoll: typeof item.lengthPerRoll === 'number' ? item.lengthPerRoll : null,
+      lengthUnit: item.lengthUnit?.trim() || null,
+      containerCapacity: typeof item.containerCapacity === 'number' ? item.containerCapacity : null,
+      containerCapacityUnit: item.containerCapacityUnit?.trim() || null,
+      containerType: item.containerType?.trim() || null,
+      productWidth: typeof item.productWidth === 'number' ? item.productWidth : null,
+      productWidthUnit: item.productWidthUnit?.trim() || null,
+      productDimensions: item.productDimensions?.trim() || null,
+      productSpecs: item.productSpecs?.trim() || null,
 
       // Timestamps
       createdAt: now,

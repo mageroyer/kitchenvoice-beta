@@ -14,6 +14,7 @@
 
 import { vendorDB } from '../database/indexedDB';
 import { PROFILE_VERSION, LINE_TYPES } from './types';
+import { generateContainerFormatHints } from '../../utils/packagingParser';
 
 // ============================================
 // CONSTANTS
@@ -60,7 +61,9 @@ const COLUMN_ALIASES = {
   weight: ['weight', 'poids', 'wt', 'kg', 'lb', 'lbs', 'poids (kg)', 'poids (lb)'],
   unitPrice: ['price', 'prix', 'unit price', 'prix unit', 'prix/kg', 'prix/lb', '$/kg', '$/lb', 'rate'],
   total: ['total', 'amount', 'montant', 'ext', 'extension', 'line total'],
-  unitIndicator: ['u/m', 'um', 'unit', 'unité', 'measure', 'mesure', 'uom']
+  unitIndicator: ['u/m', 'um', 'unit', 'unité', 'measure', 'mesure', 'uom'],
+  // Container/packaging format column
+  packFormat: ['format', 'pack', 'emballage', 'packaging', 'fmt', 'pack format', 'format emballage']
 };
 
 /**
@@ -488,6 +491,8 @@ const COLUMN_LABELS = {
   packageFormat: 'Package Format (weight embedded)',
   packageUnits: 'Package Format (units per case)',
   packFormat: 'Pack Format (distributor: 4/5LB)',
+  // Container/packaging distributor format (e.g., Carrousel)
+  containerFormat: 'Container Format (nested: 10/100, rolls: 6/RL)',
   unitPrice: 'Unit Price',
   totalPrice: 'Line Total'
 };
@@ -589,6 +594,17 @@ export function generatePromptHints(profile) {
 
   if (profile.quirks?.skuInDescription) {
     hints.push('SKU/item code may be embedded in description - extract separately.');
+  }
+
+  // 7. CONTAINER/PACKAGING DISTRIBUTOR HINTS
+  // For vendors like Carrousel Emballage that use nested unit notation (10/100, 6/RL)
+  if (profile.quirks?.isContainerDistributor || profile.columns?.containerFormat?.index != null) {
+    const containerHints = generateContainerFormatHints({
+      hasNestedUnits: true,
+      hasRolls: true,
+      hasContainers: true
+    });
+    hints.push(containerHints);
   }
 
   return hints.length > 0 ? hints.join(' ') : null;

@@ -57,6 +57,10 @@
  * @property {boolean} weightInDescription - Weight embedded in description text
  * @property {boolean} priceIncludesTax - Prices already include tax
  * @property {string[]} skipPatterns - Row patterns to skip (e.g., "SUBTOTAL")
+ * @property {boolean} isContainerDistributor - Vendor uses container format notation (10/100, 6/RL)
+ * @property {boolean} hasNestedUnits - Format column uses nested unit notation (10/100)
+ * @property {boolean} hasRollProducts - Vendor sells roll/linear products (6/RL)
+ * @property {boolean} hasContainerCapacity - Products have capacity specs (2.25LB = capacity, not weight)
  */
 
 /**
@@ -103,6 +107,11 @@
  * @property {number|null} parsed.unitPrice - Unit price
  * @property {number|null} parsed.total - Total price
  * @property {number|null} parsed.pricePerG - Calculated price per gram
+ * @property {string|null} parsed.packagingFormat - Container format string (10/100, 6/RL)
+ * @property {string|null} parsed.packagingType - Type: nested_units, rolls, simple
+ * @property {number|null} parsed.totalUnitsPerCase - Calculated total units per case
+ * @property {number|null} parsed.containerCapacity - Container capacity (for containers/lids)
+ * @property {string|null} parsed.containerCapacityUnit - Capacity unit (lb, oz, ml)
  * @property {string} lineType - Detected type (product/deposit/fee/credit)
  * @property {boolean} mathValid - Whether math checks out
  */

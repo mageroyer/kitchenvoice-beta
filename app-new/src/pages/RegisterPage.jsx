@@ -37,6 +37,7 @@ function RegisterPage() {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [registeredUser, setRegisteredUser] = useState(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Ref for timer cleanup
   const redirectTimerRef = useRef(null);
@@ -110,6 +111,12 @@ function RegisterPage() {
       return;
     }
 
+    // Check terms agreement
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy');
+      return;
+    }
+
     setLoading(true);
 
     // Mark that we're in setup flow BEFORE registration (prevents redirect race condition)
@@ -119,8 +126,6 @@ function RegisterPage() {
       const result = await registerUser(email, password, displayName.trim());
 
       if (result.success) {
-        console.log('🎉 Registration successful! Showing setup wizard...');
-
         // Store the user info and show setup wizard
         setRegisteredUser({
           uid: result.user.uid,
@@ -153,8 +158,6 @@ function RegisterPage() {
       try {
         const result = await authenticateWithPin(setupData.pin);
         if (result.success) {
-          console.log('✅ Owner auto-authenticated after setup');
-          console.log('📂 Default department set to:', setupData.defaultDepartment);
           // Redirect directly to recipes (user is now authenticated and unlocked)
           navigate(ROUTES.RECIPES);
           return;
@@ -176,7 +179,8 @@ function RegisterPage() {
       <div className={styles.authContainer}>
         <Card className={styles.authCard}>
           <div className={styles.authHeader}>
-            <h1 className={styles.authTitle}>SmartCookBook</h1>
+            <img src="/favicon.svg" alt="" className={styles.authLogo} />
+            <h1 className={styles.authTitle}>KitchenCommand</h1>
             <p className={styles.authSubtitle}>Create your account</p>
             {selectedPlan && planInfo[selectedPlan] && (
               <div style={{ marginTop: '12px' }}>
@@ -296,6 +300,28 @@ function RegisterPage() {
               error={confirmPassword && password !== confirmPassword}
               errorMessage={confirmPassword && password !== confirmPassword ? "Passwords don't match" : ''}
             />
+
+            {/* Terms Agreement Checkbox */}
+            <div className={styles.termsCheckbox}>
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className={styles.checkbox}
+                />
+                <span className={styles.checkboxText}>
+                  I agree to the{' '}
+                  <Link to="/terms" target="_blank" rel="noopener noreferrer">
+                    Terms of Service
+                  </Link>
+                  {' '}and{' '}
+                  <Link to="/privacy" target="_blank" rel="noopener noreferrer">
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+            </div>
 
             <Button
               type="submit"

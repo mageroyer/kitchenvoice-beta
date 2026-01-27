@@ -1,53 +1,34 @@
 /**
- * Invoice Analyzer - Phase 1: Local Analysis
+ * Invoice Analyzer - Universal Validation
  *
- * Performs mandatory local analysis on invoice data BEFORE AI processing.
- * This is the "ground truth" layer - regex doesn't hallucinate.
- *
- * Responsibilities:
- * - Extract weights from product names (MANDATORY)
- * - Validate line item math (qty × price ≈ total)
- * - Detect zero-price items (likely unavailable)
+ * Performs universal invoice validation that applies to ALL invoice types:
+ * - Validate invoice totals (subtotal + tax = total)
+ * - Quebec tax validation (TPS/TVQ compound rule)
  * - Check for duplicate invoices
- * - Validate invoice totals
+ *
+ * NOTE: Line item analysis (weight extraction, math validation, anomaly detection)
+ * has been moved to type-specific handlers in services/invoice/handlers/.
+ * Each handler has its own processLines() method that does type-specific analysis.
  *
  * @module services/inventory/invoiceAnalyzer
  */
 
-import { extractWeightFromName } from '../../utils/format';
 import { invoiceDB } from '../database/indexedDB';
+// Import Quebec tax config from central source
+import { QUEBEC_TAX } from '../invoice/mathEngine/types';
+
+// Re-export for backwards compatibility
+export { QUEBEC_TAX };
 
 // ============================================
 // Constants
 // ============================================
 
 /**
- * Tolerance for math validation (in dollars)
- * Allows for small rounding differences
- */
-export const MATH_TOLERANCE = 0.02;
-
-/**
  * Tolerance for totals validation (in dollars)
  * Invoice totals may have larger rounding differences
  */
 export const TOTALS_TOLERANCE = 1.00;
-
-/**
- * Quebec tax rates and configuration
- * TPS (GST) = Federal Goods & Services Tax
- * TVQ (QST) = Quebec Sales Tax
- *
- * IMPORTANT: Quebec uses compound taxation - TVQ is calculated on (subtotal + TPS)
- * Formula: TVQ = (subtotal + TPS) × 9.975%
- */
-export const QUEBEC_TAX = {
-  TPS_RATE: 0.05,        // Federal GST: 5%
-  TVQ_RATE: 0.09975,     // Quebec QST: 9.975%
-  // Tolerance: 0.5% of expected value or $0.02, whichever is larger
-  TOLERANCE_PERCENT: 0.005,
-  TOLERANCE_MIN: 0.02,
-};
 
 /**
  * Analysis result status codes
@@ -59,13 +40,10 @@ export const ANALYSIS_STATUS = {
 };
 
 /**
- * Anomaly type codes
+ * Anomaly type codes (totals/invoice-level only)
+ * Line-level anomaly types are in handlers/types.js
  */
 export const ANOMALY_TYPES = {
-  MATH_MISMATCH: 'math_mismatch',
-  ZERO_PRICE: 'zero_price',
-  MISSING_WEIGHT: 'missing_weight',
-  WEIGHT_DISCREPANCY: 'weight_discrepancy',
   SUBTOTAL_MISMATCH: 'subtotal_mismatch',
   TAX_MISMATCH: 'tax_mismatch',
   TPS_MISMATCH: 'tps_mismatch',
@@ -73,278 +51,10 @@ export const ANOMALY_TYPES = {
   TAX_EXEMPT: 'tax_exempt',
   TOTAL_MISMATCH: 'total_mismatch',
   DUPLICATE_INVOICE: 'duplicate_invoice',
-  MISSING_QUANTITY: 'missing_quantity',
-  NEGATIVE_VALUE: 'negative_value',
 };
 
 // ============================================
-// Line Item Analysis
-// ============================================
-
-/**
- * Analyze a single line item
- * Extracts weight, validates math, detects anomalies
- *
- * @param {Object} line - Raw line item from invoice
- * @param {number} lineNumber - Line number (1-indexed)
- * @returns {Object} Analysis result with extracted data and anomalies
- */
-export function analyzeLineItem(line, lineNumber) {
-  const anomalies = [];
-
-  // Get raw values
-  const description = line.description || line.name || '';
-  const quantity = parseFloat(line.quantity) || 0;
-  const unitPrice = parseFloat(line.unitPrice) || 0;
-  const totalPrice = parseFloat(line.totalPrice) || 0;
-
-  // ═══════════════════════════════════════════════════════════
-  // MANDATORY: Extract weight from product name OR unit column
-  // Some invoices put weight in description: "FARINE 2.5KG"
-  // Others put it in unit column: "Sac 50lb"
-  // ═══════════════════════════════════════════════════════════
-  const quantityUnit = line.quantityUnit || '';
-  let extractedWeight = extractWeightFromName(description);
-  let weightSource = 'description';
-
-  // If no weight in description, try the unit column (e.g., "Sac 50lb", "Boîte 350g")
-  if (!extractedWeight && quantityUnit) {
-    extractedWeight = extractWeightFromName(quantityUnit);
-    weightSource = 'quantityUnit';
-  }
-
-  if (extractedWeight) {
-    console.log(`[Analyzer] Line ${lineNumber}: Extracted ${extractedWeight.value}${extractedWeight.unit} from ${weightSource}: "${weightSource === 'description' ? description : quantityUnit}"`);
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  // MANDATORY: Validate math - AUTO-DETECT pricing type
-  // Try both formulas and see which one matches:
-  // 1. Weight-based: weight × unitPrice = total (meat/produce invoices)
-  // 2. Standard: qty × unitPrice = total (regular invoices)
-  // ═══════════════════════════════════════════════════════════
-  const weight = parseFloat(line.weight) || 0;
-
-  // Infer weight unit if missing - check priceUnit first, then default to 'lb' (common in NA)
-  let weightUnit = 'lb';
-  if (line.weightUnit) {
-    weightUnit = line.weightUnit.toLowerCase();
-  } else if (line.priceUnit && ['lb', 'kg', 'g', 'oz'].includes(line.priceUnit.toLowerCase())) {
-    // If no weightUnit but priceUnit is a weight, use that
-    weightUnit = line.priceUnit.toLowerCase();
-  }
-
-  // Calculate both formulas
-  const weightBasedTotal = weight > 0 ? Math.round(weight * unitPrice * 100) / 100 : null;
-  const standardTotal = quantity > 0 ? Math.round(quantity * unitPrice * 100) / 100 : null;
-
-  // Check which formula matches (within tolerance)
-  const weightBasedDiff = weightBasedTotal !== null ? Math.abs(weightBasedTotal - totalPrice) : Infinity;
-  const standardDiff = standardTotal !== null ? Math.abs(standardTotal - totalPrice) : Infinity;
-
-  const weightBasedMatches = weightBasedDiff <= MATH_TOLERANCE;
-  const standardMatches = standardDiff <= MATH_TOLERANCE;
-
-  // AUTO-DETECT: Use weight-based if that formula matches, otherwise use standard
-  let isWeightBasedPricing = false;
-  let expectedTotal;
-  let mathFormula;
-  let mathValid;
-
-  if (weightBasedMatches && weight > 0) {
-    // Weight-based formula works
-    isWeightBasedPricing = true;
-    expectedTotal = weightBasedTotal;
-    mathFormula = `${weight} ${weightUnit} × $${unitPrice.toFixed(2)}`;
-    mathValid = true;
-    console.log(`[Analyzer] Line ${lineNumber}: Auto-detected WEIGHT-BASED pricing (${weight}${weightUnit} × $${unitPrice} = $${totalPrice})`);
-  } else if (standardMatches && quantity > 0) {
-    // Standard formula works
-    isWeightBasedPricing = false;
-    expectedTotal = standardTotal;
-    mathFormula = `${quantity} × $${unitPrice.toFixed(2)}`;
-    mathValid = true;
-    console.log(`[Analyzer] Line ${lineNumber}: Auto-detected STANDARD pricing (${quantity} × $${unitPrice} = $${totalPrice})`);
-  } else {
-    // Neither formula matches - flag as warning
-    // Default to standard formula for the error message
-    isWeightBasedPricing = false;
-    expectedTotal = standardTotal || 0;
-    mathFormula = `${quantity} × $${unitPrice.toFixed(2)}`;
-    mathValid = false;
-
-    // Only add anomaly if we have valid inputs
-    if ((quantity > 0 || weight > 0) && unitPrice > 0 && totalPrice > 0) {
-      const bestDiff = Math.min(weightBasedDiff, standardDiff);
-      anomalies.push({
-        type: ANOMALY_TYPES.MATH_MISMATCH,
-        severity: 'warning',
-        message: weight > 0
-          ? `Math error: Neither formula matches. Qty: ${quantity} × $${unitPrice.toFixed(2)} = $${(standardTotal || 0).toFixed(2)}. Weight: ${weight}${weightUnit} × $${unitPrice.toFixed(2)} = $${(weightBasedTotal || 0).toFixed(2)}. Invoice: $${totalPrice.toFixed(2)}`
-          : `Math error: ${mathFormula} = $${expectedTotal.toFixed(2)}, but invoice shows $${totalPrice.toFixed(2)}`,
-        expected: expectedTotal,
-        actual: totalPrice,
-        difference: bestDiff,
-        pricingType: 'unknown',
-      });
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  // Detect zero price (item likely unavailable)
-  // ═══════════════════════════════════════════════════════════
-  if (unitPrice === 0 && quantity > 0) {
-    anomalies.push({
-      type: ANOMALY_TYPES.ZERO_PRICE,
-      severity: 'info',
-      message: `Zero price: "${description}" - item may be unavailable`,
-      quantity,
-    });
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  // Detect missing quantity
-  // ═══════════════════════════════════════════════════════════
-  if (quantity === 0 && unitPrice > 0) {
-    anomalies.push({
-      type: ANOMALY_TYPES.MISSING_QUANTITY,
-      severity: 'warning',
-      message: `Missing quantity for "${description}"`,
-    });
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  // Detect negative values
-  // ═══════════════════════════════════════════════════════════
-  if (quantity < 0 || unitPrice < 0 || totalPrice < 0) {
-    anomalies.push({
-      type: ANOMALY_TYPES.NEGATIVE_VALUE,
-      severity: 'warning',
-      message: `Negative value detected in "${description}" - may be a credit/return`,
-      quantity,
-      unitPrice,
-      totalPrice,
-    });
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  // Flag if no weight could be extracted
-  // ═══════════════════════════════════════════════════════════
-  const hasWeight = !!extractedWeight;
-  if (!hasWeight && quantity > 0 && unitPrice > 0) {
-    // Only flag as info - not all items have weight in name
-    anomalies.push({
-      type: ANOMALY_TYPES.MISSING_WEIGHT,
-      severity: 'info',
-      message: `No weight found in "${description}" - may need manual entry`,
-    });
-  }
-
-  // Build analysis result
-  // Determine the effective mathDiff based on which formula was used
-  const effectiveMathDiff = isWeightBasedPricing ? weightBasedDiff : standardDiff;
-
-  // Log pricing detection result
-  if (weight > 0 || quantity > 0) {
-    console.log(`[Analyzer] Line ${lineNumber} pricing detection:`, {
-      desc: description.slice(0, 30),
-      qty: quantity,
-      weight,
-      weightUnit,
-      unitPrice,
-      total: totalPrice,
-      weightCalc: weightBasedTotal,
-      stdCalc: standardTotal,
-      detected: isWeightBasedPricing ? 'WEIGHT-BASED' : 'STANDARD',
-    });
-  }
-
-  return {
-    lineNumber,
-    rawDescription: description,
-
-    // Extracted weight from description (MANDATORY analysis)
-    extractedWeight,
-    hasWeight,
-
-    // Weight-based pricing info (auto-detected from math)
-    invoiceWeight: weight,           // Weight from invoice column (not description)
-    invoiceWeightUnit: weightUnit,   // Unit of invoice weight (lb, kg, etc.)
-    priceUnit: isWeightBasedPricing ? weightUnit : 'each', // Detected pricing unit
-    pricingType: isWeightBasedPricing ? 'weight' : 'unit', // Friendly pricing type
-    isWeightBasedPricing,
-
-    // Validated values
-    quantity,
-    unitPrice,
-    totalPrice,
-    expectedTotal,
-    mathDiff: effectiveMathDiff === Infinity ? 0 : effectiveMathDiff,
-    mathValid,
-
-    // Flags
-    isZeroPrice: unitPrice === 0,
-    isCredit: totalPrice < 0,
-
-    // Anomalies found
-    anomalies,
-    hasAnomalies: anomalies.length > 0,
-
-    // Status
-    status: anomalies.some(a => a.severity === 'error')
-      ? ANALYSIS_STATUS.ERROR
-      : anomalies.some(a => a.severity === 'warning')
-        ? ANALYSIS_STATUS.WARNING
-        : ANALYSIS_STATUS.OK,
-  };
-}
-
-/**
- * Analyze all line items in an invoice
- *
- * @param {Array} lineItems - Array of raw line items
- * @returns {Object} Analysis results with summary
- */
-export function analyzeAllLineItems(lineItems) {
-  if (!Array.isArray(lineItems) || lineItems.length === 0) {
-    return {
-      lines: [],
-      summary: {
-        totalLines: 0,
-        linesWithWeight: 0,
-        linesWithAnomalies: 0,
-        totalAnomalies: 0,
-        calculatedSubtotal: 0,
-      },
-    };
-  }
-
-  const analyzedLines = lineItems.map((line, index) =>
-    analyzeLineItem(line, index + 1)
-  );
-
-  // Calculate summary
-  const linesWithWeight = analyzedLines.filter(l => l.hasWeight).length;
-  const linesWithAnomalies = analyzedLines.filter(l => l.hasAnomalies).length;
-  const totalAnomalies = analyzedLines.reduce((sum, l) => sum + l.anomalies.length, 0);
-  const calculatedSubtotal = analyzedLines.reduce((sum, l) => sum + l.totalPrice, 0);
-
-  return {
-    lines: analyzedLines,
-    summary: {
-      totalLines: analyzedLines.length,
-      linesWithWeight,
-      linesWithoutWeight: analyzedLines.length - linesWithWeight,
-      linesWithAnomalies,
-      totalAnomalies,
-      calculatedSubtotal: Math.round(calculatedSubtotal * 100) / 100,
-      weightExtractionRate: Math.round((linesWithWeight / analyzedLines.length) * 100),
-    },
-  };
-}
-
-// ============================================
-// Invoice Totals Analysis
+// Quebec Tax Validation
 // ============================================
 
 /**
@@ -402,9 +112,7 @@ export function validateQuebecTaxes(subtotal, invoiceTPS, invoiceTVQ) {
   let tvqValid = true;
   let isTaxExempt = false;
 
-  // ═══════════════════════════════════════════════════════════
   // Check for tax-exempt scenario
-  // ═══════════════════════════════════════════════════════════
   if (subtotal > 0 && actualTPS === 0 && actualTVQ === 0) {
     isTaxExempt = true;
     anomalies.push({
@@ -415,9 +123,7 @@ export function validateQuebecTaxes(subtotal, invoiceTPS, invoiceTVQ) {
     });
   }
 
-  // ═══════════════════════════════════════════════════════════
   // Validate TPS (GST) - 5%
-  // ═══════════════════════════════════════════════════════════
   if (!isTaxExempt && subtotal > 0) {
     const tpsDiff = Math.abs(actualTPS - expected.tps);
     if (tpsDiff > tpsTolerance) {
@@ -436,14 +142,11 @@ export function validateQuebecTaxes(subtotal, invoiceTPS, invoiceTVQ) {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
   // Validate TVQ (QST) - 9.975% compound
-  // ═══════════════════════════════════════════════════════════
   if (!isTaxExempt && subtotal > 0) {
     const tvqDiff = Math.abs(actualTVQ - expected.tvq);
     if (tvqDiff > tvqTolerance) {
       tvqValid = false;
-      // Note: TVQ rate is on (subtotal + TPS), not just subtotal
       const tvqBase = subtotal + actualTPS;
       const tvqRate = tvqBase > 0 ? (actualTVQ / tvqBase) * 100 : 0;
       anomalies.push({
@@ -476,13 +179,17 @@ export function validateQuebecTaxes(subtotal, invoiceTPS, invoiceTVQ) {
   };
 }
 
+// ============================================
+// Invoice Totals Validation
+// ============================================
+
 /**
  * Validate invoice totals
  * Checks subtotal, tax, and total calculations
  * Supports both legacy single taxAmount and Quebec-specific TPS/TVQ
  *
  * @param {Object} totals - Invoice totals from parsed data
- * @param {number} calculatedSubtotal - Sum of line items
+ * @param {number} calculatedSubtotal - Sum of line items (from handler.processLines())
  * @returns {Object} Validation result with anomalies
  */
 export function validateTotals(totals, calculatedSubtotal) {
@@ -496,9 +203,7 @@ export function validateTotals(totals, calculatedSubtotal) {
   const taxQST = parseFloat(totals?.taxQST) || parseFloat(totals?.taxTVQ) || 0;
   const taxAmount = parseFloat(totals?.taxAmount) || (taxGST + taxQST);
 
-  // ═══════════════════════════════════════════════════════════
   // Check subtotal matches sum of line items
-  // ═══════════════════════════════════════════════════════════
   const subtotalDiff = Math.abs(calculatedSubtotal - subtotal);
   if (subtotalDiff > TOTALS_TOLERANCE && subtotal > 0) {
     anomalies.push({
@@ -511,9 +216,7 @@ export function validateTotals(totals, calculatedSubtotal) {
     });
   }
 
-  // ═══════════════════════════════════════════════════════════
   // Quebec tax validation (TPS + TVQ with compound rule)
-  // ═══════════════════════════════════════════════════════════
   let quebecTaxValidation = null;
   if (taxGST > 0 || taxQST > 0) {
     // Separate TPS/TVQ provided - do Quebec-specific validation
@@ -540,9 +243,7 @@ export function validateTotals(totals, calculatedSubtotal) {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
   // Check total = subtotal + taxes
-  // ═══════════════════════════════════════════════════════════
   const expectedTotal = subtotal + taxAmount;
   const totalDiff = Math.abs(expectedTotal - totalAmount);
   if (totalDiff > TOTALS_TOLERANCE && totalAmount > 0) {
@@ -634,35 +335,36 @@ export async function checkDuplicateInvoice(vendorName, invoiceNumber, _invoiceD
 }
 
 // ============================================
-// Full Invoice Analysis
+// Invoice-Level Validation (Universal)
 // ============================================
 
 /**
- * Perform complete local analysis on parsed invoice
- * This is the main entry point for Phase 1 analysis
+ * Validate invoice totals and check for duplicates.
+ * This is the universal validation that applies to ALL invoice types.
  *
- * @param {Object} parsedInvoice - Raw parsed invoice from Claude
- * @returns {Promise<Object>} Complete analysis result
+ * NOTE: Line item analysis is now done by handlers via processLines().
+ * This function only validates invoice-level data (totals, taxes, duplicates).
+ *
+ * @param {Object} parsedInvoice - Parsed invoice from Claude
+ * @param {number} calculatedSubtotal - Sum of line items (from handler.processLines())
+ * @returns {Promise<Object>} Validation result
  */
-export async function analyzeInvoice(parsedInvoice) {
-  console.log('[Analyzer] Starting Phase 1: Local Analysis...');
+export async function validateInvoice(parsedInvoice, calculatedSubtotal) {
   const startTime = performance.now();
 
   const result = {
-    // Metadata
     analyzedAt: new Date().toISOString(),
-    analysisVersion: '1.0.0',
 
-    // Line item analysis
-    lineItems: null,
-
-    // Totals analysis
+    // Totals validation
     totals: null,
 
     // Duplicate check
     duplicateCheck: null,
 
-    // Overall summary
+    // All anomalies
+    allAnomalies: [],
+
+    // Summary
     summary: {
       status: ANALYSIS_STATUS.OK,
       totalAnomalies: 0,
@@ -670,36 +372,10 @@ export async function analyzeInvoice(parsedInvoice) {
       warnings: 0,
       infos: 0,
     },
-
-    // All anomalies collected
-    allAnomalies: [],
   };
 
-  // ═══════════════════════════════════════════════════════════
-  // 1. Analyze all line items
-  // ═══════════════════════════════════════════════════════════
-  result.lineItems = analyzeAllLineItems(parsedInvoice.lineItems || []);
-
-  // Collect line item anomalies
-  result.lineItems.lines.forEach(line => {
-    line.anomalies.forEach(anomaly => {
-      result.allAnomalies.push({
-        ...anomaly,
-        lineNumber: line.lineNumber,
-        description: line.rawDescription,
-      });
-    });
-  });
-
-  // ═══════════════════════════════════════════════════════════
-  // 2. Validate totals
-  // ═══════════════════════════════════════════════════════════
-  result.totals = validateTotals(
-    parsedInvoice.totals,
-    result.lineItems.summary.calculatedSubtotal
-  );
-
-  // Collect totals anomalies
+  // Validate totals
+  result.totals = validateTotals(parsedInvoice.totals, calculatedSubtotal);
   result.totals.anomalies.forEach(anomaly => {
     result.allAnomalies.push({
       ...anomaly,
@@ -708,18 +384,12 @@ export async function analyzeInvoice(parsedInvoice) {
     });
   });
 
-  // ═══════════════════════════════════════════════════════════
-  // 3. Check for duplicate invoice
-  // ═══════════════════════════════════════════════════════════
+  // Check for duplicate invoice
   const vendorName = parsedInvoice.vendor?.name;
   const invoiceNumber = parsedInvoice.vendor?.invoiceNumber;
   const invoiceDate = parsedInvoice.vendor?.invoiceDate;
 
-  result.duplicateCheck = await checkDuplicateInvoice(
-    vendorName,
-    invoiceNumber,
-    invoiceDate
-  );
+  result.duplicateCheck = await checkDuplicateInvoice(vendorName, invoiceNumber, invoiceDate);
 
   if (result.duplicateCheck.isDuplicate) {
     result.allAnomalies.push({
@@ -732,32 +402,59 @@ export async function analyzeInvoice(parsedInvoice) {
     });
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // 4. Calculate summary
-  // ═══════════════════════════════════════════════════════════
+  // Calculate summary
   result.summary.totalAnomalies = result.allAnomalies.length;
   result.summary.errors = result.allAnomalies.filter(a => a.severity === 'error').length;
   result.summary.warnings = result.allAnomalies.filter(a => a.severity === 'warning').length;
   result.summary.infos = result.allAnomalies.filter(a => a.severity === 'info').length;
 
-  // Determine overall status
   if (result.summary.errors > 0) {
     result.summary.status = ANALYSIS_STATUS.ERROR;
   } else if (result.summary.warnings > 0) {
     result.summary.status = ANALYSIS_STATUS.WARNING;
-  } else {
-    result.summary.status = ANALYSIS_STATUS.OK;
   }
 
-  const duration = Math.round(performance.now() - startTime);
-  console.log(`[Analyzer] Phase 1 complete in ${duration}ms:`, {
-    lines: result.lineItems.summary.totalLines,
-    withWeight: result.lineItems.summary.linesWithWeight,
-    anomalies: result.summary.totalAnomalies,
-    status: result.summary.status,
-  });
-
   return result;
+}
+
+/**
+ * @deprecated Use validateInvoice() instead.
+ * This function is kept for backwards compatibility but now delegates to validateInvoice().
+ * Line item analysis is now done by handlers via processLines().
+ */
+export async function analyzeInvoice(parsedInvoice) {
+  console.warn('[Analyzer] analyzeInvoice() is deprecated. Line analysis is now done by handlers.');
+
+  // Calculate subtotal from line items (basic sum)
+  const lineItems = parsedInvoice.lineItems || [];
+  const calculatedSubtotal = lineItems.reduce((sum, line) =>
+    sum + (parseFloat(line.totalPrice) || parseFloat(line.total) || 0), 0);
+
+  // Use the new validateInvoice function
+  const validation = await validateInvoice(parsedInvoice, calculatedSubtotal);
+
+  // Return in legacy format for backwards compatibility
+  return {
+    analyzedAt: validation.analyzedAt,
+    analysisVersion: '2.0.0',
+
+    // Empty lineItems - analysis now done by handlers
+    lineItems: {
+      lines: [],
+      summary: {
+        totalLines: lineItems.length,
+        linesWithWeight: 0,
+        linesWithAnomalies: 0,
+        totalAnomalies: 0,
+        calculatedSubtotal: Math.round(calculatedSubtotal * 100) / 100,
+      },
+    },
+
+    totals: validation.totals,
+    duplicateCheck: validation.duplicateCheck,
+    summary: validation.summary,
+    allAnomalies: validation.allAnomalies,
+  };
 }
 
 // ============================================
@@ -765,43 +462,25 @@ export async function analyzeInvoice(parsedInvoice) {
 // ============================================
 
 /**
- * Get extracted weights as a map for easy lookup
- *
- * @param {Object} analysisResult - Result from analyzeInvoice
- * @returns {Map} Map of lineNumber -> extractedWeight
- */
-export function getExtractedWeightsMap(analysisResult) {
-  const map = new Map();
-
-  analysisResult.lineItems.lines.forEach(line => {
-    if (line.extractedWeight) {
-      map.set(line.lineNumber, line.extractedWeight);
-    }
-  });
-
-  return map;
-}
-
-/**
  * Get anomalies filtered by type
  *
- * @param {Object} analysisResult - Result from analyzeInvoice
+ * @param {Object} validationResult - Result from validateInvoice
  * @param {string} type - Anomaly type to filter by
  * @returns {Array} Filtered anomalies
  */
-export function getAnomaliesByType(analysisResult, type) {
-  return analysisResult.allAnomalies.filter(a => a.type === type);
+export function getAnomaliesByType(validationResult, type) {
+  return validationResult.allAnomalies.filter(a => a.type === type);
 }
 
 /**
  * Get anomalies filtered by severity
  *
- * @param {Object} analysisResult - Result from analyzeInvoice
+ * @param {Object} validationResult - Result from validateInvoice
  * @param {string} severity - Severity level ('error', 'warning', 'info')
  * @returns {Array} Filtered anomalies
  */
-export function getAnomaliesBySeverity(analysisResult, severity) {
-  return analysisResult.allAnomalies.filter(a => a.severity === severity);
+export function getAnomaliesBySeverity(validationResult, severity) {
+  return validationResult.allAnomalies.filter(a => a.severity === severity);
 }
 
 // ============================================
@@ -810,31 +489,28 @@ export function getAnomaliesBySeverity(analysisResult, severity) {
 
 export default {
   // Constants
-  MATH_TOLERANCE,
   TOTALS_TOLERANCE,
   QUEBEC_TAX,
   ANALYSIS_STATUS,
   ANOMALY_TYPES,
 
-  // Line item analysis
-  analyzeLineItem,
-  analyzeAllLineItems,
-
-  // Totals analysis
-  validateTotals,
-
   // Quebec tax validation
   calculateQuebecTaxes,
   validateQuebecTaxes,
 
+  // Totals validation
+  validateTotals,
+
   // Duplicate detection
   checkDuplicateInvoice,
 
-  // Full analysis
+  // Invoice validation (new)
+  validateInvoice,
+
+  // Legacy (deprecated)
   analyzeInvoice,
 
   // Utilities
-  getExtractedWeightsMap,
   getAnomaliesByType,
   getAnomaliesBySeverity,
 };

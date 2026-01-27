@@ -1,0 +1,374 @@
+/**
+ * WebsiteTab Styles
+ *
+ * Styles for the recipe website settings tab component
+ */
+
+.websiteTab {
+  padding: 16px;
+  background: var(--surface-elevated, #fff);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.sectionTitle {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionTitle::before {
+  content: '';
+  font-size: 1.2rem;
+}
+
+.fieldLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  margin-bottom: 8px;
+}
+
+.charCount {
+  font-weight: normal;
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #999);
+}
+
+/* Photo Section */
+.photoSection {
+  margin-bottom: 20px;
+}
+
+.photoDropzone {
+  border: 2px dashed var(--border-color, #ccc);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--surface-subtle, #f9f9f9);
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photoDropzone:hover:not(.hasPhoto) {
+  border-color: var(--primary, #2C5530);
+  background: var(--primary-subtle, #f0f5f1);
+}
+
+.photoDropzone.dragOver {
+  border-color: var(--primary, #2C5530);
+  background: var(--primary-subtle, #f0f5f1);
+  transform: scale(1.01);
+}
+
+.photoDropzone.hasPhoto {
+  padding: 8px;
+  border-style: solid;
+}
+
+.dropzoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropzoneIcon {
+  font-size: 2rem;
+  color: var(--text-tertiary, #999);
+}
+
+.dropzoneText {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #666);
+}
+
+.dropzoneHint {
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #999);
+}
+
+.photoPreview {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.photoPreview img {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  display: block;
+}
+
+.removePhotoBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.removePhotoBtn:hover {
+  background: rgba(220, 53, 69, 0.9);
+}
+
+.uploadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary, #666);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color, #e0e0e0);
+  border-top-color: var(--primary, #2C5530);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.uploadError {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--error-bg, #ffeef0);
+  color: var(--error, #dc3545);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+/* Pricing Section */
+.pricingSection {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--surface-subtle, #f9f9f9);
+  border-radius: 8px;
+}
+
+.priceRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.priceField {
+  flex: 0 0 150px;
+}
+
+.priceField input {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.costInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 24px;
+}
+
+.costItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.costLabel {
+  color: var(--text-secondary, #666);
+}
+
+.costValue {
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.costItem.lowMargin .costValue {
+  color: var(--warning, #f0ad4e);
+}
+
+/* Description Section */
+.descriptionSection {
+  margin-bottom: 20px;
+}
+
+.descriptionInput {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.descriptionInput:focus {
+  outline: none;
+  border-color: var(--primary, #2C5530);
+}
+
+.descriptionInput::placeholder {
+  color: var(--text-tertiary, #999);
+}
+
+/* Category Section */
+.categorySection {
+  margin-bottom: 20px;
+}
+
+/* Tags Section */
+.tagsSection {
+  margin-bottom: 20px;
+}
+
+.tagsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tagChip {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 20px;
+  background: var(--surface, #fff);
+  color: var(--text-secondary, #666);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tagChip:hover:not(:disabled) {
+  border-color: var(--primary, #2C5530);
+  color: var(--primary, #2C5530);
+}
+
+.tagChip.active {
+  background: var(--primary, #2C5530);
+  border-color: var(--primary, #2C5530);
+  color: white;
+}
+
+.tagChip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Visibility Section */
+.visibilitySection {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.toggleRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+  min-width: 180px;
+}
+
+.toggleBtn:hover:not(:disabled) {
+  border-color: var(--primary, #2C5530);
+}
+
+.toggleBtn.active {
+  border-color: var(--primary, #2C5530);
+  background: var(--primary-subtle, #f0f5f1);
+}
+
+.toggleBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toggleIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--text-tertiary, #ccc);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.toggleBtn.active .toggleIcon {
+  background: var(--primary, #2C5530);
+}
+
+.toggleLabel {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+}
+
+.lastPublished {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: var(--text-tertiary, #999);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .priceRow {
+    flex-direction: column;
+  }
+
+  .costInfo {
+    padding-top: 0;
+  }
+
+  .toggleRow {
+    flex-direction: column;
+  }
+
+  .toggleBtn {
+    min-width: unset;
+  }
+}

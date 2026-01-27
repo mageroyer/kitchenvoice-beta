@@ -125,6 +125,15 @@ service cloud.firestore {
     }
 
     // ============================================
+    // API CREDITS
+    // ============================================
+
+    // User credits - users can read/write their own credit balance
+    match /userCredits/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ============================================
     // PUBLIC WRITE COLLECTIONS (with validation)
     // ============================================
 
@@ -154,6 +163,53 @@ service cloud.firestore {
     // QuickBooks tokens - system only (no direct user access)
     match /quickbooks_tokens/{tokenId} {
       allow read, write: if false; // Only accessible via Cloud Functions
+    }
+
+    // ============================================
+    // PUBLIC WEBSITE DATA
+    // ============================================
+
+    // Check if user owns the store (format: "store_{uid}")
+    function isStoreOwner(storeId) {
+      return isAuthenticated() && storeId == 'store_' + request.auth.uid;
+    }
+
+    // Stores - public read, owner write
+    match /stores/{storeId} {
+      // Anyone can read store info (for public website)
+      allow read: if true;
+      // Only owner can write
+      allow write: if isStoreOwner(storeId);
+
+      // Public recipes collection
+      match /publicRecipes/{recipeId} {
+        // Anyone can read (for public website)
+        allow read: if true;
+        // Only owner can write
+        allow write: if isStoreOwner(storeId);
+      }
+
+      // Website settings (private to owner)
+      match /settings/{settingId} {
+        allow read, write: if isStoreOwner(storeId);
+      }
+
+      // Website data (full website configuration)
+      match /website/{documentId} {
+        // Public can read published websites
+        allow read: if true;
+        // Only owner can write
+        allow write: if isStoreOwner(storeId);
+      }
+    }
+
+    // Slugs collection - for URL uniqueness checking
+    match /slugs/{slug} {
+      // Anyone can read (to check availability)
+      allow read: if true;
+      // Only authenticated users can claim (and we validate ownership server-side)
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
 
     // ============================================

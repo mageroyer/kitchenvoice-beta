@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#1a2332"/>
+
+  <!-- K letter - blue -->
+  <path d="M6 6 L6 26 L10 26 L10 18 L15 26 L20 26 L13 16 L19 6 L14 6 L10 14 L10 6 Z" fill="#3b6cb5"/>
+
+  <!-- C with circuit - simplified for small size -->
+  <path d="M20 10 Q26 10 26 16 Q26 22 20 22" stroke="#4a5568" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Circuit nodes -->
+  <circle cx="27" cy="12" r="1.5" fill="#4a5568"/>
+  <circle cx="27" cy="20" r="1.5" fill="#4a5568"/>
+  <line x1="24" y1="12" x2="27" y2="12" stroke="#4a5568" stroke-width="1.2"/>
+  <line x1="24" y1="20" x2="27" y2="20" stroke="#4a5568" stroke-width="1.2"/>
+</svg>

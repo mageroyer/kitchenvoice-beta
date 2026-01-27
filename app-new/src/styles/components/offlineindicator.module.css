@@ -1,0 +1,62 @@
+/**
+ * OfflineIndicator Styles
+ */
+
+.indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.offline {
+  background-color: #f39c12;
+  color: #fff;
+}
+
+.online {
+  background-color: #27ae60;
+  color: #fff;
+  animation: slideDown 0.3s ease-out, fadeOut 0.5s ease-out 2.5s forwards;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.icon {
+  font-size: 16px;
+}
+
+/* Adjust body padding when indicator is shown */
+.indicator ~ #root {
+  padding-top: 40px;
+}

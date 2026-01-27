@@ -24,8 +24,8 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 340px;
-  padding: var(--spacing-lg);
+  max-width: 380px;
+  padding: var(--spacing-xl);
   animation: slideUp 0.2s ease-out;
 }
 
@@ -73,20 +73,21 @@
 /* PIN Display */
 .pinDisplay {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
 }
 
 .pinDots {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 6px;
 }
 
 .pinDot {
-  width: 40px;
-  height: 48px;
+  width: 42px;
+  height: 50px;
   border: 2px solid var(--border-color-input);
   border-radius: var(--radius-md);
   display: flex;
@@ -239,21 +240,25 @@
 }
 
 /* Responsive */
-@media (max-width: 400px) {
+@media (max-width: 420px) {
   .modal {
-    max-width: 100%;
-    margin: var(--spacing-md);
+    max-width: calc(100% - 24px);
+    margin: var(--spacing-sm);
     padding: var(--spacing-md);
   }
 
   .pinDot {
-    width: 32px;
-    height: 40px;
-    font-size: var(--font-size-base);
+    width: 36px;
+    height: 44px;
+    font-size: var(--font-size-lg);
+  }
+
+  .pinDots {
+    gap: 4px;
   }
 
   .keypadButton {
-    height: 48px;
+    height: 50px;
     font-size: var(--font-size-lg);
   }
 }

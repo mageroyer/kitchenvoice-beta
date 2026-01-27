@@ -911,10 +911,6 @@ if (typeof window !== 'undefined') {
     fix: () => runFullCleanup({ dryRun: false })
   };
 
-  console.log('Database cleanup utilities available at window.dbCleanup');
-  console.log('  - dbCleanup.dryRun() - Check for issues without fixing');
-  console.log('  - dbCleanup.fix() - Fix all issues');
-  console.log('  - dbCleanup.validateDataIntegrity() - Run integrity check');
 }
 
 export default {

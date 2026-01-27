@@ -102,9 +102,6 @@ export async function registerUser(email, password, displayName = null) {
     // Send email verification
     await sendEmailVerification(user);
 
-    console.log('✅ User registered:', user.email);
-    console.log('📧 Verification email sent');
-
     return {
       success: true,
       user: {
@@ -133,8 +130,6 @@ export async function loginUser(email, password) {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    console.log('✅ User logged in:', user.email);
-
     return {
       success: true,
       needsVerification: !user.emailVerified,
@@ -156,6 +151,7 @@ export async function loginUser(email, password) {
 
 /**
  * Sign out current user
+ * Clears local IndexedDB data before signing out to prevent data leakage
  */
 export async function logoutUser() {
   if (!auth) {
@@ -163,8 +159,15 @@ export async function logoutUser() {
   }
 
   try {
+    // Clear local data BEFORE signing out to prevent data leakage between users
+    const { clearAllLocalData } = await import('../database/db');
+    const { resetSyncState } = await import('../database/cloudSync');
+
+    await clearAllLocalData();
+    resetSyncState();
+
+    // Now sign out from Firebase
     await signOut(auth);
-    console.log('✅ User logged out');
     return { success: true, message: 'Logged out successfully' };
   } catch (error) {
     console.error('Logout error:', error);
@@ -182,7 +185,6 @@ export async function resetPassword(email) {
 
   try {
     await sendPasswordResetEmail(auth, email);
-    console.log('📧 Password reset email sent to:', email);
     return {
       success: true,
       message: 'Password reset email sent! Please check your inbox.',
@@ -203,7 +205,6 @@ export async function resendVerificationEmail() {
 
   try {
     await sendEmailVerification(auth.currentUser);
-    console.log('📧 Verification email resent');
     return {
       success: true,
       message: 'Verification email sent! Please check your inbox.',
@@ -242,7 +243,6 @@ export async function changePassword(currentPassword, newPassword) {
     // Update password
     await updatePassword(user, newPassword);
 
-    console.log('✅ Password changed successfully');
     return {
       success: true,
       message: 'Password changed successfully!',
@@ -268,7 +268,6 @@ export async function updateUserDisplayName(displayName) {
 
   try {
     await updateProfile(auth.currentUser, { displayName });
-    console.log('✅ Display name updated:', displayName);
     return {
       success: true,
       message: 'Display name updated successfully!',

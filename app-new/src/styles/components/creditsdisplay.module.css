@@ -1,0 +1,197 @@
+/**
+ * CreditsDisplay Component Styles
+ */
+
+.creditsCard {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+}
+
+.title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: var(--color-text, #333);
+}
+
+.loading,
+.error {
+  padding: 20px;
+  text-align: center;
+  color: var(--color-text-secondary, #666);
+}
+
+.error {
+  color: var(--color-danger, #dc3545);
+}
+
+/* Credits Bar */
+.creditsBar {
+  margin-bottom: 16px;
+}
+
+.barContainer {
+  height: 12px;
+  background: var(--color-background, #f5f5f5);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--color-success, #28a745);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.barFill.low {
+  background: var(--color-warning, #ffc107);
+}
+
+.creditsText {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.available {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary, #007bff);
+}
+
+.separator {
+  color: var(--color-text-secondary, #666);
+}
+
+.total {
+  font-size: 1rem;
+  color: var(--color-text-secondary, #666);
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #666);
+  margin-left: 4px;
+}
+
+/* Usage Info */
+.usageInfo {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid var(--color-border, #eee);
+  border-bottom: 1px solid var(--color-border, #eee);
+  margin-bottom: 16px;
+}
+
+.usageItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.usageLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.usageValue {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text, #333);
+}
+
+/* Credit Costs */
+.costsSection {
+  margin-bottom: 16px;
+}
+
+.costsTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #666);
+  margin: 0 0 8px 0;
+}
+
+.costsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 12px;
+}
+
+.costItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  padding: 4px 0;
+}
+
+.costLabel {
+  color: var(--color-text-secondary, #666);
+}
+
+.costValue {
+  font-weight: 500;
+  color: var(--color-text, #333);
+}
+
+/* Warning */
+.warning {
+  background: #fff3cd;
+  color: #856404;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+}
+
+/* Refresh Button */
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refreshBtn:hover {
+  background: var(--color-background, #f5f5f5);
+}
+
+/* Owner Badge */
+.ownerBadge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .costsList {
+    grid-template-columns: 1fr;
+  }
+
+  .usageInfo {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

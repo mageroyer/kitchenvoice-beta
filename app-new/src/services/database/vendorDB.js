@@ -273,8 +273,8 @@ export const vendorDB = {
       updatedAt: now,
       createdBy: vendor.createdBy || null,
 
-      // Invoice parsing profile (stored during vendor onboarding)
-      parsingProfile: vendor.parsingProfile || null,
+      // Invoice type for handler selection (e.g., 'foodSupply', 'packaging', 'generic')
+      invoiceType: vendor.invoiceType || null,
       // Learned item corrections from invoice processing
       itemCorrections: vendor.itemCorrections || null
     };
@@ -456,39 +456,6 @@ export const vendorDB = {
       if (vendorDigits.length < 10) return false;
       return vendorDigits.slice(-10) === searchDigits;
     });
-  },
-
-  /**
-   * Update vendor's parsing profile
-   * Used by invoice processing to store vendor-specific parsing rules.
-   * @param {number} id - Vendor ID
-   * @param {Object} profile - Parsing profile object
-   * @returns {Promise<boolean>}
-   */
-  async updateParsingProfile(id, profile) {
-    const vendor = await this.getById(id);
-    if (!vendor) {
-      throw new Error(`Vendor with ID ${id} not found`);
-    }
-
-    const now = new Date().toISOString();
-    const profileWithMeta = {
-      ...profile,
-      updatedAt: now,
-      createdAt: profile.createdAt || now
-    };
-
-    return await this.update(id, { parsingProfile: profileWithMeta });
-  },
-
-  /**
-   * Get vendors with parsing profiles
-   * Returns vendors that have been configured for invoice processing.
-   * @returns {Promise<Vendor[]>}
-   */
-  async getWithProfiles() {
-    const vendors = await db.vendors.toArray();
-    return vendors.filter(v => v.parsingProfile != null);
   },
 
   /**

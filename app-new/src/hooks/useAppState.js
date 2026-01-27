@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 
 /**
  * Custom hook to manage app-level UI state
- * Handles mic, keypad, timer toggles and guided tour state
+ * Handles mic, keypad, and timer toggles
  *
  * @returns {Object} State values and handlers
  */
@@ -11,9 +11,7 @@ export function useAppState() {
   const [micFlag, setMicFlag] = useState(false);
   const [keypadFlag, setKeypadFlag] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
-
-  // Guided Tour state - manual start (no auto-start)
-  const [runTour, setRunTour] = useState(false);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
 
   // Toggle handlers with mutual exclusion
   const handleMicToggle = useCallback((enabled) => {
@@ -34,16 +32,12 @@ export function useAppState() {
     setShowTimer(false);
   }, []);
 
-  // Tour handlers
-  const handleStartTour = useCallback(() => {
-    // Reset tour completion status so it can run again
-    localStorage.removeItem('smartcookbook_tour_main_completed');
-    setRunTour(true);
+  const handleTimerShow = useCallback(() => {
+    setShowTimer(true);
   }, []);
 
-  const handleTourComplete = useCallback(() => {
-    setRunTour(false);
-    console.log('Tour completed!');
+  const handleTimerRunningChange = useCallback((running) => {
+    setIsTimerRunning(running);
   }, []);
 
   return {
@@ -51,14 +45,14 @@ export function useAppState() {
     micFlag,
     keypadFlag,
     showTimer,
-    runTour,
+    isTimerRunning,
     // Handlers
     handleMicToggle,
     handleKeypadToggle,
     handleTimerToggle,
     handleTimerClose,
-    handleStartTour,
-    handleTourComplete
+    handleTimerShow,
+    handleTimerRunningChange
   };
 }
 

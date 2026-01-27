@@ -339,9 +339,8 @@ function OrdersTab({ onOrderCreated, onOrderUpdated }) {
       let businessInfo = null;
       try {
         businessInfo = await getBusinessInfo();
-      } catch (e) {
-        // Business info is optional
-        console.log('Business info not available:', e.message);
+      } catch {
+        // Business info is optional - continue without it
       }
 
       // Generate PDF

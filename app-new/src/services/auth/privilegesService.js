@@ -149,7 +149,6 @@ export async function createPrivilege(privilegeData) {
     // Invalidate cache after creating
     invalidatePrivilegesCache();
 
-    console.log('✅ Privilege created:', docRef.id);
     return docRef.id;
   } catch (error) {
     console.error('Error creating privilege:', error);
@@ -189,7 +188,6 @@ export async function updatePrivilege(privilegeId, updates) {
     // Invalidate cache after updating
     invalidatePrivilegesCache();
 
-    console.log('✅ Privilege updated:', privilegeId);
   } catch (error) {
     console.error('Error updating privilege:', error);
     throw error;
@@ -212,7 +210,6 @@ export async function deletePrivilege(privilegeId) {
     // Invalidate cache after deleting
     invalidatePrivilegesCache();
 
-    console.log('✅ Privilege deleted:', privilegeId);
   } catch (error) {
     console.error('Error deleting privilege:', error);
     throw error;
@@ -356,7 +353,6 @@ export async function createInitialOwnerPrivilege(userId, ownerName, ownerPin) {
       updatedAt: serverTimestamp()
     });
 
-    console.log('✅ Initial owner privilege created:', docRef.id);
     return docRef.id;
   } catch (error) {
     console.error('Error creating initial owner privilege:', error);
@@ -425,13 +421,9 @@ export async function seedTestUsers() {
       const exists = existing.some(p => p.pin === user.pin);
       if (!exists) {
         await createPrivilege(user);
-        console.log(`✅ Test user created: ${user.name}`);
-      } else {
-        console.log(`⏭️ Test user already exists: ${user.name}`);
       }
     }
 
-    console.log('✅ Test users seeding complete');
   } catch (error) {
     console.error('Error seeding test users:', error);
     throw error;

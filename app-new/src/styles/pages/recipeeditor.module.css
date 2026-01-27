@@ -76,6 +76,36 @@
   flex-shrink: 0;
 }
 
+/* Boxing Format - container size for volume/weight recipes */
+.boxingFormat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--color-border);
+}
+
+.boxingLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.boxingInput {
+  width: 70px !important;
+  min-width: 70px !important;
+  max-width: 70px !important;
+}
+
+.boxingUnit {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
 /* Scaling Notice */
 .scalingNotice {
   padding: 8px 20px;
@@ -131,6 +161,14 @@
   border-style: solid;
   border-color: var(--color-success);
   color: var(--color-success);
+}
+
+/* Website button when active (recipe is visible on website) */
+.websiteActive {
+  border-style: solid;
+  border-color: #2C5530;
+  color: #2C5530;
+  background: #f0f5f1;
   background: rgba(39, 174, 96, 0.1);
 }
 

@@ -1,5 +1,5 @@
 // Supporting Database Modules
-// Smaller DB modules grouped together: department, category, slider, settings, productionLog, priceHistory
+// Smaller DB modules grouped together: department, category, slider, settings, productionLog, priceHistory, expenseCategory, expenseRecord
 import { db, getCloudSync } from './db.js';
 
 // ============================================
@@ -601,5 +601,397 @@ export const priceHistoryDB = {
   // Alias for backwards compatibility
   async deleteByIngredient(ingredientId) {
     return await this.deleteByInventoryItem(ingredientId);
+  }
+};
+
+// ============================================
+// Expense Category Database
+// For accounting expense classification (utilities, services, rent, etc.)
+// ============================================
+export const expenseCategoryDB = {
+  /**
+   * Get all expense categories
+   * @param {boolean} activeOnly - Only return active categories
+   * @returns {Promise<Array>} Array of expense categories
+   */
+  async getAll(activeOnly = false) {
+    let query = db.expenseCategories.orderBy('name');
+    if (activeOnly) {
+      query = query.filter(cat => cat.isActive !== false);
+    }
+    return await query.toArray();
+  },
+
+  /**
+   * Get expense category by ID
+   * @param {number} id - Category ID
+   * @returns {Promise<Object|undefined>} Expense category or undefined
+   */
+  async getById(id) {
+    return await db.expenseCategories.get(id);
+  },
+
+  /**
+   * Get expense category by name (case-insensitive)
+   * @param {string} name - Category name
+   * @returns {Promise<Object|undefined>} Expense category or undefined
+   */
+  async getByName(name) {
+    const normalized = name.toLowerCase().trim();
+    return await db.expenseCategories
+      .filter(cat => cat.name.toLowerCase() === normalized)
+      .first();
+  },
+
+  /**
+   * Add a new expense category
+   * @param {Object} category - Category data
+   * @param {string} category.name - Category name
+   * @param {string} [category.description] - Category description
+   * @param {string} [category.qbAccountId] - QuickBooks account ID mapping
+   * @returns {Promise<number>} New category ID
+   */
+  async add(category) {
+    const now = new Date().toISOString();
+    const catData = {
+      name: category.name,
+      description: category.description || '',
+      isDefault: false,
+      isActive: true,
+      qbAccountId: category.qbAccountId || null,
+      createdAt: now,
+      updatedAt: now
+    };
+    const id = await db.expenseCategories.add(catData);
+
+    // Auto-sync to cloud
+    const sync = await getCloudSync();
+    sync.pushExpenseCategory?.({ ...catData, id });
+
+    return id;
+  },
+
+  /**
+   * Update an expense category
+   * @param {number} id - Category ID
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<boolean>} Success
+   */
+  async update(id, updates) {
+    const cat = await db.expenseCategories.get(id);
+    if (!cat) return false;
+
+    const updateData = {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    await db.expenseCategories.update(id, updateData);
+
+    // Auto-sync to cloud
+    const updatedCat = await db.expenseCategories.get(id);
+    const sync = await getCloudSync();
+    sync.pushExpenseCategory?.(updatedCat);
+
+    return true;
+  },
+
+  /**
+   * Delete an expense category (soft delete - deactivate)
+   * Default categories cannot be deleted
+   * @param {number} id - Category ID
+   * @returns {Promise<boolean>} Success
+   */
+  async delete(id) {
+    const cat = await db.expenseCategories.get(id);
+    if (!cat || cat.isDefault) return false;
+
+    // Soft delete by deactivating
+    await db.expenseCategories.update(id, {
+      isActive: false,
+      updatedAt: new Date().toISOString()
+    });
+
+    // Auto-sync to cloud
+    const sync = await getCloudSync();
+    sync.deleteExpenseCategoryFromCloud?.(id);
+
+    return true;
+  },
+
+  /**
+   * Map expense category to QuickBooks account
+   * @param {number} id - Category ID
+   * @param {string} qbAccountId - QuickBooks account ID
+   * @returns {Promise<boolean>} Success
+   */
+  async mapToQuickBooks(id, qbAccountId) {
+    return await this.update(id, { qbAccountId });
+  },
+
+  /**
+   * Get expense record count for a category
+   * @param {number} categoryId - Category ID
+   * @returns {Promise<number>} Record count
+   */
+  async getRecordCount(categoryId) {
+    return await db.expenseRecords
+      .where('expenseCategoryId')
+      .equals(categoryId)
+      .count();
+  }
+};
+
+// ============================================
+// Expense Record Database
+// For tracking non-inventory expenses (utilities, services, etc.)
+// ============================================
+export const expenseRecordDB = {
+  /**
+   * Get all expense records
+   * @param {Object} options - Query options
+   * @param {number} [options.limit] - Max records to return
+   * @param {number} [options.offset] - Records to skip
+   * @returns {Promise<Array>} Array of expense records
+   */
+  async getAll(options = {}) {
+    let query = db.expenseRecords.orderBy('invoiceDate').reverse();
+    if (options.offset) {
+      query = query.offset(options.offset);
+    }
+    if (options.limit) {
+      query = query.limit(options.limit);
+    }
+    return await query.toArray();
+  },
+
+  /**
+   * Get expense record by ID
+   * @param {number} id - Record ID
+   * @returns {Promise<Object|undefined>} Expense record or undefined
+   */
+  async getById(id) {
+    return await db.expenseRecords.get(id);
+  },
+
+  /**
+   * Get expense records by invoice ID
+   * @param {number} invoiceId - Invoice ID
+   * @returns {Promise<Array>} Array of expense records
+   */
+  async getByInvoice(invoiceId) {
+    return await db.expenseRecords
+      .where('invoiceId')
+      .equals(invoiceId)
+      .toArray();
+  },
+
+  /**
+   * Get expense records by vendor
+   * @param {number} vendorId - Vendor ID
+   * @returns {Promise<Array>} Array of expense records
+   */
+  async getByVendor(vendorId) {
+    return await db.expenseRecords
+      .where('vendorId')
+      .equals(vendorId)
+      .reverse()
+      .sortBy('invoiceDate');
+  },
+
+  /**
+   * Get expense records by category
+   * @param {number} expenseCategoryId - Expense category ID
+   * @returns {Promise<Array>} Array of expense records
+   */
+  async getByCategory(expenseCategoryId) {
+    return await db.expenseRecords
+      .where('expenseCategoryId')
+      .equals(expenseCategoryId)
+      .reverse()
+      .sortBy('invoiceDate');
+  },
+
+  /**
+   * Get expense records by date range
+   * @param {Date|string} startDate - Start date
+   * @param {Date|string} endDate - End date
+   * @returns {Promise<Array>} Array of expense records
+   */
+  async getByDateRange(startDate, endDate) {
+    const start = new Date(startDate).toISOString().split('T')[0];
+    const end = new Date(endDate).toISOString().split('T')[0];
+
+    return await db.expenseRecords
+      .filter(record => {
+        const date = record.invoiceDate?.split('T')[0];
+        return date >= start && date <= end;
+      })
+      .toArray();
+  },
+
+  /**
+   * Create a new expense record
+   * @param {Object} record - Expense record data
+   * @returns {Promise<Object>} Created record with ID
+   */
+  async create(record) {
+    const now = new Date().toISOString();
+    const recordData = {
+      invoiceId: record.invoiceId || null,
+      vendorId: record.vendorId,
+      vendorName: record.vendorName || '',
+      expenseCategoryId: record.expenseCategoryId,
+      expenseCategoryName: record.expenseCategoryName || '',
+      description: record.description || '',
+      amount: parseFloat(record.amount) || 0,
+      invoiceNumber: record.invoiceNumber || '',
+      invoiceDate: record.invoiceDate || now.split('T')[0],
+      dueDate: record.dueDate || null,
+      periodStart: record.periodStart || null,
+      periodEnd: record.periodEnd || null,
+      accountNumber: record.accountNumber || '',
+      reference: record.reference || '',
+      notes: record.notes || '',
+      qbSynced: false,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    const id = await db.expenseRecords.add(recordData);
+
+    // Auto-sync to cloud
+    const sync = await getCloudSync();
+    sync.pushExpenseRecord?.({ ...recordData, id });
+
+    return { id, ...recordData };
+  },
+
+  /**
+   * Update an expense record
+   * @param {number} id - Record ID
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<boolean>} Success
+   */
+  async update(id, updates) {
+    const record = await db.expenseRecords.get(id);
+    if (!record) return false;
+
+    const updateData = {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Parse amount if provided
+    if (updateData.amount !== undefined) {
+      updateData.amount = parseFloat(updateData.amount) || 0;
+    }
+
+    await db.expenseRecords.update(id, updateData);
+
+    // Auto-sync to cloud
+    const updatedRecord = await db.expenseRecords.get(id);
+    const sync = await getCloudSync();
+    sync.pushExpenseRecord?.(updatedRecord);
+
+    return true;
+  },
+
+  /**
+   * Delete an expense record
+   * @param {number} id - Record ID
+   * @returns {Promise<boolean>} Success
+   */
+  async delete(id) {
+    const record = await db.expenseRecords.get(id);
+    if (!record) return false;
+
+    await db.expenseRecords.delete(id);
+
+    // Auto-sync to cloud
+    const sync = await getCloudSync();
+    sync.deleteExpenseRecordFromCloud?.(id);
+
+    return true;
+  },
+
+  /**
+   * Mark expense record as synced to QuickBooks
+   * @param {number} id - Record ID
+   * @param {boolean} synced - Sync status
+   * @returns {Promise<boolean>} Success
+   */
+  async markQBSynced(id, synced = true) {
+    return await this.update(id, { qbSynced: synced });
+  },
+
+  /**
+   * Get unsynced records for QuickBooks export
+   * @returns {Promise<Array>} Array of unsynced expense records
+   */
+  async getUnsyncedForQB() {
+    return await db.expenseRecords
+      .filter(record => !record.qbSynced)
+      .toArray();
+  },
+
+  /**
+   * Get expense summary by category for a date range
+   * @param {Date|string} startDate - Start date
+   * @param {Date|string} endDate - End date
+   * @returns {Promise<Object>} Summary by category
+   */
+  async getSummaryByCategory(startDate, endDate) {
+    const records = await this.getByDateRange(startDate, endDate);
+
+    const summary = records.reduce((acc, record) => {
+      const catId = record.expenseCategoryId || 'uncategorized';
+      const catName = record.expenseCategoryName || 'Uncategorized';
+
+      if (!acc[catId]) {
+        acc[catId] = {
+          categoryId: catId,
+          categoryName: catName,
+          count: 0,
+          total: 0
+        };
+      }
+
+      acc[catId].count++;
+      acc[catId].total += record.amount || 0;
+      return acc;
+    }, {});
+
+    return {
+      categories: Object.values(summary),
+      grandTotal: records.reduce((sum, r) => sum + (r.amount || 0), 0),
+      recordCount: records.length
+    };
+  },
+
+  /**
+   * Get monthly expense totals
+   * @param {number} months - Number of months to look back
+   * @returns {Promise<Array>} Monthly totals
+   */
+  async getMonthlyTotals(months = 12) {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - months);
+
+    const records = await this.getByDateRange(startDate, endDate);
+
+    const monthlyTotals = records.reduce((acc, record) => {
+      const month = record.invoiceDate?.substring(0, 7); // YYYY-MM
+      if (!month) return acc;
+
+      if (!acc[month]) {
+        acc[month] = { month, total: 0, count: 0 };
+      }
+      acc[month].total += record.amount || 0;
+      acc[month].count++;
+      return acc;
+    }, {});
+
+    return Object.values(monthlyTotals).sort((a, b) => a.month.localeCompare(b.month));
   }
 };

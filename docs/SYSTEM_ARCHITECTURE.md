@@ -1,7 +1,7 @@
 # SmartCookBook - System Architecture
 
 **Version:** 2.0
-**Last Updated:** 2025-12-13
+**Last Updated:** 2025-12-30
 **Status:** Current
 
 ## Overview
@@ -89,7 +89,7 @@ SmartCookBook is a comprehensive kitchen management system built with a hybrid o
 | Auth | Firebase Auth | User authentication |
 | Hosting | Firebase Hosting | Static hosting |
 | Backend | Firebase Cloud Functions | Serverless APIs |
-| AI | Claude API (Anthropic) | PDF extraction, recipe parsing |
+| AI | Claude Vision API (Anthropic) | Invoice parsing, recipe extraction |
 | Voice | Google Cloud Speech-to-Text | Voice input |
 | Accounting | QuickBooks API | Invoice sync |
 
@@ -194,7 +194,26 @@ app-new/src/
 │   ├── inventory/         # Inventory business logic
 │   │   ├── stockService.js
 │   │   ├── vendorService.js
-│   │   └── purchaseOrderService.js
+│   │   ├── purchaseOrderService.js
+│   │   ├── invoiceLineService.js  # Line item operations + inventory creation
+│   │   ├── invoiceAnalyzer.js     # Universal validation (totals, duplicates, taxes)
+│   │   └── recipeDeductionService.js  # Recipe ingredient deduction
+│   ├── invoice/           # Invoice processing (see INVOICE_ARCHITECTURE.md)
+│   │   ├── vision/                # Vision-based parsing (NEW)
+│   │   │   ├── visionParser.js    # PDF → Images → Claude Vision API
+│   │   │   ├── jsonNormalizer.js  # Raw JSON → Normalized format
+│   │   │   ├── invoiceTypeDetector.js  # Auto-detect invoice type
+│   │   │   └── index.js           # processInvoice() entry point
+│   │   ├── vendorDetector.js      # Vendor detection
+│   │   ├── lineCategorizer.js     # AI-powered item categorization
+│   │   ├── handlers/              # Type-specific handlers
+│   │   │   ├── handlerRegistry.js
+│   │   │   ├── foodSupplyHandler.js
+│   │   │   ├── packagingDistributorHandler.js
+│   │   │   ├── utilitiesHandler.js
+│   │   │   ├── servicesHandler.js
+│   │   │   └── genericHandler.js
+│   │   └── mathEngine/            # Math validation
 │   ├── speech/            # Voice recognition
 │   └── voice/             # Voice commands
 ├── styles/                # CSS Modules
@@ -208,15 +227,18 @@ app-new/src/
 
 | Feature Area | Components | Services |
 |--------------|------------|----------|
-| Common/Shared | 12 | 2 |
-| Recipes | 8 | 1 |
-| Inventory | 21 | 4 |
-| Orders | 8 | 2 |
+| Common/Shared | 23 | 2 |
+| Recipes | 9 | 1 |
+| Inventory | 15 | 6 |
+| Orders | 9 | 1 |
 | Vendors | 6 | 1 |
-| Invoices | 8 | 2 |
+| Invoice | 5 | 31 |
 | Layout | 1 | 0 |
 | Auth | 2 | 2 |
-| **Total** | **66** | **14** |
+| Other | 24 | 76 |
+| **Total** | **94** | **120+** |
+
+*Note: Invoice services include vision/, handlers/, and mathEngine/ subdirectories*
 
 ---
 
@@ -340,9 +362,20 @@ functions/
 │  │ vendorService.js      │ Vendor CRUD, search, stats            │  │
 │  │ inventoryItemService  │ Item CRUD, stock levels, alerts       │  │
 │  │ purchaseOrderService  │ PO lifecycle, approval, receiving     │  │
-│  │ invoiceService.js     │ Invoice processing, line matching     │  │
+│  │ invoiceLineService.js │ Line operations, inventory creation   │  │
 │  │ stockService.js       │ Stock adjustments, transactions       │  │
-│  │ autoOrderService.js   │ Auto-generate POs from low stock      │  │
+│  │ recipeDeductionSvc    │ Recipe ingredient deduction           │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │                   INVOICE VISION SERVICES                      │  │
+│  ├───────────────────────────────────────────────────────────────┤  │
+│  │ visionParser.js       │ PDF → Images → Claude Vision API      │  │
+│  │ jsonNormalizer.js     │ Raw JSON → Normalized format          │  │
+│  │ invoiceTypeDetector   │ Auto-detect invoice type              │  │
+│  │ handlerRegistry.js    │ Type-specific handler dispatch        │  │
+│  │ foodSupplyHandler     │ Weight-based pricing calculations     │  │
+│  │ packagingHandler      │ Container/case counting               │  │
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
@@ -363,14 +396,20 @@ functions/
 | **Stock Service** | `stockService.js` | Adjustments, deductions, transactions |
 | **Vendor Service** | `vendorService.js` | Vendor business logic, search |
 | **PO Service** | `purchaseOrderService.js` | Order lifecycle, receiving |
-| **Auto Order** | `autoOrderService.js` | Generate POs from low stock |
+| **Invoice Line Service** | `invoiceLineService.js` | Line operations, inventory creation |
+| **Recipe Deduction** | `recipeDeductionService.js` | Recipe ingredient deduction |
+| **Vision Parser** | `vision/visionParser.js` | PDF → Images → Claude Vision API |
+| **JSON Normalizer** | `vision/jsonNormalizer.js` | Raw JSON → Normalized format |
+| **Type Detector** | `vision/invoiceTypeDetector.js` | Auto-detect invoice type |
+| **Handler Registry** | `handlers/handlerRegistry.js` | Invoice type handler dispatch |
+| **Food Supply Handler** | `handlers/foodSupplyHandler.js` | Weight-based pricing calculations |
+| **Packaging Handler** | `handlers/packagingDistributorHandler.js` | Container/case counting |
 | **PDF Export** | `pdfExportService.js` | Generate PO and inventory PDFs |
 | **Price Calculator** | `priceCalculator.js` | Ingredient cost calculations |
-| **Claude AI** | `claudeAPI.js` | Recipe/invoice extraction |
+| **Claude AI** | `claudeAPI.js` | Recipe extraction (barrel export) |
 | **Speech** | `googleCloudSpeech.js` | Voice recognition |
 | **Auth** | `firebaseAuth.js` | Firebase authentication |
 | **Privileges** | `privilegesService.js` | Role-based access control |
-| **Business** | `businessService.js` | Business info for letterhead |
 
 ---
 
@@ -701,6 +740,8 @@ functions/
 | Invoice DB | `app-new/src/services/database/invoiceDB.js` |
 | Order/Stock DB | `app-new/src/services/database/orderDB.js` |
 | Cloud Sync | `app-new/src/services/database/cloudSync.js` |
+| **Vision Parser** | `app-new/src/services/invoice/vision/index.js` |
+| **Handler Registry** | `app-new/src/services/invoice/handlers/handlerRegistry.js` |
 | Auth Context | `app-new/src/contexts/AuthContext.jsx` |
 | Access Context | `app-new/src/contexts/AccessContext.jsx` |
 | Route Constants | `app-new/src/constants/routes.js` |
@@ -716,11 +757,12 @@ functions/
 ### Related Documentation
 
 - [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Detailed data models
-- [COMPONENT_BEHAVIOR_GUIDE.md](COMPONENT_BEHAVIOR_GUIDE.md) - Component specs
+- [INVOICE_ARCHITECTURE.md](INVOICE_ARCHITECTURE.md) - Invoice processing system (31 files, Vision parser, handlers)
 - [API_REFERENCE.md](API_REFERENCE.md) - Backend endpoints
-- [INVENTORY_SYSTEM_E2E_TESTING.md](INVENTORY_SYSTEM_E2E_TESTING.md) - Testing guide
+- [INVENTORY_SYSTEM.md](INVENTORY_SYSTEM.md) - Inventory, vendors, orders
+- [PROJECT_STATUS.md](PROJECT_STATUS.md) - Current project status and metrics
 
 ---
 
 *Document maintained by SmartCookBook Development Team*
-*Last Updated: 2025-12-13*
+*Last Updated: 2025-12-30*

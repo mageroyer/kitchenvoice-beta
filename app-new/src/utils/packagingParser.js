@@ -298,16 +298,46 @@ export function extractContainerCapacity(description) {
   }
 
   // Extract capacity value
-  // Pattern: number + unit (2.25LB, 16OZ, 500ML, 1L)
-  const capacityMatch = upperDesc.match(/(\d+\.?\d*)\s*(LB|LBS|OZ|ML|L|CL)\b/);
+  // Pattern 1: number + unit (2.25LB, 16OZ, 500ML, 1L)
+  const capacityMatch = upperDesc.match(/(\d+\.\d+)\s*(LB|LBS|OZ|ML|L|CL)\b/);
 
   if (capacityMatch) {
     let unit = capacityMatch[2].toLowerCase();
-    // Normalize units
     if (unit === 'lbs') unit = 'lb';
 
     return {
       capacity: parseFloat(capacityMatch[1]),
+      unit,
+      isCapacity: true,
+      containerType
+    };
+  }
+
+  // Pattern 2: Handle lost decimal point from PDF/OCR (e.g., "2 25LB" → 2.25LB)
+  // Matches: single digit + space + 2 digits + unit
+  const lostDecimalMatch = upperDesc.match(/\b(\d)\s+(\d{2})(LB|LBS|OZ)\b/);
+  if (lostDecimalMatch) {
+    let unit = lostDecimalMatch[3].toLowerCase();
+    if (unit === 'lbs') unit = 'lb';
+    // Reconstruct decimal: "2 25LB" → 2.25
+    const capacity = parseFloat(`${lostDecimalMatch[1]}.${lostDecimalMatch[2]}`);
+
+    return {
+      capacity,
+      unit,
+      isCapacity: true,
+      containerType
+    };
+  }
+
+  // Pattern 3: Integer capacity (16OZ, 500ML, 1L)
+  const integerMatch = upperDesc.match(/(\d+)\s*(LB|LBS|OZ|ML|L|CL)\b/);
+  if (integerMatch) {
+    let unit = integerMatch[2].toLowerCase();
+    if (unit === 'lbs') unit = 'lb';
+
+    return {
+      capacity: parseFloat(integerMatch[1]),
       unit,
       isCapacity: true,
       containerType

@@ -1,0 +1,70 @@
+{
+  "invoice_header": {
+    "company": "C&C Packing Inc.",
+    "invoice_number": "PRICE-CHANGE-001",
+    "date": "2025-12-29",
+    "address": "123 Meat Lane, Montreal, QC",
+    "phone": "514-555-1234"
+  },
+  "customer": {
+    "name": "Aux saveurs des Sévelin"
+  },
+  "line_items": [
+    {
+      "code": "PALERON-CUBE",
+      "description": "Palerons en cubes (Beef Chuck Cubes) 2/5KG",
+      "quantity": 1,
+      "unit": "case",
+      "unit_price": 229.00,
+      "total": 229.00,
+      "weight": 10.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "BACON-LARD",
+      "description": "Bacon cru en lardons (Raw Bacon Lardons) 1/2KG",
+      "quantity": 2,
+      "unit": "pkg",
+      "unit_price": 19.95,
+      "total": 39.90,
+      "weight": 0.5,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "BASE-POULET",
+      "description": "Base de poulet (Chicken Base) 1KG",
+      "quantity": 2,
+      "unit": "jar",
+      "unit_price": 31.50,
+      "total": 63.00,
+      "weight": 1.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "HERB-PROV",
+      "description": "Herbes de Provence 500G",
+      "quantity": 1,
+      "unit": "jar",
+      "unit_price": 19.95,
+      "total": 19.95,
+      "weight": 0.5,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "SUCRE-BLANC",
+      "description": "Sucre blanc (White Sugar) 2KG",
+      "quantity": 1,
+      "unit": "bag",
+      "unit_price": 6.25,
+      "total": 6.25,
+      "weight": 2.0,
+      "weight_unit": "kg"
+    }
+  ],
+  "totals": {
+    "subtotal": 358.10,
+    "tps": 17.91,
+    "tvq": 35.73,
+    "total": 411.74
+  }
+}

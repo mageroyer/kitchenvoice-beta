@@ -18,16 +18,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@5.4.449/b
  * @returns {Promise<string>} Extracted text with preserved line breaks
  */
 export async function extractTextFromPDF(pdfFile) {
-  console.log('📄 Extracting text from PDF:', pdfFile.name);
-
   try {
     // Convert file to ArrayBuffer
     const arrayBuffer = await pdfFile.arrayBuffer();
 
     // Load PDF document
     const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-
-    console.log('📖 PDF loaded:', pdf.numPages, 'pages');
 
     let fullText = '';
 
@@ -66,15 +62,11 @@ export async function extractTextFromPDF(pdfFile) {
 
       const pageText = lines.join('\n');
       fullText += pageText + '\n\n';
-
-      console.log(`  Page ${i}/${pdf.numPages}: ${lines.length} lines, ${pageText.length} characters`);
     }
 
     // Clean up multiple blank lines
     fullText = fullText.replace(/\n{3,}/g, '\n\n');
 
-    console.log('✅ Text extraction complete:', fullText.length, 'characters');
-    console.log('📝 First 500 chars:', fullText.substring(0, 500));
     return fullText.trim();
 
   } catch (error) {
@@ -96,14 +88,11 @@ export async function extractTextFromPDF(pdfFile) {
 export async function convertPdfToImage(pdfFile, options = {}) {
   const { scale = 2, maxPages = 10 } = options;
 
-  console.log('🖼️ Converting PDF to image:', pdfFile.name);
-
   try {
     const arrayBuffer = await pdfFile.arrayBuffer();
     const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
 
     const pagesToConvert = Math.min(maxPages, pdf.numPages);
-    console.log(`📖 PDF loaded: ${pdf.numPages} page(s), converting ${pagesToConvert} page(s)`);
 
     const imageDataUrls = [];
 
@@ -128,12 +117,7 @@ export async function convertPdfToImage(pdfFile, options = {}) {
       // Convert to PNG data URL
       const imageDataUrl = canvas.toDataURL('image/png');
       imageDataUrls.push(imageDataUrl);
-
-      console.log(`  Page ${pageNum}/${pagesToConvert}: ${Math.round(imageDataUrl.length / 1024)}KB`);
     }
-
-    const totalSize = imageDataUrls.reduce((sum, url) => sum + url.length, 0);
-    console.log(`✅ PDF converted: ${pagesToConvert} page(s), total ${Math.round(totalSize / 1024)}KB`);
 
     // Return single string for 1 page (backwards compatible), array for multi-page
     return pagesToConvert === 1 ? imageDataUrls[0] : imageDataUrls;

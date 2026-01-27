@@ -145,6 +145,17 @@ export function sanitizeRecipe(recipe) {
     ? recipe.portionUnit
     : 'portion';
 
+  // Validate outputContainerUnit - must be a valid volume/weight unit
+  const validContainerUnits = ['L', 'ml', 'kg', 'g'];
+  const outputContainerUnit = validContainerUnits.includes(recipe.outputContainerUnit)
+    ? recipe.outputContainerUnit
+    : null;
+
+  // Validate outputContainerSize - must be a positive number
+  const outputContainerSize = typeof recipe.outputContainerSize === 'number' && recipe.outputContainerSize > 0
+    ? recipe.outputContainerSize
+    : null;
+
   return {
     ...recipe,
     name: sanitizeText(recipe.name, TEXT_LIMITS.RECIPE_NAME),
@@ -152,6 +163,8 @@ export function sanitizeRecipe(recipe) {
     department: sanitizeText(recipe.department, TEXT_LIMITS.DEPARTMENT_NAME),
     portions: sanitizeInteger(recipe.portions, NUMERIC_LIMITS.PORTIONS_MIN, NUMERIC_LIMITS.PORTIONS_MAX, NUMERIC_LIMITS.PORTIONS_DEFAULT),
     portionUnit,
+    outputContainerSize,
+    outputContainerUnit,
     ingredients: Array.isArray(recipe.ingredients)
       ? recipe.ingredients.map(sanitizeIngredient)
       : [],
@@ -161,7 +174,7 @@ export function sanitizeRecipe(recipe) {
         ? recipe.method.split('\n').filter(s => s.trim()).map(step => sanitizeMultilineText(step, TEXT_LIMITS.METHOD_STEP))
         : [],
     platingInstructions: Array.isArray(recipe.platingInstructions)
-      ? recipe.platingInstructions.map(inst => sanitizeMultilineText(inst, TEXT_LIMITS.PLATING_INSTRUCTION))
+      ? recipe.platingInstructions.map(sanitizePlatingItem)
       : null,
     notes: Array.isArray(recipe.notes)
       ? recipe.notes.map(note => sanitizeMultilineText(note, TEXT_LIMITS.NOTE))
@@ -182,11 +195,23 @@ export function sanitizeMethodStep(step) {
 
   // Handle object steps (production format)
   if (step && typeof step === 'object') {
+    // Valid weight/volume units
+    const validUnits = ['kg', 'g', 'lb', 'L', 'ml'];
+    const weightUnit = validUnits.includes(step.weightUnit) ? step.weightUnit : 'kg';
+
+    // Valid boxing size units (same as weight units)
+    const boxingSizeUnit = validUnits.includes(step.boxingSizeUnit) ? step.boxingSizeUnit : weightUnit;
+
     const sanitized = {
       text: sanitizeMultilineText(step.text || '', TEXT_LIMITS.METHOD_STEP),
       producesItem: Boolean(step.producesItem),
       outputName: sanitizeText(step.outputName || '', TEXT_LIMITS.INGREDIENT_NAME),
       expectedWeight: typeof step.expectedWeight === 'number' ? step.expectedWeight : 0,
+      weightUnit, // Unit for expected weight (kg, g, lb, L, ml)
+      boxingSize: typeof step.boxingSize === 'number' && step.boxingSize > 0 ? step.boxingSize : null, // Size per container (e.g., 1 for 1L jars)
+      boxingSizeUnit, // Unit for boxing size (defaults to weightUnit)
+      portionsPerItem: typeof step.portionsPerItem === 'number' && step.portionsPerItem >= 1
+        ? step.portionsPerItem : 1, // How many portions each output item makes
       actualWeight: step.actualWeight ?? null,
       wasteWeight: step.wasteWeight ?? null,
       completed: Boolean(step.completed),
@@ -205,6 +230,34 @@ export function sanitizeMethodStep(step) {
     }
 
     return sanitized;
+  }
+
+  // Fallback for invalid input
+  return '';
+}
+
+/**
+ * Sanitize a plating instruction item (string or package object)
+ * @param {string|Object} item - Plating instruction or package
+ * @returns {string|Object} Sanitized item
+ */
+export function sanitizePlatingItem(item) {
+  // Handle string instructions (regular plating text)
+  if (typeof item === 'string') {
+    return sanitizeMultilineText(item, TEXT_LIMITS.PLATING_INSTRUCTION);
+  }
+
+  // Handle package objects
+  if (item && typeof item === 'object' && item.isPackage) {
+    return {
+      isPackage: true,
+      qty: typeof item.qty === 'number' ? item.qty : parseFloat(item.qty) || 1,
+      unit: sanitizeText(item.unit || 'pc', 10),
+      name: sanitizeText(item.name || '', TEXT_LIMITS.INGREDIENT_NAME),
+      linkedPackageId: item.linkedPackageId || null,
+      linkedName: item.linkedName ? sanitizeText(item.linkedName, TEXT_LIMITS.INGREDIENT_NAME) : undefined,
+      isRollType: Boolean(item.isRollType),
+    };
   }
 
   // Fallback for invalid input

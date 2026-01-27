@@ -38,8 +38,6 @@ export function useCloudSync(isAuthenticated, authLoading) {
       return;
     }
 
-    console.log('Initializing cloud sync...');
-
     // Subscribe to sync status changes
     const unsubscribeStatus = onSyncStatusChange((status) => {
       setSyncStatus(status);
@@ -53,8 +51,7 @@ export function useCloudSync(isAuthenticated, authLoading) {
         window.dispatchEvent(new CustomEvent('dataSync', { detail: { type: 'initialSync' } }));
         // Start real-time listeners after initial sync
         startRealtimeSync((dataType) => {
-          console.log(`Data changed: ${dataType}`);
-          // Force reload by updating a trigger state or dispatch event
+          // Notify listeners of data changes
           window.dispatchEvent(new CustomEvent('dataSync', { detail: { type: dataType } }));
         });
       } catch (error) {

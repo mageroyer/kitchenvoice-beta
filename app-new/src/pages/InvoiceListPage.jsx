@@ -359,12 +359,19 @@ function InvoiceListPage() {
     setSyncSuccess('');
 
     try {
-      // Prepare invoice data for QB
+      // Load line items from database (they have forAccounting, lineType, etc.)
+      const lineItems = await invoiceLineDB.getByInvoice(invoice.id);
+
+      // Prepare invoice data for QB with line items from DB
       const invoiceData = {
         invoiceNumber: invoice.invoiceNumber,
         vendorName: getVendorName(invoice),
         date: invoice.invoiceDate,
-        items: invoice.parsedItems || []
+        lineItems: lineItems || [],
+        totals: {
+          subtotal: invoice.subtotal,
+          total: invoice.total,
+        }
       };
 
       const result = await syncInvoiceToQuickBooks(invoiceData, qbVendors);
@@ -470,6 +477,9 @@ function InvoiceListPage() {
               </Button>
             </div>
           )}
+          <Button variant="outline" onClick={() => navigate('/invoices/in-house')}>
+            + In-House Invoice
+          </Button>
           <Button variant="primary" onClick={() => navigate('/invoices/upload')}>
             + Upload Invoice
           </Button>
@@ -647,7 +657,14 @@ function InvoiceListPage() {
                           <small>Split from: {invoice.parentInvoiceNumber}</small>
                         )}
                       </td>
-                      <td>{getVendorName(invoice)}</td>
+                      <td>
+                        {getVendorName(invoice)}
+                        {(invoice.documentType === 'manual' || invoice.vendorName === 'In-House Production') && (
+                          <Badge variant="info" size="small" style={{ marginLeft: '6px' }}>
+                            In-House
+                          </Badge>
+                        )}
+                      </td>
                       <td>{formatDate(invoice.invoiceDate)}</td>
                       <td>
                         {invoice.departmentName && (
@@ -682,6 +699,21 @@ function InvoiceListPage() {
                         >
                           👁️
                         </button>
+                        {/* Edit button for in-house invoices */}
+                        {(invoice.documentType === 'manual' || invoice.vendorName === 'In-House Production') && (
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.editBtn}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              navigate(`/invoices/in-house/${invoice.id}`);
+                            }}
+                            title="Edit In-House Invoice"
+                          >
+                            ✏️
+                          </button>
+                        )}
                         {qbConnected && invoice.status !== 'sent_to_qb' && (
                           <button
                             type="button"

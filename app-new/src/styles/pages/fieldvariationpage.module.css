@@ -1,0 +1,248 @@
+/**
+ * Field Variation Page Styles
+ */
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+}
+
+.container h1 {
+  margin-bottom: var(--spacing-xs);
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.card {
+  margin-bottom: var(--spacing-lg);
+}
+
+.fileInput {
+  display: block;
+  margin-bottom: var(--spacing-md);
+}
+
+.fileList {
+  background: var(--bg-secondary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-md);
+}
+
+.fileList ul {
+  margin: var(--spacing-xs) 0 0 var(--spacing-lg);
+  padding: 0;
+}
+
+.fileList li {
+  margin: var(--spacing-xs) 0;
+}
+
+.config {
+  margin-bottom: var(--spacing-md);
+}
+
+.config label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.numberInput {
+  width: 80px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md);
+}
+
+.hint {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.progress {
+  padding: var(--spacing-md);
+}
+
+.progressBar {
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-top: var(--spacing-md);
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--primary-color);
+  transition: width 0.3s ease;
+}
+
+.errorCard {
+  border-left: 4px solid var(--danger-color);
+}
+
+.error {
+  color: var(--danger-color);
+}
+
+.warningCard {
+  border-left: 4px solid var(--warning-color);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  min-width: 100px;
+}
+
+.statValue {
+  font-size: var(--font-size-xxl);
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.statLabel {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.statWarning .statValue {
+  color: var(--warning-color);
+}
+
+.statSuccess .statValue {
+  color: var(--success-color);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--spacing-md) 0;
+}
+
+.table th,
+.table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.table th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.table code {
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+}
+
+.codeBlock {
+  background: var(--bg-tertiary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.fieldList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.fieldTag {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+.fieldKnown {
+  background: var(--success-bg);
+  color: var(--success-color);
+}
+
+.fieldUnknown {
+  background: var(--warning-bg);
+  color: var(--warning-color);
+}
+
+.legend {
+  display: flex;
+  gap: var(--spacing-md);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.fileDetails {
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-sm);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.fileDetails summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.fileContent {
+  padding: var(--spacing-md);
+  font-size: var(--font-size-sm);
+}
+
+.errors {
+  color: var(--danger-color);
+  margin-top: var(--spacing-sm);
+}
+
+.rawJson {
+  background: var(--bg-tertiary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .container {
+    padding: var(--spacing-md);
+  }
+
+  .summary {
+    flex-direction: column;
+  }
+
+  .stat {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+}

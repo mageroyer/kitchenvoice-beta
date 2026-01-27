@@ -218,7 +218,7 @@ function Notes({
         setBulkVoiceActive(false);
       },
       onRecordingStart: () => {
-        console.log('🎤 Bulk notes recording started');
+        // Recording started
       }
     });
 
@@ -239,7 +239,6 @@ function Notes({
   };
 
   const handleBulkVoiceComplete = async (result) => {
-    console.log('🎤 Bulk notes voice complete:', result);
     setBulkVoiceActive(false);
 
     const hasContent = result.lines.length > 0 || (result.fullTranscript && result.fullTranscript.trim());
@@ -257,18 +256,13 @@ function Notes({
         ? result.lines.join('\n')
         : result.fullTranscript;
 
-      console.log('📤 Sending to Claude:', fullText);
       const parsedNotes = await parseBulkNotesWithClaude(fullText);
-
-      console.log('✅ Received', parsedNotes.length, 'notes from Claude');
 
       // Use ref to get current notes (avoid stale closure)
       const currentNotes = currentNotesRef.current;
-      console.log('📋 Current notes count:', currentNotes.length);
 
       // Add all notes to the list
       const updatedNotes = [...currentNotes, ...parsedNotes];
-      console.log('📋 Updated notes count:', updatedNotes.length);
       onChange(updatedNotes);
 
       // Reset bulk voice state

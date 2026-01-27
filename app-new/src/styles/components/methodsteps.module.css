@@ -209,13 +209,76 @@
 }
 
 .numberInput {
-  width: 100px;
+  width: 100px !important;
+  max-width: 100px !important;
+  flex-shrink: 0;
 }
 
 .unitLabel {
   font-size: var(--font-size-sm);
   color: var(--color-gray);
   font-weight: 500;
+}
+
+.unitSelect {
+  padding: 4px 8px;
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  border: 1px solid var(--border-color-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  min-width: 55px;
+}
+
+.unitSelect:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.calculatedItems {
+  font-size: var(--font-size-sm);
+  color: var(--color-success);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* Output Cost Display (in edit mode) */
+.outputCostRow {
+  display: flex;
+  gap: 24px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+  border: 2px solid #ffc107;
+  border-radius: var(--radius-md);
+  margin-top: 8px;
+}
+
+.outputCostItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.outputCostLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.outputCostValue {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.costHighlight {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: #f57c00;
 }
 
 /* Packaging Section */
@@ -284,7 +347,7 @@
 }
 
 .quantityInput {
-  width: 50px;
+  width: 70px;
 }
 
 .removePackageBtn {
@@ -442,6 +505,361 @@
   white-space: nowrap;
 }
 
+/* Variable Checkbox in Production Toggle */
+.variableCheckbox {
+  margin-left: 24px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-color-light);
+}
+
+/* Yield Percent Input */
+.yieldPercentInput {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.percentSign {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  font-weight: 500;
+}
+
+/* =============================================
+   EXECUTION MODE STYLES
+   ============================================= */
+
+/* Execution Mode Item */
+.executionItem {
+  border: 2px solid var(--color-primary-light);
+  background: #f8faff;
+}
+
+.executionItem.variableOutput {
+  border-color: var(--color-warning);
+  background: #fffdf5;
+}
+
+/* Execution Production Fields */
+.executionProduction {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.outputInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.outputName {
+  font-weight: 600;
+  color: var(--color-success);
+  font-size: var(--font-size-base);
+}
+
+.weightRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-sm);
+}
+
+.expectedWeight,
+.actualWeight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weightLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.weightValue {
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.actualWeightInput {
+  width: 90px;
+}
+
+.actualWeightInput.required {
+  border-color: var(--color-warning);
+  background: #fffef0;
+}
+
+.weightUnit {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+}
+
+.checkmark {
+  color: var(--color-success);
+  font-size: 16px;
+}
+
+.requiredIndicator {
+  font-size: 14px;
+}
+
+/* Boxing Size Display in Execution Mode */
+.boxingSizeDisplay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border: 2px solid var(--color-success);
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+}
+
+.boxingLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.boxingValue {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-success-dark, #2e7d32);
+}
+
+.boxingCount {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  font-weight: 500;
+}
+
+.boxingCost {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: #f57c00;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Packaging Display in Execution Mode */
+.packagingDisplay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+/* =============================================
+   YIELD SUMMARY SECTION
+   ============================================= */
+
+.yieldSummary {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%);
+  border: 2px solid var(--color-primary-light);
+  border-radius: var(--radius-md);
+}
+
+.yieldHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-primary-light);
+}
+
+.yieldTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.inputWeightDisplay {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray);
+  font-weight: 500;
+  padding: 4px 12px;
+  background: var(--color-white);
+  border-radius: var(--radius-sm);
+}
+
+.yieldStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.yieldStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 100px;
+}
+
+.statLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statValue {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.statValue.filled {
+  color: var(--color-success);
+}
+
+.statValue.empty {
+  color: var(--color-gray);
+}
+
+.statValue.yieldPercent {
+  color: var(--color-primary);
+}
+
+.statValue.waste {
+  color: var(--color-danger);
+}
+
+.yieldWarning {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-warning-light, #fff3cd);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-warning-dark, #856404);
+}
+
+/* =============================================
+   PACKAGING LINK STYLES
+   ============================================= */
+
+/* Packaging link button in edit mode */
+.packagingLinkBtn {
+  flex: 1;
+  max-width: 220px;
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+  text-align: left;
+  background: var(--color-white);
+  border: 1px dashed var(--color-gray-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.packagingLinkBtn:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.packagingLinkBtn.linked {
+  border-style: solid;
+  border-color: var(--color-success);
+  background: #f0fff4;
+}
+
+.packagingLinkBtn .linkIcon {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Packaging price at end of row - like ingredients */
+.packagingPriceEnd {
+  margin-left: auto;
+  min-width: 80px;
+  text-align: right;
+}
+
+.packagingTotalPrice {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-success);
+  padding: 4px 10px;
+  background: #e8f5e9;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+.packagingNoPrice {
+  font-size: var(--font-size-base);
+  color: var(--color-gray-light);
+}
+
+/* Packaging badge button in execution mode */
+.packagingBadgeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  background: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #90caf9;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.packagingBadgeBtn:hover {
+  background: #bbdefb;
+  border-color: #1976d2;
+}
+
+.packagingBadgeBtn.linked {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+}
+
+.packagingBadgeBtn.linked:hover {
+  background: #c8e6c9;
+  border-color: #2e7d32;
+}
+
+.packagingBadgeBtn.unlinked {
+  border-style: dashed;
+}
+
+/* Total price in packaging badge */
+.pkgTotalPrice {
+  font-weight: 700;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+  margin-left: 2px;
+}
+
+/* Link hint icon */
+.linkHint {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .header {
@@ -473,5 +891,25 @@
 
   .addButton {
     width: 100%;
+  }
+
+  .weightRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .yieldStats {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .variableCheckbox {
+    margin-left: 0;
+    margin-top: 8px;
+    padding-left: 0;
+    border-left: none;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color-light);
   }
 }

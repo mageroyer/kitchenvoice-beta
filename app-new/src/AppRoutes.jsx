@@ -14,6 +14,7 @@ import LandingPage from './pages/LandingPage';
 const RecipeEditorPage = lazy(() => import('./pages/RecipeEditorPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ControlPanelPage = lazy(() => import('./pages/ControlPanelPage'));
+const WebsiteBuilder = lazy(() => import('./components/website/WebsiteBuilder'));
 const DepartmentTasksPage = lazy(() => import('./pages/DepartmentTasksPage'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 
@@ -24,6 +25,7 @@ const InvoiceUploadPage = lazy(() => import('./pages/InvoiceUploadPage'));
 // Accounting pages
 const AccountingDashboardPage = lazy(() => import('./pages/AccountingDashboardPage'));
 const InvoiceListPage = lazy(() => import('./pages/InvoiceListPage'));
+const InHouseInvoicePage = lazy(() => import('./pages/InHouseInvoicePage'));
 
 // Heartbeat Dashboard - organism health visualization
 const HeartbeatDashboardPage = lazy(() => import('./pages/HeartbeatDashboardPage'));
@@ -33,10 +35,22 @@ const ImageImportPage = lazy(() => import('./pages/ImageImportPage'));
 const SliderConfigPage = lazy(() => import('./pages/SliderConfigPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 
+// Legal pages
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
+
+// Public store page - no auth required
+const PublicStorePage = lazy(() => import('./pages/PublicStorePage'));
+
+// Website preview page
+const WebsitePreviewPage = lazy(() => import('./pages/WebsitePreviewPage'));
+
 // DEV ONLY: Debug/test pages - not loaded in production
 const UtilitiesPage = import.meta.env.DEV ? lazy(() => import('./pages/UtilitiesPage')) : null;
 const DatabaseTestPage = import.meta.env.DEV ? lazy(() => import('./pages/DatabaseTestPage')) : null;
 const FontPreviewPage = import.meta.env.DEV ? lazy(() => import('./pages/FontPreviewPage')) : null;
+const VisionParserTestPage = import.meta.env.DEV ? lazy(() => import('./pages/VisionParserTestPage')) : null;
+const FieldVariationPage = import.meta.env.DEV ? lazy(() => import('./pages/FieldVariationPage')) : null;
 
 // Loading fallback component
 const PageLoader = () => (
@@ -92,15 +106,34 @@ function AppRoutes({
           <PublicRoute><ForgotPasswordPage /></PublicRoute>
         } />
 
-        {/* Protected Routes - require demo mode or authentication */}
+        {/* Legal Pages - publicly accessible */}
+        <Route path="/privacy" element={
+          <PublicRoute><PrivacyPolicyPage /></PublicRoute>
+        } />
+        <Route path="/terms" element={
+          <PublicRoute><TermsOfServicePage /></PublicRoute>
+        } />
+
+        {/* Public Store Pages - no auth required, anyone can view */}
+        <Route path="/s/:slug" element={<PublicStorePage />} />
+
+        {/* Website Preview - requires auth */}
+        <Route path="/website-preview" element={
+          <ProtectedRoute><WebsitePreviewPage /></ProtectedRoute>
+        } />
+        <Route path="/website-preview/:slug" element={
+          <ProtectedRoute><WebsitePreviewPage /></ProtectedRoute>
+        } />
+
+        {/* Protected Routes - require authentication */}
         <Route path={ROUTES.RECIPES} element={
           <ProtectedRoute><RecipeListPage micFlag={micFlag} isUnlocked={isUnlocked} currentDepartment={currentDepartment} /></ProtectedRoute>
         } />
         <Route path={ROUTES.RECIPE_NEW} element={
-          <ProtectedRoute><RecipeEditorPage micFlag={micFlag} isUnlocked={isUnlocked} isOwner={isOwner} /></ProtectedRoute>
+          <ProtectedRoute><RecipeEditorPage micFlag={micFlag} isUnlocked={isUnlocked} isOwner={isOwner} currentDepartment={currentDepartment} /></ProtectedRoute>
         } />
         <Route path={ROUTES.RECIPE_EDIT} element={
-          <ProtectedRoute><RecipeEditorPage micFlag={micFlag} isUnlocked={isUnlocked} isOwner={isOwner} /></ProtectedRoute>
+          <ProtectedRoute><RecipeEditorPage micFlag={micFlag} isUnlocked={isUnlocked} isOwner={isOwner} currentDepartment={currentDepartment} /></ProtectedRoute>
         } />
         <Route path="/recipes/import-pdf" element={
           <ProtectedRoute><PDFImportPage /></ProtectedRoute>
@@ -110,6 +143,11 @@ function AppRoutes({
         } />
         <Route path="/settings" element={
           <ProtectedRoute><SettingsPage /></ProtectedRoute>
+        } />
+        <Route path="/website-settings" element={
+          <ProtectedRoute>
+            {isOwner ? <WebsiteBuilder /> : <Navigate to={ROUTES.RECIPES} replace />}
+          </ProtectedRoute>
         } />
         {/* DEV ONLY: Font preview page */}
         {import.meta.env.DEV && FontPreviewPage && (
@@ -154,6 +192,18 @@ function AppRoutes({
             <ProtectedRoute><DatabaseTestPage /></ProtectedRoute>
           } />
         )}
+        {/* DEV ONLY: Vision Parser test page */}
+        {import.meta.env.DEV && VisionParserTestPage && (
+          <Route path="/invoice/vision-test" element={
+            <ProtectedRoute><VisionParserTestPage /></ProtectedRoute>
+          } />
+        )}
+        {/* DEV ONLY: Field Variation maintenance page */}
+        {import.meta.env.DEV && FieldVariationPage && (
+          <Route path="/dev/field-variations" element={
+            <ProtectedRoute><FieldVariationPage /></ProtectedRoute>
+          } />
+        )}
         <Route path={ROUTES.ACCOUNTING} element={
           <ProtectedRoute><AccountingDashboardPage /></ProtectedRoute>
         } />
@@ -168,6 +218,12 @@ function AppRoutes({
         } />
         <Route path={ROUTES.INVOICE_UPLOAD} element={
           <ProtectedRoute><InvoiceUploadPage /></ProtectedRoute>
+        } />
+        <Route path="/invoices/in-house" element={
+          <ProtectedRoute><InHouseInvoicePage /></ProtectedRoute>
+        } />
+        <Route path="/invoices/in-house/:id" element={
+          <ProtectedRoute><InHouseInvoicePage /></ProtectedRoute>
         } />
         {/* Ingredients route removed - redirects to inventory */}
         <Route path={ROUTES.INGREDIENTS} element={

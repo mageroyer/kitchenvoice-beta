@@ -80,42 +80,72 @@ function parseMetricToGrams(metric) {
 // ============================================
 
 /**
- * Get price per gram from inventory item
+ * Determine pricing type and get price value from inventory item
+ *
+ * @param {Object} item - Inventory item with pricePerG, pricePerML, or pricePerUnit
+ * @returns {{ type: 'weight'|'volume'|'unit'|null, price: number }} Pricing type and price value
+ */
+function getPricingInfo(item) {
+  if (item.pricePerG != null && item.pricePerG > 0) {
+    return { type: 'weight', price: item.pricePerG };
+  }
+  if (item.pricePerML != null && item.pricePerML > 0) {
+    return { type: 'volume', price: item.pricePerML };
+  }
+  if (item.pricePerUnit != null && item.pricePerUnit > 0) {
+    return { type: 'unit', price: item.pricePerUnit };
+  }
+  return { type: null, price: 0 };
+}
+
+/**
+ * Get price per gram from inventory item (legacy compatibility)
  *
  * @param {Object} item - Inventory item with pricePerG or pricePerML
  * @returns {number} Price per gram (or ml), or 0 if not set
  */
 function getPricePerGram(item) {
-  if (item.pricePerG != null && item.pricePerG > 0) {
-    return item.pricePerG;
-  }
-  if (item.pricePerML != null && item.pricePerML > 0) {
-    return item.pricePerML;
-  }
-  return 0;
+  const info = getPricingInfo(item);
+  return info.type === 'weight' || info.type === 'volume' ? info.price : 0;
+}
+
+/**
+ * Parse quantity from metric string for unit-based pricing
+ *
+ * @param {string} metric - e.g., "5", "5 pcs", "3 units"
+ * @returns {number|null} Quantity, or null if invalid
+ */
+function parseQuantityFromMetric(metric) {
+  if (!metric || typeof metric !== 'string') return null;
+  const match = metric.trim().match(/^([\d.,]+)/);
+  if (!match) return null;
+  const qty = parseFloat(match[1].replace(',', '.'));
+  return isNaN(qty) || qty < 0 ? null : qty;
 }
 
 /**
  * Calculate ingredient price
  *
- * Formula: price = grams × pricePerG × scalingFactor
+ * Formulas:
+ * - Weight/Volume: price = grams × pricePerG × scalingFactor
+ * - Unit: price = quantity × pricePerUnit × scalingFactor
  *
  * @param {Object} recipeIngredient - Recipe ingredient with linkedIngredientId and metric
  * @param {number} scalingFactor - Recipe scaling factor (default 1)
- * @returns {Promise<Object>} { price, pricePerKg, unit, error }
+ * @returns {Promise<Object>} { price, pricePerKg, unit, pricingType, error }
  *
  * @example
- * // Linked ingredient with metric
+ * // Weight-based pricing
  * const result = await calculateIngredientPrice({ linkedIngredientId: 'abc', metric: '4kg' });
- * // → { price: 31.75, pricePerKg: 7.94, unit: 'kg', error: null }
+ * // → { price: 31.75, pricePerKg: 7.94, unit: 'kg', pricingType: 'weight', error: null }
  *
- * // Missing pricePerG
- * const result = await calculateIngredientPrice({ linkedIngredientId: 'xyz', metric: '500g' });
- * // → { price: null, pricePerKg: 0, unit: 'kg', error: 'no_price' }
+ * // Unit-based pricing
+ * const result = await calculateIngredientPrice({ linkedIngredientId: 'xyz', metric: '5' });
+ * // → { price: 25.00, pricePerKg: 0, unit: 'ea', pricingType: 'unit', error: null }
  */
 export async function calculateIngredientPrice(recipeIngredient, scalingFactor = 1) {
   if (!recipeIngredient.linkedIngredientId) {
-    return { price: null, pricePerKg: 0, unit: '', error: PRICE_ERROR.NOT_LINKED };
+    return { price: null, pricePerKg: 0, unit: '', pricingType: null, error: PRICE_ERROR.NOT_LINKED };
   }
 
   let item;
@@ -123,30 +153,42 @@ export async function calculateIngredientPrice(recipeIngredient, scalingFactor =
     item = await inventoryItemDB.getById(recipeIngredient.linkedIngredientId);
   } catch (err) {
     console.error('[PriceCalculator] Database error:', err);
-    return { price: null, pricePerKg: 0, unit: '', error: PRICE_ERROR.DB_ERROR };
+    return { price: null, pricePerKg: 0, unit: '', pricingType: null, error: PRICE_ERROR.DB_ERROR };
   }
 
   if (!item) {
-    return { price: null, pricePerKg: 0, unit: '', error: PRICE_ERROR.NOT_FOUND };
+    return { price: null, pricePerKg: 0, unit: '', pricingType: null, error: PRICE_ERROR.NOT_FOUND };
   }
 
   const unit = item.unit || 'kg';
-  const pricePerG = getPricePerGram(item);
+  const pricingInfo = getPricingInfo(item);
 
-  if (pricePerG <= 0) {
-    return { price: null, pricePerKg: 0, unit, error: PRICE_ERROR.NO_PRICE };
+  if (pricingInfo.type === null) {
+    return { price: null, pricePerKg: 0, unit, pricingType: null, error: PRICE_ERROR.NO_PRICE };
   }
 
+  // Handle unit-based pricing (packaging, count items)
+  if (pricingInfo.type === 'unit') {
+    const quantity = parseQuantityFromMetric(recipeIngredient.metric);
+    if (quantity === null) {
+      return { price: null, pricePerKg: 0, unit, pricingType: 'unit', error: PRICE_ERROR.NO_METRIC };
+    }
+    const price = Math.round(quantity * pricingInfo.price * scalingFactor * 100) / 100;
+    return { price, pricePerKg: 0, unit, pricingType: 'unit', error: null };
+  }
+
+  // Handle weight/volume-based pricing
+  const pricePerG = pricingInfo.price;
   const pricePerKg = Math.round(pricePerG * 1000 * 100) / 100;
   const grams = parseMetricToGrams(recipeIngredient.metric);
 
   if (grams === null) {
-    return { price: null, pricePerKg, unit, error: PRICE_ERROR.NO_METRIC };
+    return { price: null, pricePerKg, unit, pricingType: pricingInfo.type, error: PRICE_ERROR.NO_METRIC };
   }
 
   const price = Math.round(grams * pricePerG * scalingFactor * 100) / 100;
 
-  return { price, pricePerKg, unit, error: null };
+  return { price, pricePerKg, unit, pricingType: pricingInfo.type, error: null };
 }
 
 /**

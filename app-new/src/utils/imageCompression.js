@@ -65,7 +65,6 @@ export async function compressImage(file, options = {}) {
           canvas.toBlob(
             (blob) => {
               if (blob) {
-                console.log(`✅ Image compressed: ${(file.size / 1024).toFixed(1)}KB → ${(blob.size / 1024).toFixed(1)}KB`);
                 resolve(blob);
               } else {
                 reject(new Error('Failed to create blob'));
@@ -137,6 +136,25 @@ export async function compressToDataUrl(file, options = {}) {
 export function isValidImageType(file) {
   const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   return validTypes.includes(file.type.toLowerCase());
+}
+
+/**
+ * Compress image to Blob (alias for compressImage with WebP support)
+ *
+ * @param {File} file - Image file
+ * @param {Object} options - Compression options
+ * @param {number} options.maxWidth - Maximum width
+ * @param {number} options.maxHeight - Maximum height
+ * @param {number} options.quality - Quality 0-1
+ * @param {string} options.type - Output MIME type (default: 'image/webp')
+ * @returns {Promise<Blob>} Compressed image as Blob
+ */
+export async function compressToBlob(file, options = {}) {
+  const { type = 'image/webp', ...restOptions } = options;
+  return compressImage(file, {
+    ...restOptions,
+    outputFormat: type
+  });
 }
 
 // Note: Use formatFileSize from utils/format.js instead of duplicating here

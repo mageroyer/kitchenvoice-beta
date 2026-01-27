@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Input from '../components/common/Input';
 import Dropdown from '../components/common/Dropdown';
 import Button from '../components/common/Button';
@@ -8,7 +8,9 @@ import MethodSteps from '../components/recipes/MethodSteps';
 import PlatingInstructions from '../components/recipes/PlatingInstructions';
 import Notes from '../components/recipes/Notes';
 import ScaleSettingsModal from '../components/recipes/ScaleSettingsModal';
-import { recipeDB, categoryDB, departmentDB } from '../services/database/indexedDB';
+import WebsiteTab from '../components/recipes/WebsiteTab';
+import { recipeDB, categoryDB, departmentDB, inventoryItemDB } from '../services/database/indexedDB';
+import { updateTask } from '../services/tasks/tasksService';
 import { compressToDataUrl, isValidImageType } from '../utils/imageCompression';
 import { formatFileSize } from '../utils/format';
 import { GoogleCloudVoiceService } from '../services/speech/googleCloudVoice';
@@ -26,9 +28,16 @@ import styles from '../styles/pages/recipeeditor.module.css';
  * - Base Portion (BP) = saved recipe value
  * - Target Portion (TP) = temporary scaling for viewing only
  */
-function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false }) {
+function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false, currentDepartment: passedDepartment = 'Cuisine' }) {
   const navigate = useNavigate();
   const { id: urlId } = useParams(); // Recipe ID from URL (if editing existing recipe)
+  const [searchParams] = useSearchParams();
+  const taskPortions = searchParams.get('portions'); // Portions from task view
+  const taskId = searchParams.get('taskId'); // Task ID if coming from task list
+  const viewModeParam = searchParams.get('viewMode') === 'true'; // Force view mode from task
+
+  // Override isUnlocked if viewMode is requested
+  const effectiveIsUnlocked = viewModeParam ? false : isUnlocked;
 
   // Internal recipe ID state - can be reset to null for "new recipe" without URL change
   const [internalId, setInternalId] = useState(urlId || null);
@@ -48,13 +57,21 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
   const [basePortion, setBasePortion] = useState(4); // BP - saved value
   const [portionUnit, setPortionUnit] = useState('portion'); // Unit for BP yield (portion, ml, L, g, kg)
   const [targetPortion, setTargetPortion] = useState(4); // TP - temp display only
-  const [department, setDepartment] = useState('Cuisine');
+  const [outputContainerSize, setOutputContainerSize] = useState(null); // Boxing format: size per container (e.g., 20 for 20L buckets)
+  const [outputContainerUnit, setOutputContainerUnit] = useState(null); // Boxing format: unit (e.g., 'L')
+  const [department, setDepartment] = useState(passedDepartment || 'Cuisine');
   const [ingredients, setIngredients] = useState([]);
   const [methodSteps, setMethodSteps] = useState([]);
   const [platingInstructions, setPlatingInstructions] = useState(null); // null = not created
   const [notes, setNotes] = useState(null); // null = not created
   const [imageUrl, setImageUrl] = useState(null); // Recipe image
   const [isProductionMode, setIsProductionMode] = useState(false); // Production task mode
+  const [inputWeight, setInputWeight] = useState(null); // Input weight from first linked ingredient (execution mode)
+  const [inputWeightUnit, setInputWeightUnit] = useState('kg'); // Unit for input weight
+  const [totalRecipeCost, setTotalRecipeCost] = useState(0); // Total recipe cost for output cost calculation
+  const [totalPackagingCost, setTotalPackagingCost] = useState(0); // Total packaging cost from all method steps
+  const [publicData, setPublicData] = useState(null); // Public website settings
+  const [showWebsiteTab, setShowWebsiteTab] = useState(false); // Toggle for Website section
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -68,10 +85,15 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
   const [showScaleModal, setShowScaleModal] = useState(false);
   const [currentRecipe, setCurrentRecipe] = useState(null); // Full recipe object for scale modal
 
-  // Category data from database
+  // Linked package items for cost calculation
+  const [linkedPackageItems, setLinkedPackageItems] = useState({});
+
+  // Category data from database (full objects with departmentId)
+  const [allCategories, setAllCategories] = useState([]);
   const [availableCategories, setAvailableCategories] = useState([]);
 
-  // Department data from database
+  // Department data from database (full objects with id and name)
+  const [allDepartments, setAllDepartments] = useState([]);
   const [availableDepartments, setAvailableDepartments] = useState([]);
 
   // Refs
@@ -135,6 +157,8 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
               notes,
               imageUrl,
               isProductionRecipe: isProductionMode,
+              outputContainerSize,
+              outputContainerUnit,
             });
 
             // Use add for new recipes, update for existing
@@ -170,6 +194,13 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
     loadAllDepartments();
   }, []);
 
+  // Filter categories when department or data changes
+  useEffect(() => {
+    if (allCategories.length > 0 && allDepartments.length > 0 && department) {
+      filterCategoriesByDepartment(department);
+    }
+  }, [allCategories, allDepartments, department]);
+
   // Cleanup voice service on unmount
   useEffect(() => {
     return () => {
@@ -181,7 +212,7 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
 
   // Handle recipe name voice input
   const handleRecipeNameVoiceFocus = async () => {
-    if (!micFlag || !isUnlocked || recipeNameVoiceActive) return;
+    if (!micFlag || !effectiveIsUnlocked || recipeNameVoiceActive) return;
 
     if (!GoogleCloudVoiceService.isSupported()) {
       console.warn('Google Cloud Voice not supported');
@@ -239,8 +270,20 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
 
   const loadAllCategories = async () => {
     try {
-      const allCategories = await categoryDB.getAll();
-      setAvailableCategories(allCategories.map(cat => cat.name));
+      const categories = await categoryDB.getAll();
+      setAllCategories(categories);
+
+      // If we already have departments loaded, filter by current department
+      if (allDepartments.length > 0 && department) {
+        const dept = allDepartments.find(d => d.name === department);
+        if (dept) {
+          const filtered = categories.filter(cat => cat.departmentId === dept.id);
+          setAvailableCategories(filtered.map(cat => cat.name));
+          return;
+        }
+      }
+      // Otherwise show all category names
+      setAvailableCategories(categories.map(cat => cat.name));
     } catch (error) {
       console.error('Error loading categories:', error);
     }
@@ -248,11 +291,50 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
 
   const loadAllDepartments = async () => {
     try {
-      const allDepartments = await departmentDB.getAll();
-      setAvailableDepartments(allDepartments.map(dept => dept.name));
+      const departments = await departmentDB.getAll();
+      setAllDepartments(departments);
+      // Filter out duplicate department names
+      const uniqueNames = [...new Set(departments.map(dept => dept.name))];
+      setAvailableDepartments(uniqueNames);
+
+      // If we already have categories loaded, filter them by current department
+      if (allCategories.length > 0 && department) {
+        const dept = departments.find(d => d.name === department);
+        if (dept) {
+          const filtered = allCategories.filter(cat => cat.departmentId === dept.id);
+          setAvailableCategories(filtered.map(cat => cat.name));
+        }
+      }
     } catch (error) {
       console.error('Error loading departments:', error);
     }
+  };
+
+  // Filter categories when department changes
+  const filterCategoriesByDepartment = (deptName) => {
+    if (!deptName || allCategories.length === 0 || allDepartments.length === 0) {
+      setAvailableCategories(allCategories.map(cat => cat.name));
+      return;
+    }
+    // Find department ID by name
+    const dept = allDepartments.find(d => d.name === deptName);
+    if (dept) {
+      const filtered = allCategories.filter(cat => cat.departmentId === dept.id);
+      setAvailableCategories(filtered.map(cat => cat.name));
+    } else {
+      // Show all if department not found
+      setAvailableCategories(allCategories.map(cat => cat.name));
+    }
+  };
+
+  // Get department name from category
+  const getDepartmentFromCategory = (catName) => {
+    const cat = allCategories.find(c => c.name === catName);
+    if (cat && cat.departmentId) {
+      const dept = allDepartments.find(d => d.id === cat.departmentId);
+      return dept?.name || null;
+    }
+    return null;
   };
 
   // Load existing recipe if editing
@@ -271,8 +353,13 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
         setCategory(recipe.category || '');
         setBasePortion(recipe.portions || 4);
         setPortionUnit(recipe.portionUnit || 'portion');
-        setTargetPortion(recipe.portions || 4);
+        // Use task portions if coming from task view, otherwise use recipe default
+        const initialPortions = taskPortions ? parseInt(taskPortions, 10) : (recipe.portions || 4);
+        setTargetPortion(initialPortions);
         setDepartment(recipe.department || 'Cuisine');
+        // Boxing format for container tracking
+        setOutputContainerSize(recipe.outputContainerSize || null);
+        setOutputContainerUnit(recipe.outputContainerUnit || null);
 
         // Migrate ingredients from old format to new format
         const migratedIngredients = (recipe.ingredients || []).map(ing => {
@@ -313,6 +400,37 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
         setNotes(recipe.notes || null);
         setImageUrl(recipe.imageUrl || null);
         setIsProductionMode(recipe.isProductionRecipe || false);
+        setPublicData(recipe.public || null);
+        setShowWebsiteTab(!!recipe.public); // Show tab if recipe has public data
+
+        // Set input weight from first ingredient (for execution mode yield calculation)
+        // Use the DISPLAYED metric value (what user sees), not metricQty (may be inconsistent)
+        if (recipe.isProductionRecipe && migratedIngredients.length > 0) {
+          const firstIng = migratedIngredients.find(ing => !ing.isSection);
+          if (firstIng) {
+            // Calculate scaling factor for this view/task
+            const bp = recipe.portions || 1;
+            const tp = taskPortions ? parseInt(taskPortions, 10) : bp;
+            const scale = tp / bp;
+
+            // Parse from metric string first (this is what's displayed, e.g., "26kg")
+            if (firstIng.metric) {
+              const match = firstIng.metric.match(/^([\d.,]+)\s*(kg|g|lb|L|ml)?$/i);
+              if (match) {
+                const baseQty = parseFloat(match[1].replace(',', '.'));
+                const scaledQty = baseQty * scale;
+                setInputWeight(scaledQty || null);
+                setInputWeightUnit(match[2] || 'kg');
+              }
+            }
+            // Fallback to metricQty only if metric string doesn't exist
+            else if (firstIng.metricQty) {
+              const scaledQty = parseFloat(firstIng.metricQty) * scale;
+              setInputWeight(scaledQty || null);
+              setInputWeightUnit(firstIng.metricUnit || 'kg');
+            }
+          }
+        }
 
         // Store full recipe for scale modal
         setCurrentRecipe(recipe);
@@ -327,6 +445,43 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
 
   // Calculate scaling factor for display
   const scalingFactor = targetPortion / basePortion;
+
+  // Extract packages from plating instructions for cost calculation
+  const packages = useMemo(() => {
+    if (!Array.isArray(platingInstructions)) return [];
+    return platingInstructions.filter(item => item?.isPackage);
+  }, [platingInstructions]);
+
+  // Fetch linked package items for cost calculation
+  useEffect(() => {
+    const fetchLinkedPackageItems = async () => {
+      const linkedIds = packages
+        .filter(pkg => pkg.linkedPackageId)
+        .map(pkg => pkg.linkedPackageId);
+
+      if (linkedIds.length === 0) {
+        setLinkedPackageItems({});
+        return;
+      }
+
+      try {
+        const items = await Promise.all(
+          linkedIds.map(id => inventoryItemDB.getById(id).catch(() => null))
+        );
+        const itemsMap = {};
+        linkedIds.forEach((id, idx) => {
+          if (items[idx]) {
+            itemsMap[id] = items[idx];
+          }
+        });
+        setLinkedPackageItems(itemsMap);
+      } catch (err) {
+        console.error('Error fetching linked package items:', err);
+      }
+    };
+
+    fetchLinkedPackageItems();
+  }, [packages]);
 
   // Handle image upload
   const handleImageUpload = async (e) => {
@@ -348,8 +503,6 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
 
     setUploadingImage(true);
     try {
-      console.log(`📁 Selected: ${file.name} (${formatFileSize(file.size)})`);
-
       // Compress image
       const compressedDataUrl = await compressToDataUrl(file, {
         maxWidth: 1600,
@@ -359,9 +512,8 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
 
       setImageUrl(compressedDataUrl);
       autoSave({ imageUrl: compressedDataUrl }); // Trigger save with new image
-      console.log('✅ Image uploaded and compressed');
     } catch (error) {
-      console.error('❌ Error uploading image:', error);
+      console.error('Error uploading image:', error);
       alert('Failed to upload image');
     } finally {
       setUploadingImage(false);
@@ -400,6 +552,9 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
       const currentPortionUnit = overrides.portionUnit !== undefined ? overrides.portionUnit : portionUnit;
       const currentDepartment = overrides.department !== undefined ? overrides.department : department;
       const currentIsProductionRecipe = overrides.isProductionRecipe !== undefined ? overrides.isProductionRecipe : isProductionMode;
+      const currentOutputContainerSize = overrides.outputContainerSize !== undefined ? overrides.outputContainerSize : outputContainerSize;
+      const currentOutputContainerUnit = overrides.outputContainerUnit !== undefined ? overrides.outputContainerUnit : outputContainerUnit;
+      const currentPublicData = overrides.publicData !== undefined ? overrides.publicData : publicData;
 
       // Sanitize all inputs before saving
       const recipeData = sanitizeRecipe({
@@ -414,12 +569,14 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
         notes: currentNotes,
         imageUrl: currentImageUrl,
         isProductionRecipe: currentIsProductionRecipe,
+        outputContainerSize: currentOutputContainerSize,
+        outputContainerUnit: currentOutputContainerUnit,
+        public: currentPublicData,
       });
 
       await recipeDB.update(parseInt(id), recipeData);
       setLastSaved(new Date());
       setAutoSaveStatus('saved');
-      console.log('✅ Auto-saved:', recipeName);
 
       // Reset status after a brief moment
       setTimeout(() => {
@@ -427,7 +584,7 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
       }, 2000);
 
     } catch (error) {
-      console.error('❌ Auto-save failed:', error);
+      console.error('Auto-save failed:', error);
       setAutoSaveStatus('error');
 
       // Show duplicate name error to user
@@ -442,7 +599,7 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
     } finally {
       setSaving(false);
     }
-  }, [isNewRecipe, recipeName, id, ingredients, methodSteps, platingInstructions, notes, category, imageUrl, basePortion, portionUnit, department, isProductionMode]);
+  }, [isNewRecipe, recipeName, id, ingredients, methodSteps, platingInstructions, notes, category, imageUrl, basePortion, portionUnit, department, isProductionMode, outputContainerSize, outputContainerUnit, publicData]);
 
   // Debounced auto-save with max wait
   // - Waits 1.5s after user stops editing (trailing edge)
@@ -461,6 +618,61 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
     setAutoSaveStatus('pending');
     debouncedAutoSave(overrides);
   }, [isNewRecipe, debouncedAutoSave]);
+
+  // ============================================
+  // Execution Mode: Save to Task (not Recipe)
+  // ============================================
+  const isExecutionMode = !!(taskId && viewModeParam && isProductionMode);
+
+  // Core function to save execution data to task
+  const performTaskExecutionSave = useCallback(async (executionMethodSteps) => {
+    if (!taskId || !isExecutionMode) return;
+
+    setAutoSaveStatus('saving');
+    try {
+      // Save methodSteps with actualWeights to task's executionData
+      await updateTask(taskId, {
+        executionData: {
+          methodSteps: executionMethodSteps,
+          savedAt: new Date().toISOString(),
+        }
+      });
+      setLastSaved(new Date());
+      setAutoSaveStatus('saved');
+      setTimeout(() => {
+        setAutoSaveStatus((prev) => prev === 'saved' ? 'idle' : prev);
+      }, 2000);
+    } catch (error) {
+      console.error('Execution save failed:', error);
+      setAutoSaveStatus('error');
+      setTimeout(() => {
+        setAutoSaveStatus((prev) => prev === 'error' ? 'idle' : prev);
+      }, 3000);
+    }
+  }, [taskId, isExecutionMode]);
+
+  // Debounced execution save
+  const { debouncedFn: debouncedExecutionSave, flush: flushExecutionSave, cancel: cancelExecutionSave } = useDebouncedCallbackWithMaxWait(
+    performTaskExecutionSave,
+    TIMEOUTS.AUTO_SAVE_DEBOUNCE,
+    TIMEOUTS.AUTO_SAVE_MAX_WAIT,
+    [performTaskExecutionSave]
+  );
+
+  // Wrapper for execution mode autosave
+  const autoSaveExecution = useCallback((executionMethodSteps) => {
+    if (!isExecutionMode) return;
+
+    setAutoSaveStatus('pending');
+    debouncedExecutionSave(executionMethodSteps);
+  }, [isExecutionMode, debouncedExecutionSave]);
+
+  // Cancel execution save on unmount
+  useEffect(() => {
+    return () => {
+      cancelExecutionSave();
+    };
+  }, [cancelExecutionSave]);
 
   // Flush auto-save on blur (immediate save)
   const flushAutoSaveOnBlur = useCallback(() => {
@@ -500,8 +712,6 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
     setCurrentRecipe(null);
     setLastSaved(null);
     setAutoSaveStatus('idle');
-
-    console.log('✨ Reset to new recipe');
   }, [isNewRecipe, flushAutoSave]);
 
   // Listen for "new recipe" event from MenuBar
@@ -541,17 +751,18 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
         notes,
         imageUrl,
         isProductionRecipe: isProductionMode,
+        outputContainerSize,
+        outputContainerUnit,
+        public: publicData,
       });
 
       if (isNewRecipe) {
         const newId = await recipeDB.add(recipeData);
-        console.log('Recipe created with ID:', newId);
         alert('Recipe saved successfully!');
         navigate('/recipes');
       } else {
         // Existing recipe - just flush auto-save and go back
         await recipeDB.update(parseInt(id), recipeData);
-        console.log('Recipe updated:', id);
         navigate('/recipes');
       }
     } catch (error) {
@@ -578,7 +789,6 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
       await recipeDB.update(parseInt(id), scaleSettings);
       // Update local state
       setCurrentRecipe(prev => ({ ...prev, ...scaleSettings }));
-      console.log('Scale settings saved:', scaleSettings);
     } catch (error) {
       console.error('Error saving scale settings:', error);
       throw error; // Re-throw so modal can show error
@@ -621,6 +831,8 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
           notes,
           imageUrl,
           isProductionRecipe: isProductionMode,
+          outputContainerSize,
+          outputContainerUnit,
         });
 
         // Use add for new recipes, update for existing
@@ -660,7 +872,7 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
   return (
     <div className={styles.editorPage}>
       {/* View Only Banner */}
-      {!isUnlocked && (
+      {!effectiveIsUnlocked && (
         <div className={styles.viewOnlyBanner}>
           🔒 View Only Mode
         </div>
@@ -684,8 +896,8 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
             flushAutoSaveOnBlur();
           }}
           size="xlarge"
-          disabled={!isUnlocked}
-          showVoice={micFlag && isUnlocked}
+          disabled={!effectiveIsUnlocked}
+          showVoice={micFlag && effectiveIsUnlocked}
           voiceActive={recipeNameVoiceActive}
           onVoiceClick={handleRecipeNameVoiceStop}
           onFocus={handleRecipeNameVoiceFocus}
@@ -698,11 +910,18 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
           onChange={(e) => {
             const newCategory = e.target.value;
             setCategory(newCategory);
-            autoSave({ category: newCategory });
+            // Update department to match category's department
+            const catDept = getDepartmentFromCategory(newCategory);
+            if (catDept && catDept !== department) {
+              setDepartment(catDept);
+              autoSave({ category: newCategory, department: catDept });
+            } else {
+              autoSave({ category: newCategory });
+            }
           }}
           placeholder="Select category..."
           size="medium"
-          disabled={!isUnlocked}
+          disabled={!effectiveIsUnlocked}
         />
 
         <Dropdown
@@ -712,11 +931,20 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
           onChange={(e) => {
             const newDepartment = e.target.value;
             setDepartment(newDepartment);
-            autoSave({ department: newDepartment });
+            // Filter categories by new department
+            filterCategoriesByDepartment(newDepartment);
+            // Clear category if it doesn't belong to new department
+            const catDept = getDepartmentFromCategory(category);
+            if (catDept && catDept !== newDepartment) {
+              setCategory('');
+              autoSave({ department: newDepartment, category: '' });
+            } else {
+              autoSave({ department: newDepartment });
+            }
           }}
           placeholder="Select department..."
           size="medium"
-          disabled={!isUnlocked}
+          disabled={!effectiveIsUnlocked}
         />
 
         <div className={styles.portionBox}>
@@ -741,25 +969,11 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
             className={styles.portionInput}
             min="1"
             max="99999"
-            disabled={!isUnlocked}
+            disabled={!effectiveIsUnlocked}
           />
         </div>
 
-        {/* Portion Unit Selector - between BP and TP */}
-        <Dropdown
-          className={styles.portionUnit}
-          options={PORTION_UNIT_OPTIONS}
-          value={portionUnit}
-          onChange={(e) => {
-            const newUnit = e.target.value;
-            setPortionUnit(newUnit);
-            autoSave({ portionUnit: newUnit });
-          }}
-          size="small"
-          disabled={!isUnlocked}
-          title="Unit for recipe yield (portion, ml, L, g, kg)"
-        />
-
+        {/* Target Portion - for scaling display (always editable) */}
         <div className={styles.portionBox}>
           <label>TP:</label>
           <Input
@@ -780,16 +994,61 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
             className={styles.portionInput}
             min="1"
             max="99999"
-            disabled={isUnlocked}
-            title={isUnlocked ? "Lock recipe to use portion scaling" : "Scale recipe portions for viewing"}
+            title="Target Portion - scale recipe display without changing saved value"
           />
         </div>
+
+        {/* Portion Unit Selector - between BP and TP */}
+        <Dropdown
+          className={styles.portionUnit}
+          options={PORTION_UNIT_OPTIONS}
+          value={portionUnit}
+          onChange={(e) => {
+            const newUnit = e.target.value;
+            setPortionUnit(newUnit);
+            autoSave({ portionUnit: newUnit });
+          }}
+          size="small"
+          disabled={!effectiveIsUnlocked}
+          title="Unit for recipe yield (portion, ml, L, g, kg)"
+        />
+
+        {/* Boxing Format - only for volume/weight recipes */}
+        {['L', 'ml', 'kg', 'g'].includes(portionUnit) && (
+          <div className={styles.boxingFormat}>
+            <span className={styles.boxingLabel}>1 pc =</span>
+            <Input
+              type="number"
+              value={outputContainerSize || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setOutputContainerSize(val === '' ? null : parseFloat(val) || null);
+              }}
+              onBlur={(e) => {
+                const val = parseFloat(e.target.value);
+                if (val && val > 0) {
+                  setOutputContainerSize(val);
+                  setOutputContainerUnit(portionUnit);
+                  autoSave({ outputContainerSize: val, outputContainerUnit: portionUnit });
+                }
+              }}
+              size="small"
+              className={styles.boxingInput}
+              min="0.1"
+              step="0.1"
+              disabled={!effectiveIsUnlocked}
+              placeholder={`20`}
+              title={`Container size in ${portionUnit} (e.g., 20 for 20${portionUnit} buckets)`}
+            />
+            <span className={styles.boxingUnit}>{portionUnit}</span>
+          </div>
+        )}
       </div>
 
-      {/* Scaling indicator (if TP != BP) */}
+      {/* Scaling Notice - shown when TP ≠ BP */}
       {scalingFactor !== 1 && (
         <div className={styles.scalingNotice}>
-          Viewing recipe scaled to {targetPortion} portions (×{scalingFactor.toFixed(2)})
+          Viewing at {scalingFactor.toFixed(2)}x scale ({targetPortion} {portionUnit}s from base {basePortion})
         </div>
       )}
 
@@ -802,10 +1061,15 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
             setIngredients(newIngredients);
             autoSave({ ingredients: newIngredients });
           }}
-          editable={isUnlocked}
-          micFlag={micFlag && isUnlocked}
+          editable={effectiveIsUnlocked}
+          micFlag={micFlag && effectiveIsUnlocked}
+          basePortion={basePortion}
           scalingFactor={scalingFactor}
           isOwner={isOwner}
+          packages={packages}
+          linkedPackageItems={linkedPackageItems}
+          methodPackagingCost={totalPackagingCost}
+          onCostChange={setTotalRecipeCost}
         />
       </section>
 
@@ -815,11 +1079,21 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
           steps={methodSteps}
           onChange={(newSteps) => {
             setMethodSteps(newSteps);
-            autoSave({ methodSteps: newSteps });
+            // In execution mode, save to task; otherwise save to recipe
+            if (isExecutionMode) {
+              autoSaveExecution(newSteps);
+            } else {
+              autoSave({ methodSteps: newSteps });
+            }
           }}
-          editable={isUnlocked}
-          micFlag={micFlag && isUnlocked}
+          editable={effectiveIsUnlocked}
+          micFlag={micFlag && effectiveIsUnlocked}
           productionMode={isProductionMode}
+          executionMode={isExecutionMode}
+          inputWeight={inputWeight}
+          inputWeightUnit={inputWeightUnit}
+          recipeCost={totalRecipeCost}
+          onPackagingCostChange={setTotalPackagingCost}
         />
       </section>
 
@@ -832,8 +1106,11 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
               setPlatingInstructions(newInstructions);
               autoSave({ platingInstructions: newInstructions });
             }}
-            editable={isUnlocked}
-            micFlag={micFlag && isUnlocked}
+            editable={effectiveIsUnlocked}
+            micFlag={micFlag && effectiveIsUnlocked}
+            isOwner={isOwner}
+            basePortion={basePortion}
+            scalingFactor={scalingFactor}
           />
         </section>
       )}
@@ -847,14 +1124,30 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
               setNotes(newNotes);
               autoSave({ notes: newNotes });
             }}
-            editable={isUnlocked}
-            micFlag={micFlag && isUnlocked}
+            editable={effectiveIsUnlocked}
+            micFlag={micFlag && effectiveIsUnlocked}
+          />
+        </section>
+      )}
+
+      {/* Website Tab (if added) */}
+      {showWebsiteTab && publicData !== null && (
+        <section className={styles.section}>
+          <WebsiteTab
+            publicData={publicData}
+            onChange={(newPublicData) => {
+              setPublicData(newPublicData);
+              autoSave({ publicData: newPublicData });
+            }}
+            recipeId={id ? parseInt(id) : null}
+            recipeCost={totalRecipeCost / (basePortion || 1)} // Cost per portion
+            disabled={!effectiveIsUnlocked}
           />
         </section>
       )}
 
       {/* Optional Sections - Subtle Buttons (only when unlocked) */}
-      {isUnlocked && (
+      {effectiveIsUnlocked && (
         <div className={styles.optionalSections}>
           {/* Production Mode Toggle */}
           <button
@@ -896,6 +1189,33 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
               {currentRecipe?.plu ? '⚖️ Scale: ' + currentRecipe.plu : '⚖️ Scale Settings'}
             </button>
           )}
+
+          {/* Website Settings - only for existing recipes */}
+          {!isNewRecipe && (
+            <button
+              className={`${styles.addOptionalBtn} ${showWebsiteTab ? styles.active : ''} ${publicData?.isVisible ? styles.websiteActive : ''}`}
+              onClick={() => {
+                if (!showWebsiteTab && !publicData) {
+                  // Initialize public data when first opening
+                  setPublicData({
+                    isVisible: false,
+                    isAvailableToday: false,
+                    sellingPrice: null,
+                    description: '',
+                    photo: null,
+                    displayCategory: category || '',
+                    tags: [],
+                    sortOrder: 0,
+                    lastPublished: null
+                  });
+                }
+                setShowWebsiteTab(!showWebsiteTab);
+              }}
+              title="Configure public website display"
+            >
+              {publicData?.isVisible ? 'Website' : '+ Website'}
+            </button>
+          )}
         </div>
       )}
 
@@ -908,7 +1228,7 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
       />
 
       {/* Save/Cancel Buttons (only for new recipes when unlocked) */}
-      {isNewRecipe && isUnlocked && (
+      {isNewRecipe && effectiveIsUnlocked && (
         <div className={styles.actionButtons}>
           <Button
             variant="secondary"
@@ -928,8 +1248,8 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false 
         </div>
       )}
 
-      {/* Auto-save indicator for edit mode */}
-      {!isNewRecipe && (
+      {/* Auto-save indicator for edit mode or execution mode */}
+      {(!isNewRecipe || isExecutionMode) && (
         <div className={styles.autoSaveInfo}>
           <span className={`${styles.autoSaveText} ${autoSaveStatus === 'error' ? styles.autoSaveError : ''}`}>
             {autoSaveStatus === 'saving' && '💾 Saving...'}

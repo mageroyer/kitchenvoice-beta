@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { isDemoMode } from '../services/demo/demoService';
 
 /**
  * Custom hook to manage inventory stock alert counts
@@ -15,10 +14,8 @@ export function useInventoryAlerts(isAuthenticated, authLoading, isOwner) {
   const [lowStockCount, setLowStockCount] = useState(0);
 
   useEffect(() => {
-    const inDemo = isDemoMode();
-
-    // Only load inventory for owners when authenticated or in demo mode
-    if ((!isAuthenticated && !inDemo) || authLoading || !isOwner) {
+    // Only load inventory for owners when authenticated
+    if (!isAuthenticated || authLoading || !isOwner) {
       setCriticalStockCount(0);
       setLowStockCount(0);
       return;

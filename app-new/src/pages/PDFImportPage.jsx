@@ -88,6 +88,38 @@ function PDFImportPage() {
     setIsDragging(false);
   };
 
+  // Sample recipes for testing - 3 different styles
+  const SAMPLE_RECIPES = [
+    { id: 'classic', name: 'Boeuf Bourguignon', icon: '🥩', file: '/samples/sample-recipe-classic.pdf', description: 'Classic French' },
+    { id: 'modern', name: 'Spinach Salad', icon: '🥗', file: '/samples/sample-recipe-modern.pdf', description: 'Mediterranean' },
+    { id: 'detailed', name: 'Lasagna', icon: '🍝', file: '/samples/sample-recipe-detailed.pdf', description: 'Bolognese' },
+  ];
+
+  // Load a sample recipe
+  const handleLoadSample = async (sample) => {
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(sample.file);
+      if (!response.ok) {
+        throw new Error(`Failed to load sample: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const sampleFile = new File([blob], `${sample.description.replace(/\s+/g, '_')}_Sample.pdf`, {
+        type: 'application/pdf'
+      });
+
+      setFile(sampleFile);
+    } catch (err) {
+      console.error('Error loading sample:', err);
+      setError(`Failed to load sample recipe: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Automatic import: Extract → Parse → Save → Navigate to editor
   const handleImportPDF = async () => {
     if (!file) return;
@@ -137,7 +169,6 @@ function PDFImportPage() {
       if (parsedRecipe.category && availableCategories.includes(parsedRecipe.category)) {
         validCategory = parsedRecipe.category;
       }
-      console.log(`📁 Using category: ${validCategory}`);
 
       // Determine department: use parsed if it exists in DB, otherwise use 'Cuisine' or first available
       let validDepartment = 'Cuisine';
@@ -148,7 +179,6 @@ function PDFImportPage() {
           validDepartment = availableDepartments[0];
         }
       }
-      console.log(`📁 Using department: ${validDepartment}`);
 
       // Ensure department and category are set before saving
       const recipeWithDefaults = {
@@ -163,8 +193,6 @@ function PDFImportPage() {
       } catch (dbError) {
         throw new Error(`Failed to save recipe to database: ${dbError.message}`);
       }
-
-      console.log('✅ Recipe imported and saved with ID:', id);
 
       // Step 4: Navigate to recipe editor immediately
       navigate(`/recipes/${id}/edit`);
@@ -240,6 +268,38 @@ function PDFImportPage() {
               Choose File
             </Button>
             <p className={styles.dropHint}>Maximum file size: 10MB</p>
+
+            {/* Sample Recipes */}
+            <div className={styles.sampleSection}>
+              <p className={styles.sampleLabel}>Or try a sample recipe:</p>
+              <div className={styles.sampleButtons}>
+                {SAMPLE_RECIPES.map((sample) => (
+                  <div key={sample.id} className={styles.sampleButtonGroup}>
+                    <button
+                      className={styles.sampleButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLoadSample(sample);
+                      }}
+                      disabled={loading}
+                      title={`Load ${sample.description} sample`}
+                    >
+                      <span className={styles.sampleIcon}>{sample.icon}</span>
+                      <span className={styles.sampleName}>{sample.name}</span>
+                    </button>
+                    <a
+                      href={sample.file}
+                      download={`${sample.description.replace(/\s+/g, '_')}_Sample.pdf`}
+                      className={styles.sampleDownload}
+                      onClick={(e) => e.stopPropagation()}
+                      title={`Download ${sample.description} PDF`}
+                    >
+                      ⬇
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <>

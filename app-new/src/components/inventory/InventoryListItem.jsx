@@ -12,6 +12,7 @@ import PropTypes from 'prop-types';
 import VendorBadge from './VendorBadge';
 import StockProgressBar from './StockProgressBar';
 import StockStatusBadge from './StockStatusBadge';
+import { getEffectiveStock, getEffectivePar } from '../../services/database/inventoryHelpers';
 import styles from '../../styles/components/inventorylistitem.module.css';
 
 /**
@@ -41,6 +42,138 @@ const formatCurrency = (value) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
+};
+
+/**
+ * Format stock number with appropriate decimal places
+ * Fixes floating-point precision issues (e.g., 0.5000000000001 → 0.5)
+ * @param {number} value - Stock value
+ * @returns {string} Formatted number
+ */
+const formatStock = (value) => {
+  if (value == null || isNaN(value)) return '0';
+  // Round to 2 decimal places, remove trailing zeros
+  const rounded = Math.round(value * 100) / 100;
+  return rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(2).replace(/\.?0+$/, '');
+};
+
+/**
+ * Format stock weight/volume with user-friendly units
+ * Converts ml → L (when >= 1000) and g → kg (when >= 1000)
+ * @param {number} value - The stock value in base units (ml or g)
+ * @param {string} unit - The unit (ml, g, etc.)
+ * @returns {Object} { value: string, unit: string }
+ */
+const formatStockWithUnit = (value, unit) => {
+  if (value == null || isNaN(value)) return { value: '0', unit: unit || 'pc' };
+
+  const unitLower = (unit || '').toLowerCase();
+
+  // Convert ml to L when >= 1000
+  if (unitLower === 'ml' && value >= 1000) {
+    return { value: formatStock(value / 1000), unit: 'L' };
+  }
+
+  // Convert g to kg when >= 1000
+  if (unitLower === 'g' && value >= 1000) {
+    return { value: formatStock(value / 1000), unit: 'kg' };
+  }
+
+  return { value: formatStock(value), unit: unit || 'pc' };
+};
+
+/**
+ * Format normalized price (pricePerML, pricePerG, pricePerKg, pricePerLb, etc.)
+ * Shows in user-friendly units ($/L, $/kg, $/lb, $/ea)
+ * @param {Object} item - Inventory item
+ * @returns {string|null} Formatted price string or null
+ */
+const formatNormalizedPrice = (item) => {
+  // Direct $/kg pricing (preferred for weight items)
+  if (item.pricePerKg != null && item.pricePerKg > 0) {
+    return `$${item.pricePerKg.toFixed(2)}/kg`;
+  }
+
+  // Direct $/lb pricing
+  if (item.pricePerLb != null && item.pricePerLb > 0) {
+    return `$${item.pricePerLb.toFixed(2)}/lb`;
+  }
+
+  // Direct $/L pricing (preferred for volume items)
+  if (item.pricePerL != null && item.pricePerL > 0) {
+    return `$${item.pricePerL.toFixed(2)}/L`;
+  }
+
+  // Weight-based pricing stored as pricePerG (convert to $/kg)
+  if (item.pricePerG != null && item.pricePerG > 0) {
+    const pricePerKg = item.pricePerG * 1000;
+    return `$${pricePerKg.toFixed(2)}/kg`;
+  }
+
+  // Volume-based pricing stored as pricePerML (convert to $/L)
+  if (item.pricePerML != null && item.pricePerML > 0) {
+    const pricePerL = item.pricePerML * 1000;
+    return `$${pricePerL.toFixed(2)}/L`;
+  }
+
+  // Unit-based pricing
+  if (item.pricePerUnit != null && item.pricePerUnit > 0) {
+    return `$${item.pricePerUnit.toFixed(2)}/ea`;
+  }
+
+  return null;
+};
+
+/**
+ * Format the packaging format for display
+ * Uses unitSize fields if available, falls back to parsing lastBoxingFormat
+ * @param {Object} item - Inventory item
+ * @returns {string|null} Formatted packaging string or null
+ */
+const formatPackaging = (item) => {
+  // For in-house items, show boxing size (portion size)
+  if (item.itemType === 'in-house' && item.boxingSize > 0) {
+    const unit = item.boxingSizeUnit || item.stockWeightUnit || 'kg';
+    return `${item.boxingSize} ${unit}/portion`;
+  }
+
+  // Prefer structured unitSize fields (e.g., unitSize=500, unitSizeUnit="ml", unitsPerCase=6)
+  if (item.unitSize != null && item.unitSizeUnit && item.unitsPerCase) {
+    return `${item.unitsPerCase} × ${item.unitSize}${item.unitSizeUnit}`;
+  }
+
+  // Fall back to parsing lastBoxingFormat string
+  const format = item.lastBoxingFormat || item.packagingFormat;
+  if (!format) return null;
+
+  // Clean up format string for display (e.g., "6x500ML" → "6×500ml")
+  return format
+    .replace(/x/gi, '×')
+    .replace(/(\d+)(ml|l|kg|lb|g|oz)/gi, '$1$2')
+    .toLowerCase()
+    .replace(/×(\d)/, '× $1');
+};
+
+/**
+ * Format stock quantity for items with unitsPerCase
+ * Shows: "2 × 200ct = 400 pc" for packaging items
+ * @param {Object} item - Inventory item
+ * @returns {Object} { display: string, totalPieces: number } or null
+ */
+const formatContainerStock = (item) => {
+  const boxes = item.stockQuantity ?? item.currentStock ?? 0;
+  const unitsPerCase = item.unitsPerCase || 0;
+
+  // Only format if we have unitsPerCase > 1 (packaging/container items)
+  if (unitsPerCase > 1 && boxes > 0) {
+    const totalPieces = boxes * unitsPerCase;
+    return {
+      display: `${formatStock(boxes)} × ${unitsPerCase}ct = ${formatStock(totalPieces)}`,
+      totalPieces,
+    };
+  }
+
+  return null;
 };
 
 /**
@@ -86,11 +219,10 @@ function InventoryListItem({
   compact = false,
   onClick,
 }) {
-  // Calculate stock status
-  const stockStatus = getStockStatus(
-    item.currentStock || 0,
-    item.parLevel || item.fullStock || 0
-  );
+  // Calculate stock status using effective stock (respects item type: weight vs quantity)
+  const effectiveStockData = getEffectiveStock(item);
+  const effectiveParData = getEffectivePar(item);
+  const stockStatus = getStockStatus(effectiveStockData.value, effectiveParData.value);
 
   /**
    * Handle click on item
@@ -124,8 +256,8 @@ function InventoryListItem({
     .filter(Boolean)
     .join(' ');
 
-  // Build ARIA label
-  const ariaLabel = `${item.name}${item.vendorName ? ` from ${item.vendorName}` : ''}: ${item.currentStock || 0} of ${item.parLevel || 0} ${item.unit || 'units'}${item.unitPrice ? `, ${formatCurrency(item.unitPrice)} per ${item.unit || 'unit'}` : ''}`;
+  // Build ARIA label using effective stock data
+  const ariaLabel = `${item.name}${item.vendorName ? ` from ${item.vendorName}` : ''}: ${effectiveStockData.value} of ${effectiveParData.value} ${effectiveStockData.unit}${item.unitPrice ? `, ${formatCurrency(item.unitPrice)} per ${item.unit || 'unit'}` : ''}`;
 
   return (
     <div
@@ -172,28 +304,84 @@ function InventoryListItem({
         {/* Center: Stock Progress */}
         <div className={styles.stockSection}>
           {/* Dual stock display: show quantity and/or weight */}
-          {(item.stockQuantity > 0 || item.stockWeight > 0) ? (
+          {/* Use stockQuantity/stockWeight (new schema) with fallback to currentStock (legacy) */}
+          {(item.stockQuantity > 0 || item.stockWeight > 0 || item.currentStock > 0) ? (
             <div className={styles.dualStock}>
-              {item.stockQuantity > 0 && (
-                <span className={styles.stockValue}>
-                  {item.stockQuantity} {item.stockQuantityUnit || 'pc'}
-                </span>
+              {(item.stockQuantity > 0 || item.currentStock > 0) && (() => {
+                // For container items with unitsPerCase, show: "2 × 200ct = 400 pc"
+                const containerStock = formatContainerStock(item);
+                if (containerStock) {
+                  return (
+                    <span className={styles.stockValue}>
+                      {containerStock.display} pc
+                    </span>
+                  );
+                }
+                // Default display for regular items
+                return (
+                  <span className={styles.stockValue}>
+                    {formatStock(item.stockQuantity ?? item.currentStock)} {item.stockQuantityUnit || 'pc'}
+                    {/* Show format breakdown if available */}
+                    {formatPackaging(item) && (
+                      <span className={styles.formatHint}> ({formatPackaging(item)})</span>
+                    )}
+                  </span>
+                );
+              })()}
+              {/* Show weight per portion/unit if available (e.g., "1 L unit") */}
+              {item.weightPerPortion > 0 && item.stockWeight > 0 && (
+                <>
+                  <span className={styles.stockSeparator}>|</span>
+                  {(() => {
+                    const formatted = formatStockWithUnit(item.weightPerPortion, item.stockWeightUnit);
+                    return (
+                      <span className={styles.unitWeight}>
+                        {formatted.value} {formatted.unit}
+                      </span>
+                    );
+                  })()}
+                </>
               )}
-              {item.stockQuantity > 0 && item.stockWeight > 0 && (
+              {/* Add separator before stockWeight only if no weightPerPortion was shown */}
+              {(item.stockQuantity > 0 || item.currentStock > 0) && item.stockWeight > 0 && !item.weightPerPortion && (
                 <span className={styles.stockSeparator}>|</span>
               )}
-              {item.stockWeight > 0 && (
-                <span className={styles.stockValue}>
-                  {item.stockWeight} {item.stockWeightUnit || 'lb'}
-                </span>
+              {item.weightPerPortion > 0 && item.stockWeight > 0 && (
+                <span className={styles.stockSeparator}>|</span>
+              )}
+              {item.stockWeight > 0 && (() => {
+                const formatted = formatStockWithUnit(item.stockWeight, item.stockWeightUnit);
+                return (
+                  <span className={styles.stockValue}>
+                    {formatted.value} {formatted.unit}
+                  </span>
+                );
+              })()}
+              {/* Show normalized price */}
+              {formatNormalizedPrice(item) && (
+                <>
+                  <span className={styles.stockSeparator}>|</span>
+                  <span className={styles.normalizedPrice}>
+                    {formatNormalizedPrice(item)}
+                  </span>
+                </>
               )}
             </div>
           ) : (
-            /* Fallback for legacy data or items without new stock fields */
+            /* Fallback for items without new stock fields */
             <div className={styles.dualStock}>
               <span className={styles.stockValue}>
-                {item.currentStock || 0} {item.unit || 'pc'}
+                {formatStock(item.stockQuantity || 0)} {item.unit || 'pc'}
               </span>
+              {/* Show normalized price for legacy items too */}
+              {formatNormalizedPrice(item) && (
+                <>
+                  <span className={styles.stockSeparator}>|</span>
+                  <span className={styles.normalizedPrice}>
+                    {formatNormalizedPrice(item)}
+                  </span>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -265,12 +453,19 @@ InventoryListItem.propTypes = {
     stockQuantityUnit: PropTypes.string,
     stockWeight: PropTypes.number,
     stockWeightUnit: PropTypes.string,
-    // Legacy/computed fields
-    currentStock: PropTypes.number,
-    parLevel: PropTypes.number,
+    // Par levels
+    parQuantity: PropTypes.number,
+    parWeight: PropTypes.number,
     fullStock: PropTypes.number,
     unitPrice: PropTypes.number,
     totalValue: PropTypes.number,
+    // Normalized pricing
+    pricePerKg: PropTypes.number,
+    pricePerLb: PropTypes.number,
+    pricePerL: PropTypes.number,
+    pricePerG: PropTypes.number,
+    pricePerML: PropTypes.number,
+    pricePerUnit: PropTypes.number,
   }).isRequired,
   /** Whether to display vendor badge */
   showVendor: PropTypes.bool,

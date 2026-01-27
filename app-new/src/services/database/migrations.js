@@ -24,8 +24,8 @@ export const CURRENT_VERSION = 1;
  */
 export const CURRENT_SCHEMA = {
   version: 1,
-  date: '2025-12-10',
-  description: 'Clean schema - vendors, inventory, invoices, purchase orders',
+  date: '2025-12-20',
+  description: 'Clean schema - vendors, inventory, invoices, purchase orders, expense tracking',
   stores: {
     recipes: '++id, name, nameLower, category, department, departmentId, [department+category], portions, plu, updatedAt',
     departments: '++id, name, isDefault, createdAt',
@@ -40,7 +40,9 @@ export const CURRENT_SCHEMA = {
     invoiceLineItems: '++id, invoiceId, inventoryItemId, [invoiceId+lineNumber], matchStatus, createdAt',
     stockTransactions: '++id, inventoryItemId, transactionType, [inventoryItemId+createdAt], referenceType, referenceId, createdAt',
     purchaseOrders: '++id, orderNumber, vendorId, status, createdAt, expectedDeliveryDate, updatedAt',
-    purchaseOrderLines: '++id, purchaseOrderId, inventoryItemId, [purchaseOrderId+lineNumber], createdAt'
+    purchaseOrderLines: '++id, purchaseOrderId, inventoryItemId, [purchaseOrderId+lineNumber], createdAt',
+    expenseCategories: '++id, name, isDefault, isActive, qbAccountId, createdAt, updatedAt',
+    expenseRecords: '++id, invoiceId, vendorId, expenseCategoryId, [vendorId+invoiceDate], [expenseCategoryId+invoiceDate], invoiceDate, amount, qbSynced, createdAt, updatedAt'
   }
 };
 
@@ -51,7 +53,8 @@ export const ALL_TABLES = [
   'recipes', 'departments', 'categories', 'sliders',
   'kitchenSettings', 'productionLogs', 'priceHistory',
   'vendors', 'inventoryItems', 'invoices', 'invoiceLineItems',
-  'stockTransactions', 'purchaseOrders', 'purchaseOrderLines'
+  'stockTransactions', 'purchaseOrders', 'purchaseOrderLines',
+  'expenseCategories', 'expenseRecords'
 ];
 
 // =============================================================================
@@ -299,7 +302,6 @@ export async function fixOrphanedCategories() {
     }
   });
 
-  console.log(`Fixed ${fixed} orphaned category references`);
   return fixed;
 }
 
@@ -322,7 +324,6 @@ export async function fixOrphanedInventoryItems() {
     }
   });
 
-  console.log(`Fixed ${fixed} orphaned inventory item references`);
   return fixed;
 }
 
@@ -345,7 +346,6 @@ export async function cleanOrphanedStockTransactions() {
     }
   });
 
-  console.log(`Cleaned ${deleted} orphaned stock transactions`);
   return deleted;
 }
 
@@ -368,7 +368,6 @@ export async function cleanOrphanedPriceHistory() {
     }
   });
 
-  console.log(`Cleaned ${deleted} orphaned price history records`);
   return deleted;
 }
 
@@ -391,7 +390,6 @@ export async function cleanOrphanedPOLines() {
     }
   });
 
-  console.log(`Cleaned ${deleted} orphaned PO lines`);
   return deleted;
 }
 
@@ -400,8 +398,6 @@ export async function cleanOrphanedPOLines() {
  * @returns {Promise<Object>} Results of all cleanup operations
  */
 export async function runAllCleanup() {
-  console.log('Running all database cleanup utilities...');
-
   const results = {
     orphanedCategories: await fixOrphanedCategories(),
     orphanedInventoryItems: await fixOrphanedInventoryItems(),
@@ -410,7 +406,6 @@ export async function runAllCleanup() {
     orphanedPOLines: await cleanOrphanedPOLines()
   };
 
-  console.log('All cleanup complete');
   return results;
 }
 
@@ -530,8 +525,6 @@ export async function generateDiagnosticReport() {
  * @returns {Promise<Object>} Snapshot with backup and diagnostics
  */
 export async function createBackupSnapshot() {
-  console.log('Creating backup snapshot...');
-
   const snapshot = {
     createdAt: new Date().toISOString(),
     diagnostics: await generateDiagnosticReport(),
@@ -543,7 +536,6 @@ export async function createBackupSnapshot() {
     const compressed = JSON.stringify(snapshot);
     if (compressed.length < 5000000) { // 5MB limit for localStorage
       localStorage.setItem('db_backup_snapshot', compressed);
-      console.log('Snapshot saved to localStorage');
     } else {
       console.warn('Snapshot too large for localStorage - download manually');
     }
@@ -565,7 +557,6 @@ export async function restoreFromSnapshot() {
   }
 
   const snapshot = JSON.parse(snapshotStr);
-  console.log(`Restoring from snapshot created at ${snapshot.createdAt}`);
 
   return await importDatabase(snapshot.backup);
 }
@@ -575,8 +566,6 @@ export async function restoreFromSnapshot() {
  * @returns {Promise<Object>} Counts of cleared tables
  */
 export async function clearInventoryTables() {
-  console.log('Clearing inventory management tables...');
-
   const cleared = {};
 
   const tablesToClear = [
@@ -589,11 +578,9 @@ export async function clearInventoryTables() {
       const count = await db[tableName].count();
       await db[tableName].clear();
       cleared[tableName] = count;
-      console.log(`  Cleared ${count} records from ${tableName}`);
     }
   }
 
-  console.log('Inventory tables cleared');
   return cleared;
 }
 
@@ -631,12 +618,6 @@ if (typeof window !== 'undefined') {
     clearInventoryTables
   };
 
-  console.log('Database utilities available at window.dbMigrations');
-  console.log('   Commands:');
-  console.log('   - dbMigrations.generateDiagnosticReport() - Full status report');
-  console.log('   - dbMigrations.createBackupSnapshot() - Backup before changes');
-  console.log('   - dbMigrations.runAllCleanup() - Fix orphaned references');
-  console.log('   - dbMigrations.clearInventoryTables() - Reset inventory tables');
 }
 
 export default {

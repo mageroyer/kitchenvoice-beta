@@ -55,7 +55,17 @@
 }
 
 .navLogoIcon {
-  font-size: 1.8rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.footerLogoIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-right: 0.5rem;
 }
 
 .navLinks {
@@ -256,6 +266,13 @@
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.heroCtaNote {
+  font-size: 0.85rem;
+  color: var(--smoke);
+  font-weight: 500;
 }
 
 /* Buttons */
@@ -469,6 +486,22 @@
 .mockupIngSpec {
   color: var(--smoke);
   font-style: italic;
+}
+
+.mockupCost {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(0,0,0,0.1);
+  font-size: 0.9rem;
+  color: var(--smoke);
+}
+
+.mockupCost strong {
+  color: var(--herb);
+  font-size: 1.1rem;
 }
 
 .heroFloating {
@@ -1394,25 +1427,6 @@
   color: var(--charcoal);
   margin-bottom: 16px;
   line-height: 1.6;
-}
-
-.waitlistAlt {
-  color: #666;
-  font-size: 14px;
-  margin-bottom: 24px;
-}
-
-.waitlistDemoLink {
-  background: none;
-  border: none;
-  color: var(--saffron);
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.waitlistDemoLink:hover {
-  color: #b8860b;
 }
 
 .waitlistForm {

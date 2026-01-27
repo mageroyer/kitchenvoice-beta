@@ -6,7 +6,7 @@
  * Extracted from ControlPanelPage for code splitting.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import styles from '../../styles/pages/controlpanelpage.module.css';
@@ -146,6 +146,65 @@ function BackupTab({
   categories,
   getRecipesByDepartment,
 }) {
+  const [clearingCloud, setClearingCloud] = useState(false);
+  const [clearCloudStatus, setClearCloudStatus] = useState('');
+
+  // Clear all cloud data from Firestore
+  const handleClearCloudData = useCallback(async () => {
+    if (!confirm('⚠️ WARNING: This will DELETE ALL your cloud data (recipes, departments, categories, inventory, invoices, etc.).\n\nThis cannot be undone!\n\nAre you sure?')) {
+      return;
+    }
+
+    // Double confirmation
+    if (!confirm('This is your LAST CHANCE to cancel.\n\nPress OK to permanently delete all cloud data.')) {
+      return;
+    }
+
+    setClearingCloud(true);
+    setClearCloudStatus('Starting...');
+
+    try {
+      const auth = getAuth();
+      const db = getFirestore();
+
+      if (!auth.currentUser) {
+        alert('Not logged in. Please login first.');
+        setClearingCloud(false);
+        return;
+      }
+
+      const syncId = `user_${auth.currentUser.uid}`;
+      const collections = [
+        'recipes', 'departments', 'categories', 'vendors',
+        'inventoryItems', 'invoices', 'invoiceLineItems',
+        'stockTransactions', 'purchaseOrders', 'purchaseOrderLines',
+        'priceHistory', 'tasks', 'privileges'
+      ];
+
+      let totalDeleted = 0;
+
+      for (const colName of collections) {
+        setClearCloudStatus(`Clearing ${colName}...`);
+        const colRef = collection(db, 'cookbooks', syncId, colName);
+        const snapshot = await getDocs(colRef);
+
+        for (const docSnap of snapshot.docs) {
+          await deleteDoc(doc(db, 'cookbooks', syncId, colName, docSnap.id));
+          totalDeleted++;
+        }
+      }
+
+      setClearCloudStatus(`✅ Deleted ${totalDeleted} documents from cloud`);
+      alert(`Successfully deleted ${totalDeleted} documents from Firestore.\n\nNow clear your browser data or run fullReset() in console to start fresh.`);
+    } catch (error) {
+      console.error('Error clearing cloud data:', error);
+      setClearCloudStatus(`❌ Error: ${error.message}`);
+      alert('Error clearing cloud data: ' + error.message);
+    } finally {
+      setClearingCloud(false);
+    }
+  }, []);
+
   // Export JSON backup
   const handleExportJSON = useCallback(() => {
     const data = {
@@ -182,8 +241,7 @@ function BackupTab({
       }
 
       if (confirm(`This will import ${data.recipes.length} recipes, ${data.departments.length} departments, and ${data.categories.length} categories. Continue?`)) {
-        console.log('Import data:', data);
-        alert('Import functionality will be fully implemented in production. Data logged to console.');
+        alert('Import functionality will be fully implemented in production.');
       }
     } catch (error) {
       console.error('Error importing file:', error);

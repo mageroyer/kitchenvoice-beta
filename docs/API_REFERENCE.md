@@ -611,16 +611,18 @@ x-ratelimit-tokens-remaining: 45000
 
 ---
 
-## Invoice Merger Service
+## Handler Line Processing
 
-**Location:** `services/inventory/invoiceMerger.js`
+**Location:** `services/invoice/handlers/`
 
-The Invoice Merger performs Phase 3 of invoice processing: merging local analysis with Claude's AI parsing.
+Line processing and analysis is now handled by type-specific handlers via `processLines()`.
+
+> **Note:** The `invoiceMerger.js` module was removed. All line processing logic has been moved to handlers.
 
 ### Constants
 
 ```javascript
-import { LINE_TYPE, CONFIDENCE, SOURCE } from 'services/inventory/invoiceMerger';
+import { LINE_TYPE, CONFIDENCE, SOURCE, ANOMALY_TYPES } from 'services/invoice/handlers/types';
 
 // Line type classification
 LINE_TYPE.PRODUCT   // Regular inventory item
@@ -630,7 +632,7 @@ LINE_TYPE.CREDIT    // Returns, refunds (negative)
 LINE_TYPE.ZERO      // Zero qty AND zero price
 
 // Confidence levels
-CONFIDENCE.HIGH     // Local extraction matched
+CONFIDENCE.HIGH     // Math validated, weight extracted
 CONFIDENCE.MEDIUM   // Only Claude data available
 CONFIDENCE.LOW      // Discrepancy detected
 CONFIDENCE.MANUAL   // Needs manual entry
@@ -640,78 +642,233 @@ SOURCE.LOCAL        // From local regex extraction
 SOURCE.CLAUDE       // From Claude AI parsing
 SOURCE.MERGED       // Combination of both
 SOURCE.USER         // User-provided override
+
+// Anomaly types (line-level)
+ANOMALY_TYPES.MATH_MISMATCH      // qty × price ≠ total
+ANOMALY_TYPES.ZERO_PRICE         // Item at $0
+ANOMALY_TYPES.MISSING_QUANTITY   // No quantity
+ANOMALY_TYPES.MISSING_WEIGHT     // Food supply only
 ```
 
-### Functions
+### Handler Methods
 
-#### `detectLineType(item)`
+#### `handler.processLines(claudeLines)`
 
-Classify a line item for routing to inventory/accounting.
+Main entry point for line processing. Includes math validation, anomaly detection, and type-specific analysis.
 
 ```javascript
-import { detectLineType, LINE_TYPE } from 'services/inventory/invoiceMerger';
+import { getHandlerForProfile } from 'services/invoice/handlers';
 
+const handler = getHandlerForProfile(profile);
+const result = handler.processLines(claudeLines);
+// Returns: {
+//   lines: [ ... ],           // Processed line items
+//   allAnomalies: [ ... ],    // Collected anomalies
+//   summary: {
+//     totalLines, linesWithAnomalies,
+//     byType: { product, deposit, fee, credit, zero },
+//     productSubtotal, depositTotal, effectiveSubtotal,
+//     inventoryLineCount, accountingLineCount,
+//     calculatedSubtotal
+//   }
+// }
+```
+
+#### `handler.processLine(claudeLine, index)`
+
+Process a single line item with analysis.
+
+```javascript
+const processed = handler.processLine(claudeLine, 0);
+// Returns: {
+//   name, description, category,
+//   quantity, unitPrice, totalPrice,
+//   mathValid, anomalies, hasAnomalies,
+//   lineType: 'product',
+//   forInventory: true,
+//   forAccounting: true,
+//   isDeposit: false,
+//   // Type-specific fields (e.g., pricePerG for food supply)
+// }
+```
+
+### Base Handler Functions
+
+Available in all handlers via `baseHandler.js`:
+
+```javascript
+import { detectLineType, getRoutingFlags, analyzeLineItem } from 'services/invoice/handlers/baseHandler';
+
+// Detect line type from description
 const lineType = detectLineType({
   description: 'CONSIGNATION BOUTEILLE',
   quantity: 6,
   totalPrice: 3.00
 });
 // Returns: LINE_TYPE.DEPOSIT
+
+// Get routing flags
+const flags = getRoutingFlags({ lineType: LINE_TYPE.PRODUCT });
+// Returns: { forInventory: true, forAccounting: true, isDeposit: false }
+
+// Base analysis (used by genericHandler)
+const analysis = analyzeLineItem(line, lineNumber);
+// Returns: { mathValid, anomalies, quantity, unitPrice, totalPrice, ... }
 ```
 
-**Detection Rules:**
-- `CREDIT`: totalPrice < 0 OR quantity < 0 OR isCredit flag
-- `DEPOSIT`: Description matches /consign|dépôt|deposit|container/i
-- `FEE`: Description matches /delivery|livraison|freight|\bfrais\b/i
-- `ZERO`: quantity === 0 AND totalPrice === 0
-- `PRODUCT`: Default for all other items
+---
 
-#### `mergeInvoice(localAnalysis, claudeParsed)`
+## Invoice Type Handler Registry
 
-Main entry point for Phase 3. Merges local analysis with Claude parsing.
+**Location:** `services/invoice/handlers/handlerRegistry.js`
+
+The handler registry dispatches invoice processing to type-specific handlers based on vendor configuration.
+
+### Handler Types
 
 ```javascript
-import { mergeInvoice } from 'services/inventory/invoiceMerger';
+import { INVOICE_TYPES } from 'services/invoice/handlers';
 
-const mergedInvoice = mergeInvoice(localAnalysis, claudeParsed);
+INVOICE_TYPES.FOOD_SUPPLY          // 'foodSupply'
+INVOICE_TYPES.PACKAGING_DISTRIBUTOR // 'packagingDistributor'
+INVOICE_TYPES.GENERIC              // 'generic'
+INVOICE_TYPES.UTILITIES            // 'utilities' (coming soon)
+INVOICE_TYPES.SERVICES             // 'services' (coming soon)
+```
+
+### Functions
+
+#### `getHandler(invoiceType)`
+
+Get handler for a specific invoice type.
+
+```javascript
+import { getHandler } from 'services/invoice/handlers';
+
+const handler = getHandler('foodSupply');
+// Returns: foodSupplyHandler object
+```
+
+#### `getHandlerForVendor(vendor)`
+
+Get handler from vendor object (checks parsingProfile.invoiceType).
+
+```javascript
+import { getHandlerForVendor } from 'services/invoice/handlers';
+
+const handler = getHandlerForVendor(vendor);
+// Returns: appropriate handler based on vendor.parsingProfile.invoiceType
+```
+
+#### `getHandlerForProfile(profile)`
+
+Get handler from a parsing profile.
+
+```javascript
+import { getHandlerForProfile } from 'services/invoice/handlers';
+
+const handler = getHandlerForProfile(profile);
+// Returns: handler based on profile.invoiceType
+```
+
+#### `createInventoryItem({ lineItem, vendor, profile, invoiceId, invoiceDate })`
+
+Create a new inventory item using the appropriate handler.
+
+```javascript
+import { createInventoryItem } from 'services/invoice/handlers';
+
+const { item, warnings, validation } = createInventoryItem({
+  lineItem: { description: 'Beef Tenderloin', quantity: 10, unitPrice: 25.00, weight: 50, weightUnit: 'lb' },
+  vendor: { id: 1, name: 'Sysco' },
+  profile: { invoiceType: 'foodSupply' },
+  invoiceId: 'inv_123',
+  invoiceDate: '2025-01-15'
+});
 // Returns: {
-//   status: 'ready' | 'warning' | 'error' | 'duplicate',
-//   vendor: { ... },
-//   totals: { subtotal, taxAmount, totalAmount },
-//   lineItems: [ ... ],  // Each with lineType, forInventory, forAccounting
-//   summary: {
-//     byType: { product, deposit, fee, credit, zero },
-//     productSubtotal, depositTotal, effectiveSubtotal,
-//     inventoryLineCount, accountingLineCount
-//   }
+//   item: { name, vendorId, pricePerG, stockWeight, ... },
+//   warnings: [],
+//   validation: { valid: true, errors: [], warnings: [] }
 // }
 ```
 
-#### `mergeLineItem(localLine, claudeLine)`
+#### `updateInventoryItem({ existingItem, lineItem, vendor, profile, invoiceId, invoiceDate })`
 
-Merge a single line item with weight comparison and pricePerG calculation.
+Update an existing inventory item using the appropriate handler.
 
 ```javascript
-const merged = mergeLineItem(localLine, claudeLine);
+import { updateInventoryItem } from 'services/invoice/handlers';
+
+const { updates, warnings, previousValues, validation } = updateInventoryItem({
+  existingItem: { id: 1, name: 'Beef Tenderloin', stockWeight: 100 },
+  lineItem: { quantity: 10, unitPrice: 26.00, weight: 50, weightUnit: 'lb' },
+  vendor: { id: 1, name: 'Sysco' },
+  profile: { invoiceType: 'foodSupply' },
+  invoiceId: 'inv_456',
+  invoiceDate: '2025-01-20'
+});
 // Returns: {
-//   name, description, category,
-//   quantity, unitPrice, totalPrice,
-//   weight, weightUnit, weightInGrams,
-//   pricePerG, pricePerML,
-//   lineType: 'product',
-//   forInventory: true,
-//   forAccounting: true,
-//   isDeposit: false
+//   updates: { lastPurchasePrice: 26.00, stockWeight: 150, pricePerG: 0.0115, ... },
+//   warnings: [],
+//   previousValues: { lastPurchasePrice: 25.00 },
+//   validation: { valid: true, errors: [], warnings: [] }
 // }
 ```
 
-#### `applyWeightOverride(line, value, unit)`
+#### `formatLinesForDisplay({ lines, profile })`
 
-Apply user override to a line item's weight (recalculates pricePerG).
+Format invoice lines for UI display using the appropriate handler.
 
 ```javascript
-const updatedLine = applyWeightOverride(line, 500, 'g');
-// Returns line with updated weight, pricePerG, and SOURCE.USER
+import { formatLinesForDisplay } from 'services/invoice/handlers';
+
+const formattedLines = formatLinesForDisplay({
+  lines: claudeParsedLines,
+  profile: { invoiceType: 'foodSupply' }
+});
+// Returns: Array of lines with display-ready fields
+```
+
+#### `getDisplayFieldMap({ item, profile })`
+
+Get display field map for table columns.
+
+```javascript
+import { getDisplayFieldMap } from 'services/invoice/handlers';
+
+const fieldMap = getDisplayFieldMap({
+  item: lineItem,
+  profile: { invoiceType: 'packagingDistributor' }
+});
+// Returns: { 'sku': 'ABC123', 'description': 'Container 2.25LB', 'format': '6x50', ... }
+```
+
+#### `getAllWizardOptions()`
+
+Get all wizard configurations for vendor profile setup UI.
+
+```javascript
+import { getAllWizardOptions } from 'services/invoice/handlers';
+
+const options = getAllWizardOptions();
+// Returns: [
+//   { type: 'foodSupply', icon: '🥩', title: 'Food Supplier', description: '...', options: [...] },
+//   { type: 'packagingDistributor', icon: '📦', title: 'Packaging Distributor', ... },
+//   { type: 'generic', icon: '📄', title: 'Other / General', ... },
+//   { type: 'utilities', icon: '⚡', title: 'Utilities', comingSoon: true, ... },
+//   { type: 'services', icon: '🔧', title: 'Services', comingSoon: true, ... }
+// ]
+```
+
+#### `getPromptHints(profile)`
+
+Get AI prompt hints for Claude parsing.
+
+```javascript
+import { getPromptHints } from 'services/invoice/handlers';
+
+const hints = getPromptHints({ invoiceType: 'foodSupply' });
+// Returns: Array of strings to add to Claude prompt for type-specific parsing
 ```
 
 ---
@@ -1059,4 +1216,4 @@ See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for complete table definitions and 
 
 ---
 
-*Last Updated: 2025-12-14*
+*Last Updated: 2025-12-20*

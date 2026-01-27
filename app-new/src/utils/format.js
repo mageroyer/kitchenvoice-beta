@@ -359,7 +359,6 @@ export function extractWeightFromName(name) {
         isMultiplied: true,
       };
 
-      console.log(`[extractWeightFromName] ✓ Multiplier found in "${name}": ${count}×${perUnitValue}${unit} = ${totalValue}${unit}`, result);
       return result;
     }
   }
@@ -432,17 +431,9 @@ export function extractWeightFromName(name) {
         original: match[0].trim(),
       };
 
-      console.log(`[extractWeightFromName] ✓ Found in "${name}":`, {
-        extracted: result.original,
-        value: result.value,
-        unit: result.unit,
-        baseUnits: `${result.valueInGrams}${isVolume ? 'ml' : 'g'}`,
-      });
-
       return result;
     }
   }
 
-  console.log(`[extractWeightFromName] ✗ No weight/volume found in "${name}"`);
   return null;
 }

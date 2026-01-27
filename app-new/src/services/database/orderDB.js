@@ -8,6 +8,8 @@
  */
 
 import { db, getCloudSync } from './db.js';
+// Import Quebec tax config from central source
+import { QUEBEC_TAX } from '../invoice/mathEngine/types';
 
 // ============================================
 // Stock Transaction Constants
@@ -963,8 +965,8 @@ export const purchaseOrderDB = {
     // Quebec compound tax rule: TVQ is calculated on (subtotal + TPS)
     // TPS (GST) = 5% of subtotal
     // TVQ (QST) = 9.975% of (subtotal + TPS)
-    const taxGST = Math.round(subtotal * 0.05 * 100) / 100;
-    const taxQST = Math.round((subtotal + taxGST) * 0.09975 * 100) / 100;
+    const taxGST = Math.round(subtotal * QUEBEC_TAX.TPS_RATE * 100) / 100;
+    const taxQST = Math.round((subtotal + taxGST) * QUEBEC_TAX.TVQ_RATE * 100) / 100;
     const total = Math.round((subtotal + taxGST + taxQST) * 100) / 100;
 
     return await this.update(id, {

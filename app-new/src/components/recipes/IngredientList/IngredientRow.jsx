@@ -228,38 +228,37 @@ function IngredientRow({
             placeholder="0g"
           />
         </div>
-        {/* Tool display - shows original from PDF or calculated from metric */}
-        <div
-          className={`${styles.toolDisplay} ${isLinked ? styles.toolClickable : ''}`}
-          onClick={() => {
-            if (isLinked) {
-              onOpenToolSelector?.(index);
-            }
-          }}
-          title={
-            isLinked
-              ? hasTool
+        {/* Tool field - editable Input for non-linked, clickable display for linked */}
+        {isLinked ? (
+          <div
+            className={`${styles.toolDisplay} ${styles.toolClickable}`}
+            onClick={() => onOpenToolSelector?.(index)}
+            title={
+              hasTool
                 ? `${ingredient.selectedTool.name} (1 ${ingredient.selectedTool.abbrev} = ${ingredient.selectedTool.weightG}g) - Click to change`
                 : 'Click to select a tool measurement'
-              : ingredient.toolMeasure
-                ? `Original: ${ingredient.toolMeasure}`
-                : ''
-          }
-        >
-          {calculatedToolDisplay.hasValue ? (
-            // Linked with selectedTool: show calculated from metric
-            <span className={styles.toolValue}>{calculatedToolDisplay.display}</span>
-          ) : ingredient.toolMeasure ? (
-            // Not linked but has original from PDF: show original value
-            <span className={styles.toolOriginal}>{ingredient.toolMeasure}</span>
-          ) : isLinked ? (
-            // Linked but no tool selected: show placeholder
-            <span className={styles.toolPlaceholder}>+ tool</span>
-          ) : (
-            // Not linked, no original: show dash
-            <span className={styles.toolNA}>—</span>
-          )}
-        </div>
+            }
+          >
+            {calculatedToolDisplay.hasValue ? (
+              <span className={styles.toolValue}>{calculatedToolDisplay.display}</span>
+            ) : (
+              <span className={styles.toolPlaceholder}>+ tool</span>
+            )}
+          </div>
+        ) : (
+          <Input
+            value={ingredient.toolMeasure || ''}
+            onChange={(e) => onUpdate(index, 'toolMeasure', e.target.value)}
+            onFocus={() => onFieldFocus(index, 'toolMeasure')}
+            size="small"
+            compact
+            className={styles.toolInput}
+            showVoice={micFlag}
+            voiceActive={isFieldActive('toolMeasure')}
+            onVoiceClick={onVoiceStop}
+            placeholder=""
+          />
+        )}
         <Input
           value={isLinked ? (ingredient.linkedName || ingredient.name) : ingredient.name}
           onChange={(e) => onUpdate(index, isLinked ? 'linkedName' : 'name', e.target.value)}
@@ -287,9 +286,40 @@ function IngredientRow({
         {isOwner && (
           <div className={styles.priceDisplay}>
             {priceData.price !== null ? (
-              <span className={styles.calculatedPrice}>
-                ${priceData.price.toFixed(2)}
-              </span>
+              <>
+                <span className={styles.calculatedPrice}>
+                  ${priceData.price.toFixed(2)}
+                </span>
+                {/* Price variation arrow - supports pricePerG, pricePerML, pricePerUnit */}
+                {(() => {
+                  if (!linkedInventoryItem) return null;
+                  // Check all price types for variation
+                  let currentPrice = null;
+                  let previousPrice = null;
+                  if (linkedInventoryItem.pricePerG > 0 && linkedInventoryItem.previousPricePerG > 0) {
+                    currentPrice = linkedInventoryItem.pricePerG;
+                    previousPrice = linkedInventoryItem.previousPricePerG;
+                  } else if (linkedInventoryItem.pricePerML > 0 && linkedInventoryItem.previousPricePerML > 0) {
+                    currentPrice = linkedInventoryItem.pricePerML;
+                    previousPrice = linkedInventoryItem.previousPricePerML;
+                  } else if (linkedInventoryItem.pricePerUnit > 0 && linkedInventoryItem.previousPricePerUnit > 0) {
+                    currentPrice = linkedInventoryItem.pricePerUnit;
+                    previousPrice = linkedInventoryItem.previousPricePerUnit;
+                  }
+                  if (currentPrice && previousPrice && currentPrice !== previousPrice) {
+                    const pctChange = ((currentPrice - previousPrice) / previousPrice) * 100;
+                    return (
+                      <span
+                        className={currentPrice > previousPrice ? styles.priceArrowUp : styles.priceArrowDown}
+                        title={`${pctChange > 0 ? '+' : ''}${pctChange.toFixed(1)}%`}
+                      >
+                        {currentPrice > previousPrice ? '▲' : '▼'}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </>
             ) : priceData.error === 'not_linked' ? (
               <span className={styles.priceNA} title="Lier l'ingrédient pour voir le prix">
                 —

@@ -58,7 +58,6 @@ function LoginPage() {
 
         if (!setupComplete) {
           // Need to complete business setup first
-          console.log('🔧 Business setup incomplete - showing wizard...');
           setLoggedInUser({
             uid: result.user.uid,
             displayName: result.user.displayName || email.split('@')[0]
@@ -113,8 +112,6 @@ function LoginPage() {
       try {
         const result = await authenticateWithPin(setupData.pin);
         if (result.success) {
-          console.log('✅ Owner auto-authenticated after setup');
-          console.log('📂 Default department set to:', setupData.defaultDepartment);
           navigate(ROUTES.RECIPES);
           return;
         }
@@ -135,7 +132,8 @@ function LoginPage() {
       <div className={styles.authContainer}>
         <Card className={styles.authCard}>
           <div className={styles.authHeader}>
-            <h1 className={styles.authTitle}>SmartCookBook</h1>
+            <img src="/favicon.svg" alt="" className={styles.authLogo} />
+            <h1 className={styles.authTitle}>KitchenCommand</h1>
             <p className={styles.authSubtitle}>Sign in to your account</p>
           </div>
 

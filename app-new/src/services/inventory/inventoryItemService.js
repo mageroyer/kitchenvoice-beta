@@ -160,17 +160,24 @@ export function validateItemData(data, { isUpdate = false } = {}) {
     errors.push('Item name must be 200 characters or less');
   }
 
-  // Stock validation
-  if (data.currentStock !== undefined && data.currentStock !== null) {
-    if (typeof data.currentStock !== 'number' || data.currentStock < 0) {
-      errors.push('Current stock must be a non-negative number');
+  // Stock quantity validation
+  if (data.stockQuantity !== undefined && data.stockQuantity !== null) {
+    if (typeof data.stockQuantity !== 'number' || data.stockQuantity < 0) {
+      errors.push('Stock quantity must be a non-negative number');
     }
   }
 
-  // Par level validation
-  if (data.parLevel !== undefined && data.parLevel !== null) {
-    if (typeof data.parLevel !== 'number' || data.parLevel < 0) {
-      errors.push('Par level must be a non-negative number');
+  // Stock weight validation
+  if (data.stockWeight !== undefined && data.stockWeight !== null) {
+    if (typeof data.stockWeight !== 'number' || data.stockWeight < 0) {
+      errors.push('Stock weight must be a non-negative number');
+    }
+  }
+
+  // Par quantity validation
+  if (data.parQuantity !== undefined && data.parQuantity !== null) {
+    if (typeof data.parQuantity !== 'number' || data.parQuantity < 0) {
+      errors.push('Par quantity must be a non-negative number');
     }
   }
 
@@ -201,17 +208,10 @@ export function validateItemData(data, { isUpdate = false } = {}) {
     }
   }
 
-  // Package size validation
-  if (data.packageSize !== undefined && data.packageSize !== null) {
-    if (typeof data.packageSize !== 'number' || data.packageSize <= 0) {
-      errors.push('Package size must be a positive number');
-    }
-  }
-
-  // Units per package validation
-  if (data.unitsPerPackage !== undefined && data.unitsPerPackage !== null) {
-    if (typeof data.unitsPerPackage !== 'number' || data.unitsPerPackage <= 0) {
-      errors.push('Units per package must be a positive number');
+  // Units per case validation
+  if (data.unitsPerCase !== undefined && data.unitsPerCase !== null) {
+    if (typeof data.unitsPerCase !== 'number' || data.unitsPerCase <= 0) {
+      errors.push('Units per case must be a positive number');
     }
   }
 
@@ -264,18 +264,17 @@ export function getStockStatus(percent, thresholds = STOCK_THRESHOLDS) {
  * @param {Object} data - Item data
  * @param {string} data.name - Item name (required)
  * @param {number} data.vendorId - Vendor ID (required)
- * @param {string} data.unit - Stock unit (required, e.g., 'kg', 'L', 'ea')
  * @param {string} [data.description] - Item description
  * @param {string} [data.sku] - SKU/product code
  * @param {string} [data.category] - Item category
- * @param {number} [data.currentStock=0] - Initial stock level
- * @param {number} [data.parLevel] - Target stock level
+ * @param {number} [data.stockQuantity=0] - Initial stock quantity
+ * @param {number} [data.stockWeight=0] - Initial stock weight
+ * @param {number} [data.parQuantity] - Target stock quantity
+ * @param {number} [data.parWeight] - Target stock weight
  * @param {number} [data.reorderPoint] - Reorder trigger level
  * @param {number} [data.reorderQuantity] - Default reorder quantity
  * @param {number} [data.currentPrice] - Current unit price
- * @param {number} [data.packageSize] - Package size
- * @param {string} [data.packageUnit] - Package unit
- * @param {number} [data.unitsPerPackage] - Units per package
+ * @param {number} [data.unitsPerCase] - Units per case
  * @param {string[]} [data.aliases] - Alternative names for matching
  * @param {boolean} [data.isActive=true] - Active status
  * @param {string} [data.createdBy] - User ID
@@ -305,8 +304,10 @@ export async function createItem(data, { createInitialTransaction = true } = {})
     ...data,
     nameNormalized,
     vendorName: data.vendorName || vendor.name,
-    currentStock: data.currentStock || 0,
-    parLevel: data.parLevel || 0,
+    stockQuantity: data.stockQuantity || 0,
+    stockWeight: data.stockWeight || 0,
+    parQuantity: data.parQuantity || 0,
+    parWeight: data.parWeight || 0,
     reorderPoint: data.reorderPoint || 0,
     reorderQuantity: data.reorderQuantity || 0,
     criticalThreshold: data.criticalThreshold || STOCK_THRESHOLDS.CRITICAL,
@@ -328,17 +329,18 @@ export async function createItem(data, { createInitialTransaction = true } = {})
     }
 
     // Create initial stock transaction if there's starting stock (defensive)
-    if (createInitialTransaction && itemData.currentStock > 0) {
+    const initialStock = itemData.stockQuantity || itemData.stockWeight || 0;
+    if (createInitialTransaction && initialStock > 0) {
       const txnType = TRANSACTION_TYPE?.ADJUSTMENT || 'adjustment';
       const refType = REFERENCE_TYPE?.MANUAL || 'manual';
 
       await safeCall(stockTransactionDB, 'create', [{
         inventoryItemId: id,
         transactionType: txnType,
-        quantityChange: itemData.currentStock,
+        quantityChange: initialStock,
         stockBefore: 0,
-        stockAfter: itemData.currentStock,
-        unit: itemData.unit,
+        stockAfter: initialStock,
+        unit: itemData.stockQuantityUnit || itemData.stockWeightUnit || 'ea',
         referenceType: refType,
         reason: 'Initial stock entry',
         createdBy: data.createdBy
@@ -401,9 +403,12 @@ export async function updateItem(id, data, { trackStockChange = true, stockChang
     data.nameNormalized = normalizeName(data.name);
   }
 
-  // Track stock changes
-  const stockChanged = data.currentStock !== undefined &&
-    data.currentStock !== existing.currentStock;
+  // Track stock changes (check both stockQuantity and stockWeight)
+  const qtyChanged = data.stockQuantity !== undefined &&
+    data.stockQuantity !== existing.stockQuantity;
+  const weightChanged = data.stockWeight !== undefined &&
+    data.stockWeight !== existing.stockWeight;
+  const stockChanged = qtyChanged || weightChanged;
 
   try {
     // Check if update function exists
@@ -419,8 +424,13 @@ export async function updateItem(id, data, { trackStockChange = true, stockChang
 
     // Create stock transaction if stock changed (defensive)
     if (stockChanged && trackStockChange) {
-      const stockBefore = existing.currentStock || 0;
-      const stockAfter = data.currentStock;
+      // Use the field that changed
+      const stockBefore = qtyChanged
+        ? (existing.stockQuantity || 0)
+        : (existing.stockWeight || 0);
+      const stockAfter = qtyChanged
+        ? data.stockQuantity
+        : data.stockWeight;
       const quantityChange = stockAfter - stockBefore;
       const txnType = TRANSACTION_TYPE?.ADJUSTMENT || 'adjustment';
       const refType = REFERENCE_TYPE?.MANUAL || 'manual';
@@ -431,7 +441,9 @@ export async function updateItem(id, data, { trackStockChange = true, stockChang
         quantityChange,
         stockBefore,
         stockAfter,
-        unit: existing.unit,
+        unit: qtyChanged
+          ? (existing.stockQuantityUnit || 'ea')
+          : (existing.stockWeightUnit || 'lb'),
         referenceType: refType,
         reason: stockChangeReason || 'Manual stock adjustment',
         createdBy: updatedBy
@@ -877,6 +889,39 @@ export async function getInHouseItems({ department = null, activeOnly = true } =
 }
 
 /**
+ * Clear all in-house inventory stock (reset to zero)
+ * Used for daily/shift reset when no POS integration
+ *
+ * @returns {Promise<Object>} Result with count of cleared items
+ */
+export async function clearAllInHouseStock() {
+  try {
+    const inHouseItems = await getInHouseItems({ activeOnly: false });
+
+    if (inHouseItems.length === 0) {
+      return { success: true, clearedCount: 0 };
+    }
+
+    let clearedCount = 0;
+    for (const item of inHouseItems) {
+      if (item.stockWeight > 0 || item.stockQuantity > 0) {
+        await safeCall(inventoryItemDB, 'update', [item.id, {
+          stockWeight: 0,
+          stockQuantity: 0,
+          updatedAt: new Date().toISOString()
+        }]);
+        clearedCount++;
+      }
+    }
+
+    return { success: true, clearedCount };
+  } catch (error) {
+    console.error('[InventoryItemService] clearAllInHouseStock error:', error);
+    throw error;
+  }
+}
+
+/**
  * Get items that need reordering, grouped by vendor
  *
  * @param {Object} [options] - Options
@@ -910,9 +955,11 @@ export async function getItemsForReorder({ threshold = STOCK_THRESHOLDS.LOW } = 
         };
       }
 
-      // Calculate suggested order quantity
+      // Calculate suggested order quantity (use stockQuantity or stockWeight based on item type)
+      const effectiveStock = item.stockWeight > 0 ? item.stockWeight : (item.stockQuantity || 0);
+      const effectivePar = item.parWeight > 0 ? item.parWeight : (item.parQuantity || 0);
       const suggestedQuantity = item.reorderQuantity ||
-        Math.max(0, (item.parLevel || 0) - (item.currentStock || 0));
+        Math.max(0, effectivePar - effectiveStock);
 
       const itemWithSuggestion = {
         ...item,
@@ -947,10 +994,11 @@ export async function getItemsForReorder({ threshold = STOCK_THRESHOLDS.LOW } = 
  * @returns {Object} Item with stockPercent, stockStatus, etc.
  */
 function enrichItemWithCalculations(item) {
-  const currentStock = item.currentStock || 0;
-  const parLevel = item.parLevel || 0;
+  // Use effective stock (weight-based items use stockWeight, count-based use stockQuantity)
+  const effectiveStock = item.stockWeight > 0 ? item.stockWeight : (item.stockQuantity || 0);
+  const effectivePar = item.parWeight > 0 ? item.parWeight : (item.parQuantity || 0);
 
-  const stockPercent = calculateStockPercent(currentStock, parLevel);
+  const stockPercent = calculateStockPercent(effectiveStock, effectivePar);
   const stockStatus = getStockStatus(stockPercent, {
     CRITICAL: item.criticalThreshold || STOCK_THRESHOLDS.CRITICAL,
     LOW: item.lowStockThreshold || STOCK_THRESHOLDS.LOW,
@@ -958,15 +1006,15 @@ function enrichItemWithCalculations(item) {
     OPTIMAL: STOCK_THRESHOLDS.OPTIMAL
   });
 
-  const needsReorder = parLevel > 0 &&
-    currentStock <= (item.reorderPoint || parLevel * 0.25);
+  const needsReorder = effectivePar > 0 &&
+    effectiveStock <= (item.reorderPoint || effectivePar * 0.25);
 
   const quantityToReorder = needsReorder
-    ? (item.reorderQuantity || Math.max(0, parLevel - currentStock))
+    ? (item.reorderQuantity || Math.max(0, effectivePar - effectiveStock))
     : 0;
 
   // Calculate inventory value
-  const inventoryValue = currentStock * (item.currentPrice || 0);
+  const inventoryValue = effectiveStock * (item.currentPrice || 0);
 
   return {
     ...item,
@@ -1179,6 +1227,7 @@ export default {
   getLowStockItems,
   getCriticalStockItems,
   getInHouseItems,
+  clearAllInHouseStock,
   getItemsForReorder,
 
   // Utilities

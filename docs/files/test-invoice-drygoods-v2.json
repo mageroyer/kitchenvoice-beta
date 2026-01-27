@@ -1,0 +1,80 @@
+{
+  "invoice_header": {
+    "company": "Gordon Food Service",
+    "invoice_number": "TEST-DRY-002",
+    "date": "2025-12-30",
+    "address": "1000 Food Service Way, Laval, QC",
+    "phone": "450-555-9012"
+  },
+  "customer": {
+    "name": "Aux saveurs des Sévelin"
+  },
+  "line_items": [
+    {
+      "code": "BASE-POULET",
+      "description": "Base de poulet (Chicken Base) 1KG",
+      "quantity": 2,
+      "unit": "jar",
+      "unit_price": 26.95,
+      "total": 53.90,
+      "weight": 1.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "HERB-PROV",
+      "description": "Herbes de Provence 500G",
+      "quantity": 1,
+      "unit": "jar",
+      "unit_price": 16.95,
+      "total": 16.95,
+      "weight": 0.5,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "AIL-POUDRE",
+      "description": "Ail en poudre (Garlic Powder) 500G",
+      "quantity": 2,
+      "unit": "jar",
+      "unit_price": 14.50,
+      "total": 29.00,
+      "weight": 0.5,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "SUCRE-BLANC",
+      "description": "Sucre blanc (White Sugar) 2KG",
+      "quantity": 1,
+      "unit": "bag",
+      "unit_price": 5.25,
+      "total": 5.25,
+      "weight": 2.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "SEL-TABLE",
+      "description": "Sel de table (Table Salt) 1KG",
+      "quantity": 2,
+      "unit": "box",
+      "unit_price": 2.75,
+      "total": 5.50,
+      "weight": 1.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "POIVRE-NOIR",
+      "description": "Poivre noir moulu (Ground Black Pepper) 500G",
+      "quantity": 1,
+      "unit": "jar",
+      "unit_price": 16.50,
+      "total": 16.50,
+      "weight": 0.5,
+      "weight_unit": "kg"
+    }
+  ],
+  "totals": {
+    "subtotal": 127.10,
+    "tps": 6.36,
+    "tvq": 12.68,
+    "total": 146.14
+  }
+}

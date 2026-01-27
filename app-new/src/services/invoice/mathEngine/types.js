@@ -183,9 +183,21 @@ export const VALIDATION_STATUS = {
 // Quebec Tax Constants
 // ============================================
 
+/**
+ * Quebec Tax Configuration
+ *
+ * IMPORTANT: Quebec uses compound taxation - TVQ is calculated on (subtotal + TPS)
+ * Formula: TVQ = (subtotal + TPS) × 9.975%
+ *
+ * This is the single source of truth for Quebec tax rates.
+ * All files should import from here.
+ */
 export const QUEBEC_TAX = {
   TPS_RATE: 0.05,         // Federal GST: 5%
   TVQ_RATE: 0.09975,      // Quebec QST: 9.975%
+  // Tolerance: 0.5% of expected value or $0.02, whichever is larger
+  TOLERANCE_PERCENT: 0.005,
+  TOLERANCE_MIN: 0.02,
 };
 
 /**

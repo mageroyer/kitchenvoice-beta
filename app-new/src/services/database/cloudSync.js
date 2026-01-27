@@ -50,6 +50,123 @@ const cleanForFirestore = (obj) => {
   return cleaned;
 };
 
+// ============================================
+// DELETION TRACKING (prevents phantom resurrection)
+// ============================================
+
+/**
+ * Record that an item was intentionally deleted.
+ * This prevents cloud sync from re-downloading it.
+ *
+ * @param {string} entityType - Type of entity ('recipe', 'department', 'category', 'vendor', etc.)
+ * @param {number} entityId - The local ID of the deleted item
+ */
+export const recordDeletion = async (entityType, entityId) => {
+  try {
+    // Check if already recorded
+    const existing = await localDb.deletedItems
+      .where({ entityType, entityId })
+      .first();
+
+    if (!existing) {
+      await localDb.deletedItems.add({
+        entityType,
+        entityId,
+        deletedAt: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error(`Failed to record deletion for ${entityType} #${entityId}:`, error);
+  }
+};
+
+/**
+ * Check if an item was intentionally deleted.
+ * Used by sync functions to avoid re-downloading deleted items.
+ *
+ * @param {string} entityType - Type of entity
+ * @param {number} entityId - The local ID
+ * @returns {Promise<boolean>} True if item was intentionally deleted
+ */
+export const isDeleted = async (entityType, entityId) => {
+  try {
+    const record = await localDb.deletedItems
+      .where({ entityType, entityId })
+      .first();
+    return !!record;
+  } catch (error) {
+    console.error(`Failed to check deletion status for ${entityType} #${entityId}:`, error);
+    return false;
+  }
+};
+
+/**
+ * Get all deleted IDs for an entity type (for batch checking)
+ *
+ * @param {string} entityType - Type of entity
+ * @returns {Promise<Set<number>>} Set of deleted entity IDs
+ */
+export const getDeletedIds = async (entityType) => {
+  try {
+    const records = await localDb.deletedItems
+      .where('entityType')
+      .equals(entityType)
+      .toArray();
+    return new Set(records.map(r => r.entityId));
+  } catch (error) {
+    console.error(`Failed to get deleted IDs for ${entityType}:`, error);
+    return new Set();
+  }
+};
+
+/**
+ * Remove a deletion record (use when item is re-created intentionally)
+ *
+ * @param {string} entityType - Type of entity
+ * @param {number} entityId - The local ID
+ */
+export const clearDeletion = async (entityType, entityId) => {
+  try {
+    await localDb.deletedItems
+      .where({ entityType, entityId })
+      .delete();
+  } catch (error) {
+    console.error(`Failed to clear deletion for ${entityType} #${entityId}:`, error);
+  }
+};
+
+/**
+ * Purge old tombstones to prevent table from growing indefinitely.
+ * Call this periodically (e.g., on app start or weekly).
+ *
+ * @param {number} daysOld - Delete tombstones older than this many days (default: 30)
+ * @returns {Promise<number>} Number of tombstones purged
+ */
+export const purgeTombstones = async (daysOld = 30) => {
+  try {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+    const cutoffISO = cutoffDate.toISOString();
+
+    const oldRecords = await localDb.deletedItems
+      .where('deletedAt')
+      .below(cutoffISO)
+      .toArray();
+
+    if (oldRecords.length > 0) {
+      await localDb.deletedItems
+        .where('deletedAt')
+        .below(cutoffISO)
+        .delete();
+    }
+
+    return oldRecords.length;
+  } catch (error) {
+    console.error('Failed to purge tombstones:', error);
+    return 0;
+  }
+};
+
 // Data change notification callbacks
 let dataChangeCallbacks = [];
 
@@ -67,7 +184,6 @@ export const onDataChange = (callback) => {
  * Notify all registered callbacks of a data change
  */
 const notifyDataChange = (dataType) => {
-  console.log(`📢 Data changed: ${dataType}`);
   dataChangeCallbacks.forEach(cb => {
     try {
       cb(dataType);
@@ -184,6 +300,40 @@ const getPurchaseOrderLinesCollection = () => {
   return collection(db, 'cookbooks', syncId, 'purchaseOrderLines');
 };
 
+const getExpenseCategoriesCollection = () => {
+  const syncId = getSyncId();
+  if (!syncId) return null;
+  return collection(db, 'cookbooks', syncId, 'expenseCategories');
+};
+
+const getExpenseRecordsCollection = () => {
+  const syncId = getSyncId();
+  if (!syncId) return null;
+  return collection(db, 'cookbooks', syncId, 'expenseRecords');
+};
+
+// ============================================
+// PUBLIC WEBSITE COLLECTION GETTERS
+// ============================================
+
+/**
+ * Get the store document reference for public website data
+ * Uses the user's UID directly as the store identifier
+ */
+const getStoreDocRef = () => {
+  const currentUser = auth?.currentUser;
+  if (!currentUser?.uid) return null;
+  return doc(db, 'stores', `store_${currentUser.uid}`);
+};
+
+/**
+ * Get the public recipes collection for the current store
+ */
+const getPublicRecipesCollection = () => {
+  const currentUser = auth?.currentUser;
+  if (!currentUser?.uid) return null;
+  return collection(db, 'stores', `store_${currentUser.uid}`, 'publicRecipes');
+};
 
 // Status management
 const setSyncStatus = (status) => {
@@ -226,7 +376,6 @@ export const pushRecipe = async (recipe) => {
     });
     await setDoc(recipeDoc, cleanedRecipe);
     setSyncStatus('synced');
-    console.log('☁️ Recipe synced:', recipe.name);
   } catch (error) {
     console.error('❌ Failed to sync recipe:', error);
     setSyncStatus('error');
@@ -239,6 +388,9 @@ export const pushRecipe = async (recipe) => {
  * @returns {Promise<void>}
  */
 export const deleteRecipeFromCloud = async (recipeId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('recipe', recipeId);
+
   if (!db) return;
   const recipesRef = getRecipesCollection();
   if (!recipesRef) return;
@@ -246,10 +398,10 @@ export const deleteRecipeFromCloud = async (recipeId) => {
     setSyncStatus('syncing');
     await deleteDoc(doc(recipesRef, `recipe_${recipeId}`));
     setSyncStatus('synced');
-    console.log('☁️ Recipe deleted from cloud:', recipeId);
   } catch (error) {
     console.error('❌ Failed to delete recipe from cloud:', error);
     setSyncStatus('error');
+    // Deletion is still recorded locally, so item won't resurrect on next sync
   }
 };
 
@@ -272,7 +424,6 @@ export const pushCategory = async (category) => {
     });
     await setDoc(categoryDoc, cleanedCategory);
     setSyncStatus('synced');
-    console.log('☁️ Category synced:', category.name);
   } catch (error) {
     console.error('❌ Failed to sync category:', error);
     setSyncStatus('error');
@@ -285,6 +436,9 @@ export const pushCategory = async (category) => {
  * @returns {Promise<void>}
  */
 export const deleteCategoryFromCloud = async (categoryId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('category', categoryId);
+
   if (!db) return;
   const categoriesRef = getCategoriesCollection();
   if (!categoriesRef) return;
@@ -292,7 +446,6 @@ export const deleteCategoryFromCloud = async (categoryId) => {
     setSyncStatus('syncing');
     await deleteDoc(doc(categoriesRef, `category_${categoryId}`));
     setSyncStatus('synced');
-    console.log('☁️ Category deleted from cloud:', categoryId);
   } catch (error) {
     console.error('❌ Failed to delete category from cloud:', error);
     setSyncStatus('error');
@@ -318,7 +471,6 @@ export const pushDepartment = async (department) => {
     });
     await setDoc(departmentDoc, cleanedDepartment);
     setSyncStatus('synced');
-    console.log('☁️ Department synced:', department.name);
   } catch (error) {
     console.error('❌ Failed to sync department:', error);
     setSyncStatus('error');
@@ -331,6 +483,9 @@ export const pushDepartment = async (department) => {
  * @returns {Promise<void>}
  */
 export const deleteDepartmentFromCloud = async (departmentId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('department', departmentId);
+
   if (!db) return;
   const departmentsRef = getDepartmentsCollection();
   if (!departmentsRef) return;
@@ -338,7 +493,6 @@ export const deleteDepartmentFromCloud = async (departmentId) => {
     setSyncStatus('syncing');
     await deleteDoc(doc(departmentsRef, `department_${departmentId}`));
     setSyncStatus('synced');
-    console.log('☁️ Department deleted from cloud:', departmentId);
   } catch (error) {
     console.error('❌ Failed to delete department from cloud:', error);
     setSyncStatus('error');
@@ -382,6 +536,9 @@ export const pushVendor = async (vendor) => {
  * @returns {Promise<void>}
  */
 export const deleteVendorFromCloud = async (vendorId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('vendor', vendorId);
+
   if (!db) return;
   const vendorsRef = getVendorsCollection();
   if (!vendorsRef) return;
@@ -461,6 +618,9 @@ export const pushInventoryItem = async (item, options = {}) => {
  * @returns {Promise<void>}
  */
 export const deleteInventoryItemFromCloud = async (itemId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('inventoryItem', itemId);
+
   if (!db) return;
   const itemsRef = getInventoryItemsCollection();
   if (!itemsRef) return;
@@ -502,6 +662,9 @@ export const pushInvoice = async (invoice) => {
 };
 
 export const deleteInvoiceFromCloud = async (invoiceId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('invoice', invoiceId);
+
   if (!db) return;
   const invoicesRef = getInvoicesCollection();
   if (!invoicesRef) return;
@@ -534,6 +697,9 @@ export const pushInvoiceLineItem = async (lineItem) => {
 };
 
 export const deleteInvoiceLineItemFromCloud = async (lineItemId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('invoiceLineItem', lineItemId);
+
   if (!db) return;
   const linesRef = getInvoiceLineItemsCollection();
   if (!linesRef) return;
@@ -600,6 +766,9 @@ export const pushPurchaseOrder = async (order) => {
 };
 
 export const deletePurchaseOrderFromCloud = async (orderId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('purchaseOrder', orderId);
+
   if (!db) return;
   const ordersRef = getPurchaseOrdersCollection();
   if (!ordersRef) return;
@@ -628,6 +797,9 @@ export const pushPurchaseOrderLine = async (line) => {
 };
 
 export const deletePurchaseOrderLineFromCloud = async (lineId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('purchaseOrderLine', lineId);
+
   if (!db) return;
   const linesRef = getPurchaseOrderLinesCollection();
   if (!linesRef) return;
@@ -638,6 +810,225 @@ export const deletePurchaseOrderLineFromCloud = async (lineId) => {
   }
 };
 
+// ============================================
+// EXPENSE CATEGORY SYNC
+// ============================================
+
+/**
+ * Push expense category to Firestore
+ * @param {Object} category - Expense category to sync
+ * @returns {Promise<void>}
+ */
+export const pushExpenseCategory = async (category) => {
+  if (!db) return;
+  const categoriesRef = getExpenseCategoriesCollection();
+  if (!categoriesRef) return;
+  try {
+    setSyncStatus('syncing');
+    const categoryDoc = doc(categoriesRef, `expenseCategory_${category.id}`);
+    const cleanedCategory = cleanForFirestore({
+      ...category,
+      localId: category.id,
+      syncedAt: new Date().toISOString()
+    });
+    await setDoc(categoryDoc, cleanedCategory);
+    setSyncStatus('synced');
+    logger.debug('Expense category synced', { action: 'pushExpenseCategory', data: { name: category.name, id: category.id } });
+  } catch (error) {
+    logger.logError('pushExpenseCategory', error, { categoryId: category?.id });
+    setSyncStatus('error');
+  }
+};
+
+/**
+ * Delete expense category from Firestore
+ * @param {number} categoryId - Category ID to delete
+ * @returns {Promise<void>}
+ */
+export const deleteExpenseCategoryFromCloud = async (categoryId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('expenseCategory', categoryId);
+
+  if (!db) return;
+  const categoriesRef = getExpenseCategoriesCollection();
+  if (!categoriesRef) return;
+  try {
+    setSyncStatus('syncing');
+    await deleteDoc(doc(categoriesRef, `expenseCategory_${categoryId}`));
+    setSyncStatus('synced');
+    logger.debug('Expense category deleted from cloud', { action: 'deleteExpenseCategory', data: { categoryId } });
+  } catch (error) {
+    logger.logError('deleteExpenseCategoryFromCloud', error, { categoryId });
+    setSyncStatus('error');
+  }
+};
+
+// ============================================
+// EXPENSE RECORD SYNC
+// ============================================
+
+/**
+ * Push expense record to Firestore
+ * @param {Object} record - Expense record to sync
+ * @returns {Promise<void>}
+ */
+export const pushExpenseRecord = async (record) => {
+  if (!db) return;
+  const recordsRef = getExpenseRecordsCollection();
+  if (!recordsRef) return;
+  try {
+    setSyncStatus('syncing');
+    const recordDoc = doc(recordsRef, `expenseRecord_${record.id}`);
+    const cleanedRecord = cleanForFirestore({
+      ...record,
+      localId: record.id,
+      syncedAt: new Date().toISOString()
+    });
+    await setDoc(recordDoc, cleanedRecord);
+    setSyncStatus('synced');
+    logger.debug('Expense record synced', { action: 'pushExpenseRecord', data: { id: record.id, amount: record.amount } });
+  } catch (error) {
+    logger.logError('pushExpenseRecord', error, { recordId: record?.id });
+    setSyncStatus('error');
+  }
+};
+
+/**
+ * Delete expense record from Firestore
+ * @param {number} recordId - Record ID to delete
+ * @returns {Promise<void>}
+ */
+export const deleteExpenseRecordFromCloud = async (recordId) => {
+  // ALWAYS record deletion locally first (prevents phantom resurrection)
+  await recordDeletion('expenseRecord', recordId);
+
+  if (!db) return;
+  const recordsRef = getExpenseRecordsCollection();
+  if (!recordsRef) return;
+  try {
+    setSyncStatus('syncing');
+    await deleteDoc(doc(recordsRef, `expenseRecord_${recordId}`));
+    setSyncStatus('synced');
+    logger.debug('Expense record deleted from cloud', { action: 'deleteExpenseRecord', data: { recordId } });
+  } catch (error) {
+    logger.logError('deleteExpenseRecordFromCloud', error, { recordId });
+    setSyncStatus('error');
+  }
+};
+
+// ============================================
+// PUBLIC WEBSITE SYNC FUNCTIONS
+// ============================================
+
+/**
+ * Push a recipe to the public recipes collection
+ * Called when a recipe is marked as visible on the website
+ * @param {Object} recipe - Full recipe object with public data
+ * @returns {Promise<void>}
+ */
+export const pushPublicRecipe = async (recipe) => {
+  if (!db) return;
+
+  // Only sync if recipe is marked as visible
+  if (!recipe.public?.isVisible) {
+    // If not visible, remove from public collection
+    await deletePublicRecipe(recipe.id);
+    return;
+  }
+
+  const publicRecipesRef = getPublicRecipesCollection();
+  if (!publicRecipesRef) {
+    console.error('Cannot push public recipe: No authenticated user');
+    return;
+  }
+
+  try {
+    setSyncStatus('syncing');
+    const recipeDoc = doc(publicRecipesRef, `recipe_${recipe.id}`);
+
+    // Only include fields needed for public display
+    const publicData = cleanForFirestore({
+      id: recipe.id,
+      name: recipe.name,
+      category: recipe.category,
+      // Public display fields
+      isVisible: recipe.public.isVisible,
+      isAvailableToday: recipe.public.isAvailableToday,
+      sellingPrice: recipe.public.sellingPrice,
+      description: recipe.public.description,
+      photo: recipe.public.photo,
+      displayCategory: recipe.public.displayCategory,
+      tags: recipe.public.tags || [],
+      sortOrder: recipe.public.sortOrder || 0,
+      lastPublished: recipe.public.lastPublished,
+      // Sync metadata
+      syncedAt: new Date().toISOString()
+    });
+
+    await setDoc(recipeDoc, publicData);
+    setSyncStatus('synced');
+    logger.debug('Public recipe synced', { action: 'pushPublicRecipe', data: { name: recipe.name, id: recipe.id } });
+  } catch (error) {
+    logger.logError('pushPublicRecipe', error, { recipeId: recipe?.id });
+    setSyncStatus('error');
+  }
+};
+
+/**
+ * Delete a recipe from the public recipes collection
+ * Called when a recipe is marked as not visible or deleted
+ * @param {number} recipeId - Recipe ID to remove
+ * @returns {Promise<void>}
+ */
+export const deletePublicRecipe = async (recipeId) => {
+  if (!db) return;
+
+  const publicRecipesRef = getPublicRecipesCollection();
+  if (!publicRecipesRef) return;
+
+  try {
+    setSyncStatus('syncing');
+    await deleteDoc(doc(publicRecipesRef, `recipe_${recipeId}`));
+    setSyncStatus('synced');
+    logger.debug('Public recipe deleted', { action: 'deletePublicRecipe', data: { recipeId } });
+  } catch (error) {
+    // Ignore if doesn't exist
+    if (error.code !== 'not-found') {
+      logger.logError('deletePublicRecipe', error, { recipeId });
+    }
+    setSyncStatus('synced');
+  }
+};
+
+/**
+ * Push website settings to Firestore
+ * @param {Object} settings - Website settings object
+ * @returns {Promise<void>}
+ */
+export const pushWebsiteSettings = async (settings) => {
+  if (!db) return;
+
+  const storeRef = getStoreDocRef();
+  if (!storeRef) {
+    console.error('Cannot push website settings: No authenticated user');
+    return;
+  }
+
+  try {
+    setSyncStatus('syncing');
+    const cleanedSettings = cleanForFirestore({
+      ...settings,
+      syncedAt: new Date().toISOString()
+    });
+
+    await setDoc(storeRef, { websiteSettings: cleanedSettings }, { merge: true });
+    setSyncStatus('synced');
+    logger.debug('Website settings synced', { action: 'pushWebsiteSettings' });
+  } catch (error) {
+    logger.logError('pushWebsiteSettings', error);
+    setSyncStatus('error');
+  }
+};
 
 // ============================================
 // INITIAL SYNC (on app load)
@@ -658,9 +1049,32 @@ export const initialSync = async () => {
   }
 
   setSyncStatus('syncing');
-  console.log('🔄 Starting initial sync for user:', syncId);
 
   try {
+    // CRITICAL: Clear local data before sync to prevent duplicates from stale cache
+    // This ensures we start fresh and only have data from the cloud
+    // (deletedItems table is preserved to prevent resurrection of deleted items)
+    const deletedItemsBackup = await localDb.deletedItems.toArray();
+    await localDb.recipes.clear();
+    await localDb.departments.clear();
+    await localDb.categories.clear();
+    await localDb.vendors.clear();
+    await localDb.inventoryItems.clear();
+    await localDb.invoices.clear();
+    await localDb.invoiceLineItems.clear();
+    await localDb.priceHistory.clear();
+    await localDb.stockTransactions.clear();
+    await localDb.purchaseOrders.clear();
+    await localDb.purchaseOrderLines.clear();
+    // Restore deletedItems (tombstones) to prevent resurrection
+    if (deletedItemsBackup.length > 0) {
+      await localDb.deletedItems.bulkPut(deletedItemsBackup);
+    }
+    logger.debug('Cleared local data before sync', { action: 'initialSync', data: { preservedTombstones: deletedItemsBackup.length } });
+
+    // Clean up old tombstones first (30 days old)
+    await purgeTombstones(30);
+
     // Sync departments first (categories depend on them)
     await syncDepartments();
 
@@ -682,7 +1096,6 @@ export const initialSync = async () => {
 
     initialSyncDone = true;
     setSyncStatus('synced');
-    console.log('✅ Initial sync complete (including inventory)');
   } catch (error) {
     console.error('❌ Initial sync failed:', error);
     setSyncStatus('error');
@@ -706,8 +1119,6 @@ export const resetSyncState = () => {
 
   // Clear status callbacks to prevent memory leaks from orphaned listeners
   statusCallbacks = [];
-
-  console.log('[CloudSync] Sync state reset');
 };
 
 const syncDepartments = async () => {
@@ -717,19 +1128,90 @@ const syncDepartments = async () => {
   const cloudDepts = await getDocs(deptCollection);
   const localDepts = await departmentDB.getAll();
 
-  const cloudMap = new Map();
-  cloudDepts.forEach(doc => {
-    const data = doc.data();
-    cloudMap.set(data.localId, data);
+  // Get deleted department IDs to prevent resurrection
+  const deletedDeptIds = await getDeletedIds('department');
+
+  // === STEP 1: Deduplicate cloud departments by name (keep most recent) ===
+  const cloudByName = new Map(); // name -> {data, docRef} (most recent)
+  const cloudDuplicateDocs = []; // docs to delete from cloud
+
+  cloudDepts.forEach(docSnapshot => {
+    const data = docSnapshot.data();
+    const nameKey = data.name?.toLowerCase();
+
+    if (cloudByName.has(nameKey)) {
+      const existing = cloudByName.get(nameKey);
+      const existingDate = new Date(existing.data.createdAt || 0);
+      const currentDate = new Date(data.createdAt || 0);
+
+      if (currentDate > existingDate) {
+        // Current is newer, mark existing for deletion
+        cloudDuplicateDocs.push(existing.docRef);
+        cloudByName.set(nameKey, { data, docRef: docSnapshot.ref });
+      } else {
+        // Existing is newer, mark current for deletion
+        cloudDuplicateDocs.push(docSnapshot.ref);
+      }
+    } else {
+      cloudByName.set(nameKey, { data, docRef: docSnapshot.ref });
+    }
   });
 
-  const localMap = new Map();
-  localDepts.forEach(dept => localMap.set(dept.id, dept));
+  // Delete cloud duplicates
+  for (const docRef of cloudDuplicateDocs) {
+    try {
+      await deleteDoc(docRef);
+      logger.debug('Deleted duplicate department from cloud', { action: 'syncDepartments', data: { docId: docRef.id } });
+    } catch (err) {
+      logger.debug('Failed to delete cloud duplicate department', { action: 'syncDepartments', data: { docId: docRef.id, error: err.message } });
+    }
+  }
 
-  // Download new/updated from cloud
-  for (const [localId, cloudDept] of cloudMap) {
+  // === STEP 2: Deduplicate local departments ===
+  const seenNames = new Map();
+  const duplicateIds = [];
+  for (const dept of localDepts) {
+    const nameKey = dept.name?.toLowerCase();
+    if (seenNames.has(nameKey)) {
+      // This is a duplicate - mark for deletion
+      duplicateIds.push(dept.id);
+    } else {
+      seenNames.set(nameKey, dept);
+    }
+  }
+  // Delete local duplicates
+  for (const id of duplicateIds) {
+    await localDb.departments.delete(id);
+    logger.debug('Deleted duplicate local department', { action: 'syncDepartments', data: { id } });
+  }
+  // Refresh local list after deduplication
+  const dedupedLocalDepts = await departmentDB.getAll();
+
+  // Build maps from deduplicated cloud departments
+  const cloudMapById = new Map();
+  const cloudMapByName = new Map();
+  for (const [nameKey, { data }] of cloudByName) {
+    cloudMapById.set(data.localId, data);
+    cloudMapByName.set(nameKey, data);
+  }
+
+  const localMap = new Map();
+  const localMapByName = new Map();
+  dedupedLocalDepts.forEach(dept => {
+    localMap.set(dept.id, dept);
+    localMapByName.set(dept.name?.toLowerCase(), dept);
+  });
+
+  // Download new/updated from cloud (skip if we already have same name locally)
+  for (const [localId, cloudDept] of cloudMapById) {
     const localDept = localMap.get(localId);
-    if (!localDept) {
+    const localByName = localMapByName.get(cloudDept.name?.toLowerCase());
+
+    if (!localDept && !localByName) {
+      // Check if this was intentionally deleted - DON'T resurrect!
+      if (deletedDeptIds.has(localId)) {
+        continue;
+      }
       // New from cloud - use put() to preserve the ID
       await localDb.departments.put({
         id: localId,
@@ -737,15 +1219,25 @@ const syncDepartments = async () => {
         isDefault: cloudDept.isDefault || false,
         createdAt: cloudDept.createdAt
       });
-      console.log('⬇️ Downloaded department:', cloudDept.name);
     }
   }
 
-  // Upload local to cloud
+  // Upload local to cloud (skip if same name already exists in cloud)
   for (const [id, localDept] of localMap) {
-    if (!cloudMap.has(id)) {
+    const cloudByName = cloudMapByName.get(localDept.name?.toLowerCase());
+
+    if (!cloudMapById.has(id) && !cloudByName) {
+      // New local department, doesn't exist in cloud by ID or name
       await pushDepartment(localDept);
-      console.log('⬆️ Uploaded department:', localDept.name);
+    } else if (cloudByName && cloudByName.localId !== id) {
+      // Same name exists in cloud with different ID - update local to match cloud ID
+      await localDb.departments.delete(id);
+      await localDb.departments.put({
+        id: cloudByName.localId,
+        name: cloudByName.name,
+        isDefault: cloudByName.isDefault || false,
+        createdAt: cloudByName.createdAt
+      });
     }
   }
 };
@@ -757,19 +1249,90 @@ const syncCategories = async () => {
   const cloudCats = await getDocs(catCollection);
   const localCats = await categoryDB.getAll();
 
-  const cloudMap = new Map();
-  cloudCats.forEach(doc => {
-    const data = doc.data();
-    cloudMap.set(data.localId, data);
+  // Get deleted category IDs to prevent resurrection
+  const deletedCatIds = await getDeletedIds('category');
+
+  // === STEP 1: Deduplicate cloud categories by name+departmentId (keep most recent) ===
+  const cloudByKey = new Map(); // key -> {data, docRef} (most recent)
+  const cloudDuplicateDocs = []; // docs to delete from cloud
+
+  cloudCats.forEach(docSnapshot => {
+    const data = docSnapshot.data();
+    const key = `${data.name?.toLowerCase()}_${data.departmentId || 'none'}`;
+
+    if (cloudByKey.has(key)) {
+      const existing = cloudByKey.get(key);
+      const existingDate = new Date(existing.data.createdAt || 0);
+      const currentDate = new Date(data.createdAt || 0);
+
+      if (currentDate > existingDate) {
+        // Current is newer, mark existing for deletion
+        cloudDuplicateDocs.push(existing.docRef);
+        cloudByKey.set(key, { data, docRef: docSnapshot.ref });
+      } else {
+        // Existing is newer, mark current for deletion
+        cloudDuplicateDocs.push(docSnapshot.ref);
+      }
+    } else {
+      cloudByKey.set(key, { data, docRef: docSnapshot.ref });
+    }
   });
 
-  const localMap = new Map();
-  localCats.forEach(cat => localMap.set(cat.id, cat));
+  // Delete cloud duplicates
+  for (const docRef of cloudDuplicateDocs) {
+    try {
+      await deleteDoc(docRef);
+      logger.debug('Deleted duplicate category from cloud', { action: 'syncCategories', data: { docId: docRef.id } });
+    } catch (err) {
+      logger.debug('Failed to delete cloud duplicate category', { action: 'syncCategories', data: { docId: docRef.id, error: err.message } });
+    }
+  }
 
-  // Download new from cloud - use put() to preserve the ID
-  for (const [localId, cloudCat] of cloudMap) {
+  // === STEP 2: Deduplicate local categories ===
+  // Categories are unique by name + departmentId
+  const seenKeys = new Map();
+  const duplicateIds = [];
+  for (const cat of localCats) {
+    const key = `${cat.name?.toLowerCase()}_${cat.departmentId || 'none'}`;
+    if (seenKeys.has(key)) {
+      duplicateIds.push(cat.id);
+    } else {
+      seenKeys.set(key, cat);
+    }
+  }
+  for (const id of duplicateIds) {
+    await localDb.categories.delete(id);
+    logger.debug('Deleted duplicate local category', { action: 'syncCategories', data: { id } });
+  }
+  const dedupedLocalCats = await categoryDB.getAll();
+
+  // Build map by localId from deduplicated cloud categories
+  const cloudMapById = new Map();
+  const cloudMapByKey = new Map();
+  for (const [key, { data }] of cloudByKey) {
+    cloudMapById.set(data.localId, data);
+    cloudMapByKey.set(key, data);
+  }
+
+  const localMap = new Map();
+  const localMapByKey = new Map();
+  dedupedLocalCats.forEach(cat => {
+    localMap.set(cat.id, cat);
+    const key = `${cat.name?.toLowerCase()}_${cat.departmentId || 'none'}`;
+    localMapByKey.set(key, cat);
+  });
+
+  // Download new from cloud (skip if same name+dept exists locally)
+  for (const [localId, cloudCat] of cloudMapById) {
     const localCat = localMap.get(localId);
-    if (!localCat) {
+    const key = `${cloudCat.name?.toLowerCase()}_${cloudCat.departmentId || 'none'}`;
+    const localByKey = localMapByKey.get(key);
+
+    if (!localCat && !localByKey) {
+      // Check if this was intentionally deleted - DON'T resurrect!
+      if (deletedCatIds.has(localId)) {
+        continue;
+      }
       await localDb.categories.put({
         id: localId,
         name: cloudCat.name,
@@ -777,15 +1340,16 @@ const syncCategories = async () => {
         isDefault: cloudCat.isDefault || false,
         createdAt: cloudCat.createdAt
       });
-      console.log('⬇️ Downloaded category:', cloudCat.name);
     }
   }
 
-  // Upload local to cloud
+  // Upload local to cloud (skip if same name+dept exists in cloud)
   for (const [id, localCat] of localMap) {
-    if (!cloudMap.has(id)) {
+    const key = `${localCat.name?.toLowerCase()}_${localCat.departmentId || 'none'}`;
+    const cloudByKey = cloudMapByKey.get(key);
+
+    if (!cloudMapById.has(id) && !cloudByKey) {
       await pushCategory(localCat);
-      console.log('⬆️ Uploaded category:', localCat.name);
     }
   }
 };
@@ -797,37 +1361,89 @@ const syncRecipes = async () => {
   const cloudRecipes = await getDocs(recipeCollection);
   const localRecipes = await recipeDB.getAll();
 
-  const cloudMap = new Map();
-  cloudRecipes.forEach(doc => {
-    const data = doc.data();
-    cloudMap.set(data.localId, data);
+  // Get deleted recipe IDs to prevent resurrection
+  const deletedRecipeIds = await getDeletedIds('recipe');
+
+  // === STEP 1: Deduplicate cloud recipes by name (keep most recent) ===
+  // This handles the case where same recipe was created on multiple devices with different IDs
+  const cloudByName = new Map(); // name -> {data, docRef} (most recent)
+  const cloudDuplicateDocs = []; // docs to delete from cloud
+
+  cloudRecipes.forEach(docSnapshot => {
+    const data = docSnapshot.data();
+    const nameKey = data.name?.toLowerCase();
+
+    if (cloudByName.has(nameKey)) {
+      const existing = cloudByName.get(nameKey);
+      const existingDate = new Date(existing.data.updatedAt || 0);
+      const currentDate = new Date(data.updatedAt || 0);
+
+      if (currentDate > existingDate) {
+        // Current is newer, mark existing for deletion
+        cloudDuplicateDocs.push(existing.docRef);
+        cloudByName.set(nameKey, { data, docRef: docSnapshot.ref });
+      } else {
+        // Existing is newer, mark current for deletion
+        cloudDuplicateDocs.push(docSnapshot.ref);
+      }
+    } else {
+      cloudByName.set(nameKey, { data, docRef: docSnapshot.ref });
+    }
   });
+
+  // Delete cloud duplicates
+  for (const docRef of cloudDuplicateDocs) {
+    try {
+      await deleteDoc(docRef);
+      logger.debug('Deleted duplicate recipe from cloud', { action: 'syncRecipes', data: { docId: docRef.id } });
+    } catch (err) {
+      logger.debug('Failed to delete cloud duplicate', { action: 'syncRecipes', data: { docId: docRef.id, error: err.message } });
+    }
+  }
+
+  // Build map by localId from deduplicated cloud recipes
+  const cloudMap = new Map();
+  for (const [nameKey, { data }] of cloudByName) {
+    cloudMap.set(data.localId, data);
+  }
 
   const localMap = new Map();
   localRecipes.forEach(recipe => localMap.set(recipe.id, recipe));
 
-  // Download new/updated from cloud
+  // Build local name map for deduplication
+  const localByName = new Map();
+  localRecipes.forEach(recipe => {
+    const nameKey = recipe.name?.toLowerCase();
+    localByName.set(nameKey, recipe);
+  });
+
+  // Download new/updated from cloud (skip if same name already exists locally)
   for (const [localId, cloudRecipe] of cloudMap) {
     const localRecipe = localMap.get(localId);
+    const nameKey = cloudRecipe.name?.toLowerCase();
+    const localByNameMatch = localByName.get(nameKey);
     const { localId: _, syncedAt, ...recipeData } = cloudRecipe;
 
-    if (!localRecipe) {
+    if (!localRecipe && !localByNameMatch) {
+      // Check if this was intentionally deleted - DON'T resurrect!
+      if (deletedRecipeIds.has(localId)) {
+        continue;
+      }
       // New from cloud - use put() to preserve the ID
       await localDb.recipes.put({
         ...recipeData,
         id: localId
       });
-      console.log('⬇️ Downloaded recipe:', cloudRecipe.name);
-    } else {
-      // Compare timestamps
+    } else if (localRecipe) {
+      // Compare timestamps for ID-matched recipe
       const cloudDate = new Date(cloudRecipe.updatedAt || 0);
       const localDate = new Date(localRecipe.updatedAt || 0);
 
       if (cloudDate > localDate) {
         await localDb.recipes.update(localId, recipeData);
-        console.log('⬇️ Updated recipe from cloud:', cloudRecipe.name);
       }
     }
+    // If localByNameMatch exists with different ID, we skip (local will be uploaded with its ID)
   }
 
   // Upload local to cloud
@@ -836,14 +1452,12 @@ const syncRecipes = async () => {
 
     if (!cloudRecipe) {
       await pushRecipe(localRecipe);
-      console.log('⬆️ Uploaded recipe:', localRecipe.name);
     } else {
       const cloudDate = new Date(cloudRecipe.updatedAt || 0);
       const localDate = new Date(localRecipe.updatedAt || 0);
 
       if (localDate > cloudDate) {
         await pushRecipe(localRecipe);
-        console.log('⬆️ Updated recipe to cloud:', localRecipe.name);
       }
     }
   }
@@ -860,6 +1474,9 @@ const syncVendors = async () => {
   const cloudVendors = await getDocs(vendorCollection);
   const localVendors = await localDb.vendors.toArray();
 
+  // Get deleted vendor IDs to prevent resurrection
+  const deletedVendorIds = await getDeletedIds('vendor');
+
   const cloudMap = new Map();
   cloudVendors.forEach(doc => {
     const data = doc.data();
@@ -875,6 +1492,11 @@ const syncVendors = async () => {
     const { localId: _, syncedAt, ...vendorData } = cloudVendor;
 
     if (!localVendor) {
+      // Check if this was intentionally deleted - DON'T resurrect!
+      if (deletedVendorIds.has(localId)) {
+        logger.debug('Skipping deleted vendor', { action: 'syncVendors', data: { name: cloudVendor.name, id: localId } });
+        continue;
+      }
       await localDb.vendors.put({ ...vendorData, id: localId });
       logger.debug('Downloaded vendor', { action: 'syncVendors', data: { name: cloudVendor.name } });
     } else {
@@ -910,6 +1532,9 @@ const syncInventoryItems = async () => {
   const cloudItems = await getDocs(itemCollection);
   const localItems = await localDb.inventoryItems.toArray();
 
+  // Get deleted inventory item IDs to prevent resurrection
+  const deletedItemIds = await getDeletedIds('inventoryItem');
+
   const cloudMap = new Map();
   cloudItems.forEach(doc => {
     const data = doc.data();
@@ -924,6 +1549,11 @@ const syncInventoryItems = async () => {
     const { localId: _, syncedAt, ...itemData } = cloudItem;
 
     if (!localItem) {
+      // Check if this was intentionally deleted - DON'T resurrect!
+      if (deletedItemIds.has(localId)) {
+        logger.debug('Skipping deleted inventory item', { action: 'syncInventoryItems', data: { name: cloudItem.name, id: localId } });
+        continue;
+      }
       await localDb.inventoryItems.put({ ...itemData, id: localId });
       logger.debug('Downloaded inventory item', { action: 'syncInventoryItems', data: { name: cloudItem.name } });
     } else {
@@ -1166,11 +1796,9 @@ export const startRealtimeSync = (onDataChange) => {
   const deptCollection = getDepartmentsCollection();
 
   if (!recipeCollection || !catCollection || !deptCollection) {
-    console.error('❌ Cannot start realtime sync: No authenticated user');
+    console.error('Cannot start realtime sync: No authenticated user');
     return;
   }
-
-  console.log('👂 Starting real-time sync listeners...');
 
   // Listen for recipe changes
   const recipesUnsubscribe = onSnapshot(recipeCollection, async (snapshot) => {
@@ -1184,7 +1812,6 @@ export const startRealtimeSync = (onDataChange) => {
         if (!localRecipe) {
           // New recipe from another device
           await localDb.recipes.put({ ...recipeData, id: localId });
-          console.log('📥 Real-time: New recipe received:', data.name);
           onDataChange?.('recipes');
         } else {
           const cloudDate = new Date(data.updatedAt || 0);
@@ -1192,13 +1819,11 @@ export const startRealtimeSync = (onDataChange) => {
 
           if (cloudDate > localDate) {
             await localDb.recipes.update(localId, recipeData);
-            console.log('📥 Real-time: Recipe updated:', data.name);
             onDataChange?.('recipes');
           }
         }
       } else if (change.type === 'removed') {
         await localDb.recipes.delete(localId);
-        console.log('📥 Real-time: Recipe deleted:', localId);
         onDataChange?.('recipes');
       }
     });
@@ -1214,13 +1839,20 @@ export const startRealtimeSync = (onDataChange) => {
         const localCat = await categoryDB.getById(localId);
 
         if (!localCat) {
-          await localDb.categories.put({ ...catData, id: localId });
-          console.log('📥 Real-time: New category received:', data.name);
-          onDataChange?.('categories');
+          // Check if category with same name+dept already exists locally (prevents duplicates)
+          const allLocalCats = await categoryDB.getAll();
+          const key = `${data.name?.toLowerCase()}_${data.departmentId || 'none'}`;
+          const existingByKey = allLocalCats.find(c =>
+            `${c.name?.toLowerCase()}_${c.departmentId || 'none'}` === key
+          );
+
+          if (!existingByKey) {
+            await localDb.categories.put({ ...catData, id: localId });
+            onDataChange?.('categories');
+          }
         }
       } else if (change.type === 'removed') {
         await localDb.categories.delete(localId);
-        console.log('📥 Real-time: Category deleted:', localId);
         onDataChange?.('categories');
       }
     });
@@ -1236,13 +1868,17 @@ export const startRealtimeSync = (onDataChange) => {
         const localDept = await departmentDB.getById(localId);
 
         if (!localDept) {
-          await localDb.departments.put({ ...deptData, id: localId });
-          console.log('📥 Real-time: New department received:', data.name);
-          onDataChange?.('departments');
+          // Check if department with same name already exists locally (prevents duplicates)
+          const allLocalDepts = await departmentDB.getAll();
+          const existingByName = allLocalDepts.find(d => d.name?.toLowerCase() === data.name?.toLowerCase());
+
+          if (!existingByName) {
+            await localDb.departments.put({ ...deptData, id: localId });
+            onDataChange?.('departments');
+          }
         }
       } else if (change.type === 'removed') {
         await localDb.departments.delete(localId);
-        console.log('📥 Real-time: Department deleted:', localId);
         onDataChange?.('departments');
       }
     });
@@ -1366,13 +2002,11 @@ export const startRealtimeSync = (onDataChange) => {
     recipesUnsubscribe, categoriesUnsubscribe, departmentsUnsubscribe,
     vendorsUnsubscribe, itemsUnsubscribe, invoicesUnsubscribe, ordersUnsubscribe
   ];
-  console.log('✅ Real-time listeners active');
 };
 
 export const stopRealtimeSync = () => {
   syncListeners.forEach(unsubscribe => unsubscribe());
   syncListeners = [];
-  console.log('🛑 Real-time listeners stopped');
 };
 
 // ============================================
@@ -1507,6 +2141,21 @@ export default {
   deletePurchaseOrderFromCloud,
   pushPurchaseOrderLine,
   deletePurchaseOrderLineFromCloud,
+  // Expense sync
+  pushExpenseCategory,
+  deleteExpenseCategoryFromCloud,
+  pushExpenseRecord,
+  deleteExpenseRecordFromCloud,
+  // Public website sync
+  pushPublicRecipe,
+  deletePublicRecipe,
+  pushWebsiteSettings,
+  // Deletion tracking (prevents phantom resurrection)
+  recordDeletion,
+  isDeleted,
+  getDeletedIds,
+  clearDeletion,
+  purgeTombstones,
   // Status
   onSyncStatusChange,
   getSyncStatusValue,

@@ -163,9 +163,6 @@ export const TIMEOUTS = {
   /** API request timeout */
   API_REQUEST: 60000,
 
-  /** Demo mode check interval */
-  DEMO_CHECK_INTERVAL: 500,
-
   /** Timer tick interval */
   TIMER_TICK: 1000,
 

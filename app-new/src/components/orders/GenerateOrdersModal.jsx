@@ -72,9 +72,10 @@ function GenerateOrdersModal({
 
       group.totalValue += suggestedQty * (item.lastPrice || item.unitPrice || 0);
 
-      if (item.currentStock <= 0) {
+      const effectiveStock = item.stockQuantity ?? item.stockWeight ?? item.currentStock ?? 0;
+      if (effectiveStock <= 0) {
         group.criticalCount++;
-      } else if (item.currentStock <= (item.reorderPoint || 0)) {
+      } else if (effectiveStock <= (item.reorderPoint || 0)) {
         group.lowCount++;
       }
     });
@@ -202,7 +203,7 @@ function GenerateOrdersModal({
               quantity: itemQuantities[item.id],
               unit: item.unit,
               unitPrice: item.lastPrice || item.unitPrice || 0,
-              stockAtOrder: item.currentStock,
+              stockAtOrder: item.stockQuantity ?? item.stockWeight ?? 0,
             })),
         }))
         .filter((order) => order.items.length > 0);
@@ -353,7 +354,7 @@ function GenerateOrdersModal({
                                   styles[item.stockStatus.className]
                                 }`}
                               >
-                                Stock: {item.currentStock} / {item.reorderPoint || 0}
+                                Stock: {item.stockQuantity ?? item.stockWeight ?? 0} / {item.reorderPoint || 0}
                               </span>
                             </div>
                             <div className={styles.itemQuantity}>
@@ -442,9 +443,9 @@ function GenerateOrdersModal({
  * Calculate suggested order quantity
  */
 function calculateSuggestedQuantity(item) {
-  const currentStock = item.currentStock || 0;
+  const currentStock = item.stockQuantity ?? item.stockWeight ?? 0;
   const reorderPoint = item.reorderPoint || 0;
-  const parLevel = item.parLevel || reorderPoint * 2;
+  const parLevel = item.parQuantity ?? item.parWeight ?? reorderPoint * 2;
 
   // Order enough to reach par level
   const needed = Math.max(0, parLevel - currentStock);
@@ -458,7 +459,7 @@ function calculateSuggestedQuantity(item) {
  * Get stock status
  */
 function getStockStatus(item) {
-  const currentStock = item.currentStock || 0;
+  const currentStock = item.stockQuantity ?? item.stockWeight ?? 0;
   const reorderPoint = item.reorderPoint || 0;
 
   if (currentStock <= 0) return STOCK_STATUS.critical;
@@ -473,9 +474,11 @@ GenerateOrdersModal.propTypes = {
       name: PropTypes.string.isRequired,
       sku: PropTypes.string,
       vendorId: PropTypes.string,
-      currentStock: PropTypes.number,
+      stockQuantity: PropTypes.number,
+      stockWeight: PropTypes.number,
       reorderPoint: PropTypes.number,
-      parLevel: PropTypes.number,
+      parQuantity: PropTypes.number,
+      parWeight: PropTypes.number,
       unit: PropTypes.string,
       lastPrice: PropTypes.number,
       unitPrice: PropTypes.number,

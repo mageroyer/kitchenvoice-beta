@@ -284,6 +284,16 @@
   cursor: not-allowed;
 }
 
+.actionBtn.editBtn {
+  background: #e3f2fd;
+  border-color: #90caf9;
+}
+
+.actionBtn.editBtn:hover {
+  background: #bbdefb;
+  border-color: #64b5f6;
+}
+
 .statusSelect {
   padding: 5px 8px;
   border: 1px solid var(--color-border);

@@ -785,6 +785,12 @@ export const invoiceLineDB = {
       isDiscrepancy: lineItem.isDiscrepancy === true,
       discrepancyNotes: lineItem.discrepancyNotes?.trim() || '',
 
+      // Routing flags (for QuickBooks/Inventory flow)
+      lineType: lineItem.lineType || 'product',
+      forInventory: lineItem.forInventory ?? true,
+      forAccounting: lineItem.forAccounting ?? true,
+      isDeposit: lineItem.isDeposit ?? false,
+
       createdAt: now,
       updatedAt: now
     };

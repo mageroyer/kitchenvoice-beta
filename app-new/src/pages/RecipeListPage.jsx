@@ -4,7 +4,7 @@ import SearchBar from '../components/common/SearchBar';
 import Dropdown from '../components/common/Dropdown';
 import AlphabetNav from '../components/recipes/AlphabetNav';
 import AssignTaskModal from '../components/common/AssignTaskModal';
-import { recipeDB, categoryDB, departmentDB } from '../services/database/indexedDB';
+import { recipeDB, categoryDB } from '../services/database/indexedDB';
 import GoogleCloudSpeechService from '../services/speech/googleCloudSpeech';
 import styles from '../styles/pages/recipelistpage.module.css';
 
@@ -34,9 +34,8 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
     if (GoogleCloudSpeechService.isSupported()) {
       const speechService = new GoogleCloudSpeechService();
       setGoogleSpeech(speechService);
-      console.log('✅ Google Cloud Speech service initialized');
     } else {
-      console.warn('⚠️ Google Cloud Speech not supported - MediaRecorder not available');
+      console.warn('Google Cloud Speech not supported - MediaRecorder not available');
       setUseGoogleSpeech(false);
     }
   }, []);
@@ -49,7 +48,6 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
     const handleDataSync = (event) => {
       const { type } = event.detail || {};
       if (type === 'initialSync' || type === 'recipes') {
-        console.log('📥 Reloading recipes after sync...');
         loadRecipes();
       }
     };
@@ -77,7 +75,9 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
   const loadAllCategories = async () => {
     try {
       const allCategories = await categoryDB.getAll();
-      setAvailableCategories(allCategories.map(cat => cat.name));
+      // Deduplicate category names (same name may exist in multiple departments)
+      const uniqueNames = [...new Set(allCategories.map(cat => cat.name))];
+      setAvailableCategories(uniqueNames);
     } catch (error) {
       console.error('Error loading categories:', error);
     }
@@ -143,13 +143,12 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
       // Start Google Cloud Speech recording
       googleSpeech.start({
         onTranscript: (transcript, confidence) => {
-          console.log(`🎤 Transcript: "${transcript}" (${(confidence * 100).toFixed(1)}% confidence)`);
           if (transcript && transcript.trim()) {
             setSearchQuery(transcript);
           }
         },
         onError: (error) => {
-          console.error('❌ Google Speech error:', error);
+          console.error('Google Speech error:', error);
           setSearchVoiceActive(false);
           // Use setTimeout to avoid render issues with alert
           setTimeout(() => {
@@ -157,7 +156,6 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
           }, 100);
         },
         onEnd: () => {
-          console.log('⏹️ Recording ended');
           setSearchVoiceActive(false);
         },
         languageCode: 'fr-CA' // French (Canada) - Simple transcription, no Claude processing yet
@@ -168,7 +166,6 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
   const handleSearchVoiceStop = () => {
     if (googleSpeech && searchVoiceActive) {
       googleSpeech.stop();
-      console.log('🛑 Stopping Google Cloud Speech...');
     }
   };
 
@@ -185,9 +182,30 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
   };
 
   const handleTaskCreated = (task) => {
-    console.log('Task created:', task);
     setTaskModalOpen(false);
     setSelectedRecipeForTask(null);
+  };
+
+  // Handle website visibility toggle
+  const handleWebsiteToggle = async (recipe, e) => {
+    e.stopPropagation();
+    try {
+      await recipeDB.toggleWebsiteVisibility(recipe.id);
+      loadRecipes(); // Refresh list
+    } catch (error) {
+      console.error('Failed to toggle website visibility:', error);
+    }
+  };
+
+  // Handle "available today" toggle
+  const handleTodayToggle = async (recipe, e) => {
+    e.stopPropagation();
+    try {
+      await recipeDB.toggleAvailableToday(recipe.id);
+      loadRecipes(); // Refresh list
+    } catch (error) {
+      console.error('Failed to toggle availability:', error);
+    }
   };
 
   return (
@@ -309,13 +327,32 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
                     <span className={styles.recipeName}>{recipe.name || '(No name)'}</span>
                   </button>
                   {!isCorrupt && isUnlocked && (
-                    <button
-                      className={styles.sendTaskButton}
-                      onClick={(e) => handleSendTask(recipe, e)}
-                      title="Send as task"
-                    >
-                      📤
-                    </button>
+                    <div className={styles.recipeActions}>
+                      {/* Website visibility toggle */}
+                      <button
+                        className={`${styles.webToggleBtn} ${recipe.public?.isVisible ? styles.active : ''}`}
+                        onClick={(e) => handleWebsiteToggle(recipe, e)}
+                        title={recipe.public?.isVisible ? 'Visible on website' : 'Not on website'}
+                      >
+                        W
+                      </button>
+                      {/* Available today toggle */}
+                      <button
+                        className={`${styles.todayToggleBtn} ${recipe.public?.isAvailableToday ? styles.active : ''}`}
+                        onClick={(e) => handleTodayToggle(recipe, e)}
+                        title={recipe.public?.isAvailableToday ? 'Available today' : 'Not available today'}
+                      >
+                        T
+                      </button>
+                      {/* Send task button */}
+                      <button
+                        className={styles.sendTaskButton}
+                        onClick={(e) => handleSendTask(recipe, e)}
+                        title="Send as task"
+                      >
+                        S
+                      </button>
+                    </div>
                   )}
                   {isCorrupt && (
                     <button

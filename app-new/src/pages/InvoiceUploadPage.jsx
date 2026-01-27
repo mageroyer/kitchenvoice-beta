@@ -3,238 +3,218 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Alert from '../components/common/Alert';
-import { VendorProfileWizard, LineReviewModal } from '../components/invoice';
 import { formatFileSize } from '../services/utils/pdfParser';
-import { invoiceDB, invoiceLineDB, vendorDB, inventoryItemDB } from '../services/database/indexedDB';
-// New intelligent invoice processing
+import { invoiceDB, invoiceLineDB, vendorDB, departmentDB } from '../services/database/indexedDB';
+// Vision-based invoice processing
 import {
-  processInvoice as processInvoiceIntelligent,
-  completeOnboarding,
-  saveInvoice as saveInvoiceIntelligent,
-  PROCESSING_STATUS,
-  parsePackageFormat,
-  calculateLineValues,
-  FORMAT_TYPE
-} from '../services/invoice';
+  processInvoice as processInvoiceVision,
+  getTypeIcon,
+  isHighConfidence
+} from '../services/invoice/vision';
+// Invoice line service for inventory processing
+import { processLinesToInventory } from '../services/inventory/invoiceLineService';
 import {
-  isWeightUnit,
-  getUnitFactorForPrice,
-} from '../utils/unitConversion';
+  // Packaging utilities (from packagingDistributorHandler)
+  buildPackageUnit
+} from '../services/invoice/handlers';
+// Category and pricing type constants
+import { LINE_CATEGORY, PRICING_TYPE } from '../services/invoice/lineCategorizer';
+// Line display components
+import InvoiceLineList from '../components/invoice/InvoiceLineList';
+import LineEditModal from '../components/invoice/LineEditModal';
+// Training data consent
+import { saveTrainingData } from '../services/training/trainingDataService';
+import { getSetting, updateSetting } from '../services/settings/settingsStorage';
 import styles from '../styles/pages/invoiceupload.module.css';
 
-/**
- * Check if unit is a volume unit
- * @param {string} unit - The unit to check
- * @returns {boolean} True if volume unit
- */
-const isVolumeUnitType = (unit) => {
-  if (!unit) return false;
-  const normalized = unit.toLowerCase().trim();
-  // IMPORTANT: 'l' check must exclude 'lb'/'lbs' (weight units)
-  const isLitre = normalized === 'l' || normalized === 'litre' || normalized === 'liter';
-  return normalized.startsWith('ml') ||
-         isLitre ||
-         normalized.startsWith('cl') ||
-         normalized.startsWith('fl') ||
-         normalized.startsWith('gal') ||
-         normalized.startsWith('qt') ||
-         normalized.startsWith('pt');
-};
+// Default color palette for departments (cycles through)
+const DEPT_COLORS = ['#e9ecef', '#ffebee', '#e3f2fd', '#fff3e0', '#f3e5f5', '#e8f5e9', '#fce4ec', '#e0f2f1'];
 
 /**
- * Normalize weight unit to standard abbreviation
- * @param {string} unit - The unit to normalize
- * @returns {string} Normalized unit (lb, kg, g, oz)
- */
-const normalizeWeightUnit = (unit) => {
-  if (!unit) return 'lb';
-  const normalized = unit.toLowerCase().trim();
-  if (normalized.startsWith('kg') || normalized.startsWith('kilo')) return 'kg';
-  if (normalized.startsWith('g') || normalized.startsWith('gram')) return 'g';
-  if (normalized.startsWith('oz') || normalized.startsWith('ounce')) return 'oz';
-  return 'lb'; // Default to lb
-};
-
-/**
- * Normalize volume unit to standard abbreviation
- * @param {string} unit - The unit to normalize
- * @returns {string} Normalized unit (ml, l, etc.)
- */
-const normalizeVolumeUnit = (unit) => {
-  if (!unit) return 'ml';
-  const normalized = unit.toLowerCase().trim();
-  if (normalized === 'l' || normalized === 'litre' || normalized === 'liter') return 'L';
-  if (normalized.startsWith('ml') || normalized === 'millilitre') return 'ml';
-  if (normalized.startsWith('cl') || normalized === 'centilitre') return 'cl';
-  if (normalized.startsWith('gal')) return 'gal';
-  if (normalized.startsWith('qt') || normalized === 'quart') return 'qt';
-  if (normalized.startsWith('pt') || normalized === 'pint') return 'pt';
-  if (normalized.startsWith('fl')) return 'fl oz';
-  return 'ml'; // Default to ml
-};
-
-/**
- * Normalize quantity unit to standard abbreviation
- * @param {string} unit - The unit to normalize
- * @returns {string} Normalized unit (pc, case, box, etc.)
- */
-const normalizeQuantityUnit = (unit) => {
-  if (!unit) return 'pc';
-  const normalized = unit.toLowerCase().trim();
-  if (normalized.startsWith('case')) return 'case';
-  if (normalized.startsWith('box')) return 'box';
-  if (normalized.startsWith('bag')) return 'bag';
-  if (normalized.startsWith('pack') || normalized === 'pqt') return 'pack';
-  if (normalized === 'each' || normalized === 'ea' || normalized === 'unit' || normalized === 'unt') return 'pc';
-  if (normalized.startsWith('doz')) return 'doz';
-  if (normalized.startsWith('can') || normalized === 'bt') return 'can';
-  return unit; // Keep original if not recognized
-};
-
-/**
- * Build a display unit string from item fields.
+ * Convert Vision parser result to UI-friendly invoice format.
+ * Maps the simplified Vision output to the existing review UI structure.
+ * Supports V2 processed lines with validation, weight extraction, and pricing.
  *
- * Priority: format > unit > packSize+packUnit > default 'pc'
- *
- * @param {Object} item - Invoice line item
- * @returns {string} Display unit string (e.g., "2/5LB", "50lb", "pc")
+ * @param {Object} result - Result from processInvoiceVision
+ * @returns {Object} Converted invoice for display
  */
-const buildPackageUnit = (item) => {
-  // Use format field if present (e.g., "2/5LB")
-  if (item.format) return item.format;
+const convertVisionResultToInvoice = (result) => {
+  const { invoice, lineItems, v2Available, processedLines } = result;
 
-  // Use unit field if present (e.g., "Sac 50lb", "Case")
-  if (item.unit) return item.unit;
-
-  // Build from packSize and packUnit (e.g., packSize=2, packUnit="5LB" → "2/5LB")
-  if (item.packSize && item.packUnit) {
-    return `${item.packSize}/${item.packUnit}`;
-  }
-
-  // Use quantityUnit if present
-  if (item.quantityUnit) return item.quantityUnit;
-
-  // Default to 'pc' (piece)
-  return 'pc';
-};
-
-/**
- * Extract weight info from invoice line item using the centralized lineCalculator.
- *
- * This uses calculateLineValues() from lineCalculator.js - the SINGLE SOURCE OF TRUTH
- * for all format parsing and weight calculations.
- *
- * Supports all format types:
- * - "2/5LB" (pack weight: 2 bags × 5lb = 10lb per case)
- * - "4x5lb" (multiplier: 4 × 5lb = 20lb)
- * - "50lb" (simple weight)
- * - "12CT" (count only)
- * - Extracts from description: "CARROT WHOLE CELLO BAG 2/5LB"
- *
- * @param {Object} item - Invoice line item
- * @returns {Object} { hasEmbeddedWeight, weightPerUnit, weightUnit, totalWeight, pricePerG, ... }
- */
-const extractWeightFromUnit = (item) => {
-  // Use the centralized line calculator - handles ALL format parsing
-  const calculated = calculateLineValues({
-    quantity: item.quantity || 1,
-    format: item.format || item.unit,
-    description: item.description || item.name,
-    unitPrice: item.unitPrice,
-    totalPrice: item.totalPrice,
-    weight: item.weight || item.totalValue,
-    weightUnit: item.weightUnit || item.unit,
-  });
+  // Use V2 processed lines if available, otherwise fall back to normalized lineItems
+  const lines = v2Available ? processedLines : lineItems;
 
   return {
-    hasEmbeddedWeight: calculated.isWeightBased,
-    weightPerUnit: calculated.weightPerCase || 0,
-    weightUnit: calculated.weightUnit || '',
-    totalWeight: calculated.totalWeight || 0,
-    // Additional data from calculator for downstream use
-    pricePerG: calculated.pricePerG,
-    pricePerLb: calculated.pricePerLb,
-    formatType: calculated.formatType,
-    formatFormula: calculated.formatFormula,
-    display: calculated.display,
+    vendor: {
+      name: invoice?.vendorName,
+      invoiceNumber: invoice?.invoiceNumber,
+      invoiceDate: invoice?.date,
+      address: invoice?.vendorAddress,
+      phone: invoice?.vendorPhone,
+      paymentTerms: invoice?.paymentTerms,
+      poNumber: invoice?.poNumber
+    },
+    totals: {
+      subtotal: invoice?.subtotal || 0,
+      taxAmount: (invoice?.taxTPS || 0) + (invoice?.taxTVQ || 0),
+      taxTPS: invoice?.taxTPS || 0,
+      taxTVQ: invoice?.taxTVQ || 0,
+      totalAmount: invoice?.total || 0,
+      currency: 'CAD'
+    },
+    lineItems: lines?.map((item, index) => {
+      // Helper to unwrap tracked fields
+      // TrackedString/TrackedNumber: {value, source, valid} → value
+      // FormatField: {raw, parsed, source, confidence, valid} → raw (for display)
+      const unwrap = (field) => {
+        if (field && typeof field === 'object') {
+          // FormatField has 'raw' property
+          if ('raw' in field) return field.raw;
+          // TrackedString/TrackedNumber has 'value' property
+          if ('value' in field) return field.value;
+        }
+        return field;
+      };
+
+      // V2 lines have _flat accessor for backward compatibility
+      const flat = item._flat || {};
+
+      // Check if this is a V2 processed line (has tracked fields)
+      const isV2 = item.description && typeof item.description === 'object' && 'value' in item.description;
+
+      // Extract V2 validation data if available
+      const validation = item.validation || null;
+      const pricing = item.pricing || null;
+      const weight = item.weight || null;
+
+      // For V2, unwrap tracked fields; for V1, use direct values
+      const description = isV2 ? unwrap(item.description) : (flat.description || item.description);
+      const sku = isV2 ? unwrap(item.sku) : (flat.sku || item.sku);
+      const quantity = isV2 ? unwrap(item.quantity) : (flat.quantity || item.quantity);
+      const unit = isV2 ? unwrap(item.unit) : (flat.unit || item.unit);
+      const unitPrice = isV2 ? unwrap(item.unitPrice) : (flat.unitPrice || item.unitPrice);
+      const totalPrice = isV2 ? unwrap(item.totalPrice) : (flat.totalPrice || item.totalPrice);
+      const format = isV2 ? unwrap(item.format) : (flat.format || item.format);
+
+      return {
+        // Core display fields (unwrapped from V2 tracked fields)
+        name: description,
+        description: description,
+        itemCode: sku,
+        quantity: quantity,
+        unit: unit,
+        unitPrice: unitPrice,
+        totalPrice: totalPrice,
+
+        // Format/packaging
+        format: format,
+        boxingFormat: isV2 ? unwrap(item.boxingFormat) : (flat.boxingFormat || item.boxingFormat),
+
+        // V2: Packaging units (for PACKAGING/SUPPLY categories)
+        // units structure: { totalUnitsPerCase, totalUnitsOrdered, pricePerUnit, packCount, unitsPerPack }
+        totalUnits: item.units?.totalUnitsOrdered ?? flat.totalUnitsOrdered ?? null,
+        totalUnitsPerCase: item.units?.totalUnitsPerCase ?? flat.totalUnitsPerCase ?? null,
+        packCount: item.units?.packCount ?? flat.packCount ?? null,
+        unitsPerPack: item.units?.unitsPerPack ?? flat.unitsPerPack ?? null,
+
+        // V2: Weight extraction with confidence
+        // V2 weight structure: { perUnit, total, totalGrams, unit, confidence, valid }
+        // Ensure we get a number, not an object
+        weight: weight?.total ?? flat.weight ?? (typeof item.weight === 'number' ? item.weight : 0),
+        weightInGrams: weight?.totalGrams ?? flat.totalWeightGrams ?? null,
+        weightUnit: weight?.unit ?? flat.weightUnit ?? item.weightUnit ?? '',
+        weightConfidence: weight?.confidence ?? null,
+        weightSource: weight?.source ?? null,
+
+        // V2: Calculated pricing (ensure numbers, not objects)
+        // Food pricing uses pricing.pricePerG/pricePerML
+        pricePerG: typeof pricing?.pricePerG === 'number' ? pricing.pricePerG : (flat.pricePerG ?? null),
+        pricePerML: typeof pricing?.pricePerML === 'number' ? pricing.pricePerML : (flat.pricePerML ?? null),
+        pricePerL: typeof pricing?.pricePerL === 'number' ? pricing.pricePerL : (flat.pricePerL ?? null),
+        // pricePerUnit: Packaging uses units.pricePerUnit, FoodSupply uses pricing.pricePerUnit
+        pricePerUnit: typeof item.units?.pricePerUnit === 'number' ? item.units.pricePerUnit
+          : (typeof pricing?.pricePerUnit === 'number' ? pricing.pricePerUnit : (flat.pricePerUnit ?? null)),
+        weightPerUnit: weight?.perUnit ?? (typeof pricing?.weightPerUnit === 'number' ? pricing.weightPerUnit : (flat.weightPerUnit ?? null)),
+        isVolume: pricing?.isVolume ?? flat.isVolume ?? false,
+        // Volume unit size info (e.g., "12 × 500ml" → unitsPerCase=12, unitSize=500, unitSizeUnit="ml")
+        unitsPerCase: flat.unitsPerCase ?? null,
+        unitSize: flat.unitSize ?? null,
+        unitSizeUnit: flat.unitSizeUnit ?? null,
+        totalWeightGrams: weight?.totalGrams ?? flat.totalWeightGrams ?? null,
+
+        // V2: Validation status
+        canBill: validation?.canBill ?? true,
+        canProcess: validation?.canProcess ?? true,
+        tier1Valid: validation?.tier1Valid ?? true,
+        tier2Valid: validation?.tier2Valid ?? null,
+        tier3Valid: validation?.tier3Valid ?? null,
+        // Filter out INFO-level items from warnings (only show actual warnings/errors)
+        lineWarnings: validation?.warnings?.filter(w => w.severity !== 'info') ?? [],
+
+        // Order tracking
+        quantityOrdered: item.quantityOrdered,
+        quantityShipped: item.quantityShipped,
+
+        // Line metadata
+        lineNumber: item._lineNumber || item.lineNumber || index + 1,
+        matchStatus: 'unmatched',
+        _v2Processed: isV2,
+
+        // AI Category (from lineCategorizer: FOOD, PACKAGING, SUPPLY, FEE, DIVERS)
+        category: isV2 ? unwrap(item.category) : (flat.category || item.category),
+
+        // Pricing type - derive from category if not set by handler
+        // PACKAGING/SUPPLY → unit-based, FOOD → weight-based (unless handler says otherwise)
+        pricingType: (() => {
+          // Handler-provided pricingType takes precedence
+          if (item.pricingType) return item.pricingType;
+          if (pricing?.type) return pricing.type;
+
+          // Derive from AI category
+          const cat = isV2 ? unwrap(item.category) : (flat.category || item.category);
+          if (cat === LINE_CATEGORY.PACKAGING || cat === LINE_CATEGORY.SUPPLY) {
+            return PRICING_TYPE.UNIT;
+          }
+          if (cat === LINE_CATEGORY.FEE || cat === LINE_CATEGORY.DIVERS) {
+            return PRICING_TYPE.UNIT;
+          }
+          // FOOD defaults to weight
+          return PRICING_TYPE.WEIGHT;
+        })(),
+
+        // Line type from V2 handler (product, fee, credit, deposit)
+        lineType: item.lineType || 'product',
+        // Routing flags from V2 handler (for QuickBooks/Inventory)
+        forInventory: item.forInventory ?? true,
+        forAccounting: item.forAccounting ?? true,
+        isDeposit: item.isDeposit ?? false,
+
+        // Raw data for display columns
+        rawColumns: [
+          sku,
+          description,
+          format,
+          quantity,
+          unitPrice,
+          totalPrice
+        ].filter(v => v != null),
+
+        // Math validation for display
+        mathValid: validation?.canBill ?? true,
+        confidence: validation?.overallConfidence ?? null,
+        // Only show WARNING and ERROR level items as anomalies (not INFO)
+        anomalies: validation?.warnings
+          ?.filter(w => w.severity !== 'info')
+          ?.map(w => ({
+            type: w.code || 'warning',
+            severity: w.severity || 'warning',
+            message: w.message || w.code,
+          })) || [],
+      };
+    }) || [],
+    notes: ''
   };
 };
-
-/**
- * Calculate normalized price per gram (for solids) or per ml (for liquids)
- *
- * Uses lineCalculator as SINGLE SOURCE OF TRUTH for format parsing.
- *
- * Example for "CARROT WHOLE CELLO BAG 2/5LB", qty: 4, unitPrice: $12.95:
- * - lineCalculator parses: 2/5LB = 10lb per case × 4 cases = 40lb total
- * - Converts to grams: 40lb × 453.592 = 18,143.68g
- * - Calculate pricePerG: $51.80 / 18,143.68g = $0.00285/g
- *
- * @param {Object} item - Invoice line item with unit, quantity, unitPrice, description
- * @returns {Object} { pricePerG: number|null, pricePerML: number|null, totalBaseUnits: number|null }
- */
-const calculateNormalizedPrice = (item) => {
-  const unitPrice = item.unitPrice || 0;
-  const quantity = item.quantity || 1;
-  const totalPrice = item.totalPrice || (unitPrice * quantity);
-
-  if (totalPrice <= 0) {
-    return { pricePerG: null, pricePerML: null, totalBaseUnits: null, baseUnit: null };
-  }
-
-  // Use lineCalculator to parse format and calculate values
-  const calculated = calculateLineValues({
-    quantity,
-    format: item.format || item.unit,
-    description: item.description || item.name,
-    unitPrice,
-    totalPrice
-  });
-
-  // If lineCalculator found weight-based format
-  if (calculated.isWeightBased && calculated.totalWeightGrams && calculated.pricePerG) {
-    return {
-      pricePerG: Math.round(calculated.pricePerG * 1000000) / 1000000,
-      pricePerML: null,
-      totalBaseUnits: calculated.totalWeightGrams,
-      baseUnit: 'g'
-    };
-  }
-
-  // Fallback: Try to parse volume units (lineCalculator doesn't handle volumes yet)
-  const unitStr = (item.format || item.unit || '').toString();
-  const volumeMatch = unitStr.match(/(\d+[.,]?\d*)\s*(gal|gallon|qt|quart|pt|pint|floz|fl oz|ml|l|cl)/i);
-
-  if (volumeMatch) {
-    const qty = parseFloat(volumeMatch[1].replace(',', '.'));
-    const unit = volumeMatch[2].toLowerCase();
-    const unitInfo = getUnitFactorForPrice(unit);
-
-    if (unitInfo && unitInfo.isVolume) {
-      const totalBaseUnits = qty * unitInfo.factor * quantity;
-      const pricePerBase = totalPrice / totalBaseUnits;
-      return {
-        pricePerG: null,
-        pricePerML: Math.round(pricePerBase * 1000000) / 1000000,
-        totalBaseUnits,
-        baseUnit: 'ml'
-      };
-    }
-  }
-
-  // Cannot calculate normalized price
-  return { pricePerG: null, pricePerML: null, totalBaseUnits: null, baseUnit: null };
-};
-
-// Department options with colors
-const DEPARTMENTS = [
-  { id: 'default', name: 'Cuisine', color: '#e9ecef' },
-  { id: 'hot', name: 'Hot Kitchen', color: '#ffebee' },
-  { id: 'cold', name: 'Garde Manger', color: '#e3f2fd' },
-  { id: 'pastry', name: 'Pastry', color: '#fff3e0' },
-  { id: 'bar', name: 'Bar', color: '#f3e5f5' },
-  { id: 'admin', name: 'Administration', color: '#e8f5e9' },
-];
 
 /**
  * Invoice Upload Page
@@ -257,10 +237,8 @@ function InvoiceUploadPage() {
   const [parsedInvoice, setParsedInvoice] = useState(null);
   const [saved, setSaved] = useState(false);
 
-  // Invoice pipeline state (Phase 1 & 3)
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [mergedInvoice, setMergedInvoice] = useState(null);
-  const [showWarnings, setShowWarnings] = useState(false);
+  // Vision parser result
+  const [visionResult, setVisionResult] = useState(null);
 
   // Department assignment state
   const [selectedItems, setSelectedItems] = useState(new Set()); // Set of selected item indices
@@ -270,20 +248,23 @@ function InvoiceUploadPage() {
   // Manual vendor entry (when AI couldn't extract)
   const [manualVendorName, setManualVendorName] = useState('');
 
-  // Intelligent processing state (new flow)
-  const [intelligentResult, setIntelligentResult] = useState(null);
-  const [showProfileWizard, setShowProfileWizard] = useState(false);
+  // Dynamic departments from DB
+  const [departments, setDepartments] = useState([]);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [showNewDeptInput, setShowNewDeptInput] = useState(false);
 
-  // View mode for invoice review table: 'original' shows invoice headers, 'normalized' shows standard fields
-  const [tableViewMode, setTableViewMode] = useState('original');
+  // DEV: Raw JSON panel visibility
+  const [showRawJson, setShowRawJson] = useState(false);
 
-  // Line review modal state (for anomaly flagging)
-  const [showLineReviewModal, setShowLineReviewModal] = useState(false);
-  const [flaggedLines, setFlaggedLines] = useState([]);
+  // Invoice type detection/selection
+  const [selectedType, setSelectedType] = useState(null); // User-selected type (overrides detection)
 
-  // Per-item FORMAT corrections - keyed by item identifier (name or itemCode)
-  // { "Laitue Romaine": { original: "Caisse 24", corrected: "Caisse 24kg", lineIndex: 0 } }
-  const [itemFormatCorrections, setItemFormatCorrections] = useState({});
+  // Line edit modal state
+  const [editingLine, setEditingLine] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Training data contribution (static checkbox)
+  const [contributeTraining, setContributeTraining] = useState(false);
 
   // Ref for timer cleanup
   const redirectTimerRef = useRef(null);
@@ -297,67 +278,27 @@ function InvoiceUploadPage() {
     };
   }, []);
 
-  // ═══════════════════════════════════════════════════════════
-  // ADAPTIVE TABLE HELPERS
-  // ═══════════════════════════════════════════════════════════
-
-  // Map aiLabel to item field value
-  // Uses rawColumns (exact invoice text) as fallback for unmapped columns
-  const getItemValueByLabel = (item, aiLabel, currency, colIndex = null) => {
-    const fieldMap = {
-      'sku': item.itemCode || item.sku,
-      'description': item.description || item.name,
-      // Quantity: just the number, no unit appended (delivered/invoiced quantity)
-      'quantity': item.quantity != null ? String(item.quantity) : null,
-      // Ordered quantity: what was originally ordered (may differ from delivered)
-      'orderedQuantity': item.orderedQuantity != null ? String(item.orderedQuantity) : null,
-      // Weight: value + unit (kg, lb)
-      'weight': item.weight != null ? `${item.weight} ${item.weightUnit || 'lb'}`.trim() : null,
-      'unitPrice': item.unitPrice != null ? formatCurrency(item.unitPrice, currency) : null,
-      'totalPrice': item.totalPrice != null ? formatCurrency(item.totalPrice, currency) : null,
-      // Unit of measure (U/M column)
-      'unit': item.priceUnit || item.weightUnit,
+  // Fetch departments from DB on mount
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const depts = await departmentDB.getAll();
+        setDepartments(depts);
+      } catch (err) {
+        console.error('[InvoiceUpload] Failed to load departments:', err);
+      }
     };
+    loadDepartments();
+  }, []);
 
-    // First try the structured field
-    const structuredValue = fieldMap[aiLabel];
-    if (structuredValue != null && structuredValue !== '') {
-      return structuredValue;
-    }
-
-    // Fallback to rawColumns if available (for columns like FORMAT, ORIGINE)
-    if (colIndex != null && item.rawColumns && item.rawColumns[colIndex] != null) {
-      return item.rawColumns[colIndex];
-    }
-
-    return '-';
-  };
-
-  // Get columns to display based on view mode
-  const getDisplayColumns = () => {
-    const detectedColumns = intelligentResult?.detectedColumns || [];
-
-    if (tableViewMode === 'original' && detectedColumns.length > 0) {
-      // Filter out 'skip' columns and return original headers with column index
-      return detectedColumns
-        .filter(col => col.aiLabel !== 'skip')
-        .map(col => ({
-          key: col.aiLabel,
-          header: col.headerText, // Original invoice header
-          aiLabel: col.aiLabel,
-          colIndex: col.index,    // Column index for rawColumns lookup
-        }));
-    }
-
-    // Normalized view - fixed columns (no colIndex, uses structured fields only)
-    return [
-      { key: 'item', header: 'Item', aiLabel: 'description', colIndex: null },
-      { key: 'category', header: 'Category', aiLabel: null, colIndex: null },
-      { key: 'qty', header: 'Qty', aiLabel: 'quantity', colIndex: null },
-      { key: 'unitPrice', header: 'Unit Price', aiLabel: 'unitPrice', colIndex: null },
-      { key: 'total', header: 'Total', aiLabel: 'totalPrice', colIndex: null },
-    ];
-  };
+  // Load training consent preference on mount
+  useEffect(() => {
+    const loadTrainingPreference = async () => {
+      const consent = await getSetting('trainingDataConsent');
+      setContributeTraining(consent === 'always');
+    };
+    loadTrainingPreference();
+  }, []);
 
   // Validate file
   const validateFile = (selectedFile) => {
@@ -414,100 +355,67 @@ function InvoiceUploadPage() {
 
   const handleDragLeave = () => setIsDragging(false);
 
-  // Parse invoice with intelligent processing flow
+  // Sample invoices for testing
+  const SAMPLE_INVOICES = [
+    { id: 'packaging', name: 'Packaging', icon: '📦', file: '/samples/sample-packaging.pdf', vendor: 'Carrousel Emballage' },
+    { id: 'produce', name: 'Produce', icon: '🥬', file: '/samples/sample-produce.pdf', vendor: 'Courchesne Larose' },
+    { id: 'specialty', name: 'Specialty', icon: '🫒', file: '/samples/sample-specialty.pdf', vendor: 'Distributions Gourmet' },
+    { id: 'foodservice', name: 'Food Service', icon: '🏢', file: '/samples/sample-foodservice.pdf', vendor: 'Gordon Food Service' },
+  ];
+
+  // Load a sample invoice
+  const handleLoadSample = async (sample) => {
+    setError('');
+    setParsedInvoice(null);
+    setSaved(false);
+    setLoading(true);
+
+    try {
+      // Fetch the sample PDF
+      const response = await fetch(sample.file);
+      if (!response.ok) {
+        throw new Error(`Failed to load sample: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const sampleFile = new File([blob], `${sample.vendor.replace(/\s+/g, '_')}_Sample.pdf`, {
+        type: 'application/pdf'
+      });
+
+      setFile(sampleFile);
+      setFileType('pdf');
+    } catch (err) {
+      console.error('Error loading sample:', err);
+      setError(`Failed to load sample invoice: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Parse invoice with Vision AI
   const handleParseInvoice = async () => {
     if (!file) return;
 
     setLoading(true);
     setError('');
     setParsedInvoice(null);
-    setAnalysisResult(null);
-    setMergedInvoice(null);
-    setShowWarnings(false);
-    setIntelligentResult(null);
+    setVisionResult(null);
 
-    // ═══════════════════════════════════════════════════════════
-    // INVOICE PROCESSING (with vendor profiles)
-    // ═══════════════════════════════════════════════════════════
     try {
-        setLoadingStep('parsing');
-        const result = await processInvoiceIntelligent(file);
+      setLoadingStep('vision');
 
-        if (result.status === PROCESSING_STATUS.ERROR) {
-          throw new Error(result.error || 'Failed to process invoice');
-        }
+      const result = await processInvoiceVision(file);
 
-        if (result.status === PROCESSING_STATUS.NEEDS_ONBOARDING) {
-          // Show the vendor profile wizard
-          console.log('[InvoiceUpload] New vendor detected - showing profile wizard');
-          setIntelligentResult(result);
-          setShowProfileWizard(true);
-          setLoading(false);
-          setLoadingStep('');
-          return;
-        }
+      // Store full result for later use (save, inventory processing)
+      setVisionResult(result);
 
-        // Ready for review - store result and convert to existing format for display
-        setIntelligentResult(result);
+      // Convert to UI format
+      setParsedInvoice(convertVisionResultToInvoice(result));
 
-        // Convert to existing parsedInvoice format for compatibility
-        const convertedInvoice = {
-          vendor: {
-            name: result.vendor?.name,
-            invoiceNumber: result.invoice?.invoiceNumber,
-            invoiceDate: result.invoice?.invoiceDate,
-            ...result.vendorInfo
-          },
-          totals: {
-            subtotal: result.invoice?.subtotal,
-            taxAmount: result.invoice?.taxGST,
-            totalAmount: result.invoice?.total,
-            currency: result.invoice?.currency || 'CAD'
-          },
-          lineItems: result.lines.map(line => ({
-            itemCode: line.itemCode,
-            sku: line.itemCode,
-            name: line.description || line.name,
-            description: line.rawDescription,
-            quantity: line.quantity,
-            orderedQuantity: line.orderedQuantity, // What was ordered (may differ from delivered)
-            unit: line.unit,
-            unitPrice: line.unitPrice,
-            totalPrice: line.totalPrice,
-            category: line.category,
-            weight: line.weight,
-            weightUnit: line.weightUnit,
-            priceUnit: line.priceUnit,
-            pricePerG: line.pricePerG,
-            pricePerML: line.pricePerML,
-            // Pricing type (for highlighting weight-based rows)
-            isWeightBasedPricing: line.isWeightBasedPricing || false,
-            pricingType: line.pricingType || 'unit',
-            // Match info from intelligent matcher
-            matchResult: line.matchResult,
-            // Raw column values from invoice (for displaying unmapped columns like FORMAT, ORIGINE)
-            rawColumns: line.rawColumns,
-            // Learned corrections from vendor profile (auto-applied)
-            learnedCorrection: line.learnedCorrection || false,
-            learnedFormat: line.learnedFormat || null
-          })),
-          notes: ''
-        };
-
-        setParsedInvoice(convertedInvoice);
-
-        // Show matching summary
-        if (result.matchingSummary) {
-          console.log(`[InvoiceUpload] Matching: ${result.matchingSummary.matched}/${result.matchingSummary.total} items auto-matched`);
-        }
-
-        setLoadingStep('');
-        setLoading(false);
-        return;
-
-      } catch (err) {
-        console.error('[InvoiceUpload] Invoice processing failed:', err);
-        setError(err.message || 'Failed to process invoice. Please try again.');
+    } catch (err) {
+      console.error('[InvoiceUpload] Parsing failed:', err);
+      setError(err.message || 'Failed to parse invoice. Please try again.');
+    } finally {
       setLoading(false);
       setLoadingStep('');
     }
@@ -517,79 +425,10 @@ function InvoiceUploadPage() {
   const handleSaveInvoice = async () => {
     if (!parsedInvoice) return;
 
-    // Use merged invoice if available (has accurate pricePerG from Phase 3)
-    // Otherwise fall back to raw parsedInvoice
-    const usesMergedData = !!mergedInvoice;
-    let finalLineItems = usesMergedData ? mergedInvoice.lineItems : (parsedInvoice.lineItems || []);
+    const finalLineItems = parsedInvoice.lineItems || [];
 
-    // ═══════════════════════════════════════════════════════════
-    // Apply inline FORMAT corrections (from yellow-highlighted rows)
-    // This extracts weight from corrected format strings like "Caisse 24kg"
-    // ═══════════════════════════════════════════════════════════
-    console.log('[Save] Checking FORMAT corrections:', Object.keys(itemFormatCorrections).length, 'corrections pending');
-    if (Object.keys(itemFormatCorrections).length > 0) {
-      console.log('[Save] Corrections to apply:', itemFormatCorrections);
-      finalLineItems = finalLineItems.map((item, index) => {
-        const itemId = item.itemCode || item.name || item.description;
-        const correction = itemFormatCorrections[itemId];
-        console.log(`[Save] Checking item "${itemId}" for correction:`, correction ? 'FOUND' : 'not found');
-
-        if (correction?.corrected) {
-          // Parse the corrected format string to extract weight
-          const parsed = parsePackageFormat(correction.corrected);
-
-          if (parsed.value != null && parsed.unit && parsed.unitType === 'weight') {
-            // Apply extracted weight to item for pricePerG calculation
-            const unitInfo = getUnitFactorForPrice(parsed.unit);
-            const weightInGrams = unitInfo ? parsed.value * unitInfo.factor : parsed.value;
-
-            // Calculate pricePerG from corrected weight
-            let pricePerG = null;
-            if (weightInGrams > 0 && item.unitPrice > 0) {
-              pricePerG = item.unitPrice / weightInGrams;
-              pricePerG = Math.round(pricePerG * 1000000) / 1000000;
-            }
-
-            console.log(`[Save] Applied correction for "${itemId}": ${correction.original} → ${correction.corrected} (${parsed.value}${parsed.unit} = ${weightInGrams}g, pricePerG=$${pricePerG})`);
-
-            return {
-              ...item,
-              weight: parsed.value,
-              weightUnit: parsed.unit,
-              weightInGrams,
-              pricePerG,
-              packageType: parsed.format,
-              formatCorrected: true
-            };
-          } else if (parsed.value != null && parsed.unit && parsed.unitType === 'volume') {
-            // Handle volume units
-            const unitInfo = getUnitFactorForPrice(parsed.unit);
-            const volumeInML = unitInfo ? parsed.value * unitInfo.factor : parsed.value;
-
-            let pricePerML = null;
-            if (volumeInML > 0 && item.unitPrice > 0) {
-              pricePerML = item.unitPrice / volumeInML;
-              pricePerML = Math.round(pricePerML * 1000000) / 1000000;
-            }
-
-            console.log(`[Save] Applied correction for "${itemId}": ${correction.original} → ${correction.corrected} (${parsed.value}${parsed.unit} = ${volumeInML}ml, pricePerML=$${pricePerML})`);
-
-            return {
-              ...item,
-              volume: parsed.value,
-              volumeUnit: parsed.unit,
-              pricePerML,
-              packageType: parsed.format,
-              formatCorrected: true
-            };
-          }
-        }
-        return item;
-      });
-    }
-
-    // Get vendor name - from merged vendor, parsed vendor, or manual entry
-    const vendor = usesMergedData ? mergedInvoice.vendor : (parsedInvoice.vendor || {});
+    // Get vendor name - from parsed vendor or manual entry
+    const vendor = parsedInvoice.vendor || {};
     const vendorName = vendor.name?.trim() || manualVendorName.trim();
 
     // Vendor name is required - guide user if missing
@@ -631,7 +470,6 @@ function InvoiceUploadPage() {
         // Update vendor if we have new info
         if (Object.keys(updates).length > 0) {
           await vendorDB.update(vendorId, updates);
-          console.log('Updated vendor with new info:', updates);
         }
       } else {
         // Create new vendor with extracted info only (no assumed defaults)
@@ -652,337 +490,129 @@ function InvoiceUploadPage() {
           taxNumber: vendor.taxNumber || '',
           isActive: true
         });
-        console.log('Created new vendor with ID:', vendorId);
       }
 
-      // ═══════════════════════════════════════════════════════════
-      // Save FORMAT corrections to vendor profile for learning
-      // Next time same item appears, correction will be auto-applied
-      // ═══════════════════════════════════════════════════════════
-      console.log(`[Save] Vendor profile learning check: corrections=${Object.keys(itemFormatCorrections).length}, vendorId=${vendorId}`);
-      if (Object.keys(itemFormatCorrections).length > 0 && vendorId) {
-        try {
-          const currentVendor = await vendorDB.getById(vendorId);
-          console.log(`[Save] Current vendor itemCorrections:`, currentVendor?.itemCorrections);
-          const existingCorrections = currentVendor?.itemCorrections || {};
-
-          // Merge new corrections with existing ones
-          const updatedCorrections = { ...existingCorrections };
-          for (const [itemId, correction] of Object.entries(itemFormatCorrections)) {
-            console.log(`[Save] Processing correction for "${itemId}":`, correction);
-            if (correction.corrected) {
-              const parsed = parsePackageFormat(correction.corrected);
-              console.log(`[Save] Parsed correction "${correction.corrected}":`, parsed);
-              updatedCorrections[itemId] = {
-                format: correction.corrected,
-                unit: parsed.unit || null,
-                unitType: parsed.unitType || null,
-                value: parsed.value || null,
-                packageType: parsed.format || null,
-                // Pack info for distributor formats like "4/5LB"
-                // packCount: number of units in pack (e.g., 4)
-                // unitValue: weight/count per unit (e.g., 5lb) - for recipe portioning
-                // totalValue: total weight/count (e.g., 20lb) - for pricing
-                packCount: parsed.packCount || null,
-                unitValue: parsed.unitValue || null,
-                totalValue: parsed.totalValue || null,
-                // Store both identifiers for flexible matching on future invoices
-                itemCode: correction.itemCode || null,
-                itemName: correction.itemName || null,
-                learnedAt: new Date().toISOString()
-              };
-            }
-          }
-
-          console.log(`[Save] Saving updated corrections to vendor:`, updatedCorrections);
-          await vendorDB.update(vendorId, { itemCorrections: updatedCorrections });
-          console.log(`[Save] ✓ Saved ${Object.keys(itemFormatCorrections).length} item corrections to vendor profile for learning`);
-        } catch (err) {
-          console.error('[Save] ✗ Failed to save item corrections to vendor profile:', err);
-          // Non-blocking - continue with invoice save
-        }
-      } else {
-        console.log(`[Save] Skipping vendor learning: corrections=${Object.keys(itemFormatCorrections).length}, vendorId=${vendorId}`);
-      }
-
-      // 2. Save invoice with correct field names
-      // Use merged totals if available, otherwise parsed totals
-      const totals = usesMergedData ? mergedInvoice.totals : (parsedInvoice.totals || {});
+      // 2. Save invoice
+      const totals = parsedInvoice.totals || {};
+      // Use matched vendor ID if available from Vision
+      const matchedVendorId = visionResult?.vendor?.id || vendorId;
       const invoiceData = {
-        vendorId,
+        vendorId: matchedVendorId,
         vendorName,
         invoiceNumber: vendor.invoiceNumber || '',
         invoiceDate: vendor.invoiceDate || new Date().toISOString().split('T')[0],
         subtotal: totals.subtotal || 0,
-        taxGST: totals.taxGST || totals.taxAmount || 0,
+        taxGST: totals.taxAmount || 0,
+        taxTPS: totals.taxTPS || 0,
+        taxTVQ: totals.taxTVQ || 0,
         total: totals.totalAmount || 0,
         currency: totals.currency || 'CAD',
         status: 'extracted',
         lineCount: finalLineItems.length,
         rawText: '',
-        notes: usesMergedData ? mergedInvoice.notes : (parsedInvoice.notes || '')
+        notes: parsedInvoice.notes || '',
+        parsingMode: 'vision'
       };
 
       const invoiceId = await invoiceDB.create(invoiceData);
 
       // 3. Save line items to invoiceLineItems table
-      // If using merged data, pricePerG/pricePerML are already calculated
+      // V2 handlers already calculated pricePerG, weight, etc. in processLinesV2()
       let lineItemIds = [];
       if (finalLineItems.length > 0) {
-        const lineItemsForDB = finalLineItems.map((item, index) => {
-          // For merged data, use pre-calculated values; otherwise calculate
-          const pricePerG = usesMergedData ? item.pricePerG : calculateNormalizedPrice(item).pricePerG;
-          const pricePerML = usesMergedData ? item.pricePerML : calculateNormalizedPrice(item).pricePerML;
-          const totalBaseUnits = usesMergedData ? item.weightInGrams : calculateNormalizedPrice(item).totalBaseUnits;
-          const baseUnit = usesMergedData ? (pricePerML ? 'ml' : 'g') : calculateNormalizedPrice(item).baseUnit;
-
-          // Extract weight from unit (e.g., "Sac 50lb" × qty 2 = 100lb total)
-          const weightInfo = extractWeightFromUnit(item);
-          console.log(`[InvoiceUpload] Line ${index + 1}: ${item.name || item.description}, qty=${item.quantity}, weightInfo=`, weightInfo);
-
-          return {
-            invoiceId,
-            lineNumber: index + 1,
-            description: item.name || item.description || '',
-            rawDescription: item.rawDescription || item.name || item.description || '',
-            // Raw data (preserve original values)
-            rawQuantity: item.quantity != null ? String(item.quantity) : '',
-            rawUnitPrice: item.unitPrice != null ? String(item.unitPrice) : '',
-            rawTotal: item.totalPrice != null ? String(item.totalPrice) : '',
-            rawUnit: item.unit || item.quantityUnit || '',
-            // Parsed/normalized data
-            quantity: item.quantity || 0,
-            unit: item.unit || buildPackageUnit(item), // Use merged unit or build it
-            unitPrice: item.unitPrice || 0,
-            totalPrice: item.totalPrice || 0,
-            // Weight extraction for inventory (e.g., "Sac 50lb" × 2 = 100lb)
-            weight: item.weight || weightInfo.weightPerUnit || 0,
-            weightPerUnit: weightInfo.weightPerUnit || item.weightPerUnit || 0,
-            totalWeight: weightInfo.totalWeight || item.totalWeight || 0,
-            weightUnit: weightInfo.weightUnit || item.weightUnit || '',
-            // Normalized price for accurate cost calculations (from merger or calculated)
-            pricePerG,
-            pricePerML,
-            totalBaseUnits,
-            baseUnit,
-            category: item.category || '',
-            matchStatus: 'unmatched'
-          };
-        });
+        const lineItemsForDB = finalLineItems.map((item, index) => ({
+          invoiceId,
+          lineNumber: index + 1,
+          // SKU/Item code
+          sku: item.itemCode || item.sku || '',
+          rawSku: item.itemCode || item.sku || '',
+          description: item.name || item.description || '',
+          rawDescription: item.rawDescription || item.name || item.description || '',
+          // Raw data (preserve original values)
+          rawQuantity: item.quantity != null ? String(item.quantity) : '',
+          rawUnitPrice: item.unitPrice != null ? String(item.unitPrice) : '',
+          rawTotal: item.totalPrice != null ? String(item.totalPrice) : '',
+          rawUnit: item.unit || item.quantityUnit || '',
+          // Parsed/normalized data
+          quantity: item.quantity || 0,
+          unit: item.unit || buildPackageUnit(item),
+          unitPrice: item.unitPrice || 0,
+          totalPrice: item.totalPrice || 0,
+          // Format/packaging info
+          format: item.format || '',
+          // V2: Weight extraction (already calculated)
+          weight: item.weight || 0,
+          weightPerUnit: item.weightPerUnit || 0,
+          totalWeight: item.weightInGrams || item.weight || 0,
+          weightUnit: item.weightUnit || '',
+          // V2: Pricing calculations (already calculated)
+          pricePerG: item.pricePerG || null,
+          pricePerUnit: item.pricePerUnit || null,
+          pricePerML: item.pricePerML || null,
+          pricingType: item.pricingType || null,
+          // V2: Validation status
+          canBill: item.canBill ?? true,
+          canProcess: item.canProcess ?? true,
+          // V2: Confidence tracking
+          weightConfidence: item.weightConfidence || null,
+          weightSource: item.weightSource || null,
+          // Base units: V2 provides weightInGrams for proper conversion
+          totalBaseUnits: item.weightInGrams || item.totalBaseUnits || 0,
+          baseUnit: item.baseUnit || (item.pricePerML ? 'ml' : 'g'),
+          category: item.category || '',
+          matchStatus: 'unmatched',
+          // V2 processing flag
+          v2Processed: item._v2Processed ?? false,
+          // V2: Routing flags (for QuickBooks integration)
+          lineType: item.lineType || 'product',
+          forInventory: item.forInventory ?? true,
+          forAccounting: item.forAccounting ?? true,
+          isDeposit: item.isDeposit ?? false
+        }));
 
         lineItemIds = await invoiceLineDB.bulkCreate(invoiceId, lineItemsForDB);
-        console.log(`Saved ${finalLineItems.length} line items for invoice ${invoiceId}`);
       }
 
-      // 4. Update inventory items from line items (tracks price history)
-      const now = new Date().toISOString();
-      for (let itemIndex = 0; itemIndex < finalLineItems.length; itemIndex++) {
-        const item = finalLineItems[itemIndex];
-        const lineItemId = lineItemIds[itemIndex]; // Corresponding line item ID
+      // 4. Update inventory items from line items using type-specific handlers
+      // Get invoice type from selection or detection
+      const invoiceType = selectedType || visionResult?.detectedType?.type || 'generic';
 
-        // Get the name (merged data uses 'name', fallback to 'description')
-        const itemName = item.name || item.description;
-        if (!itemName) continue;
-
-        // Use pre-calculated pricePerG if available (from FORMAT corrections or merged data), otherwise calculate
-        // item.pricePerG is set by: 1) inline FORMAT correction, 2) merged invoice data
-        const pricePerG = item.pricePerG ?? (usesMergedData ? null : calculateNormalizedPrice(item).pricePerG);
-        const pricePerML = item.pricePerML ?? (usesMergedData ? null : calculateNormalizedPrice(item).pricePerML);
-
-        // Check if inventory item exists (by vendor + name)
-        let existingItem = null;
-        if (vendorId) {
-          existingItem = await inventoryItemDB.getByVendorAndName(vendorId, itemName);
-        }
-
-        // No fuzzy matching - if item doesn't exist for this vendor, it's a new item
-        console.log(`  Processing: ${itemName} for vendor ${vendorId}, existing:`, existingItem?.name || 'NEW ITEM');
-        console.log(`    pricePerG: ${pricePerG}, pricePerML: ${pricePerML}, weightInGrams: ${item.weightInGrams || 'N/A'}`);
-
-        // Extract quantity and weight from item
-        // Merged data has: quantity, weight (from Claude), weightInGrams (calculated)
-        const hasQuantity = item.quantity != null && item.quantity > 0;
-        const hasExplicitWeight = (item.weight != null && item.weight > 0) || (item.weightInGrams != null && item.weightInGrams > 0);
-
-        // Check for weight embedded in unit string (e.g., "Sac 50lb", "Caisse 4x5lb")
-        const embeddedWeight = extractWeightFromUnit(item);
-        const hasEmbeddedWeight = embeddedWeight.hasEmbeddedWeight;
-
-        // hasWeight is true if explicit OR embedded weight exists
-        const hasWeight = hasExplicitWeight || hasEmbeddedWeight;
-
-        // For price update, use weightInGrams if available for accuracy
-        const priceQty = item.weightInGrams || item.weight || item.quantity || 1;
-
-        if (existingItem) {
-          // Capture previous values for tracking
-          const previousPrice = existingItem.currentPrice || 0;
-          const previousStock = existingItem.currentStock || 0;
-
-          // Update price and add to stock
-          await inventoryItemDB.updatePriceFromInvoice(
-            existingItem.id,
-            item.unitPrice || 0,
-            {
-              quantity: priceQty,
-              invoiceId,
-              purchaseDate: invoiceData.invoiceDate
-            }
-          );
-
-          // Update stock - now can have BOTH quantity AND weight
-          const updates = {};
-
-          // Add quantity if present
-          if (hasQuantity) {
-            updates.stockQuantity = (existingItem.stockQuantity || 0) + item.quantity;
-            updates.stockQuantityUnit = normalizeQuantityUnit(item.quantityUnit || 'pc');
-          }
-
-          // Add weight/volume if present (explicit or embedded in unit string)
-          if (hasWeight) {
-            let valueToAdd, unitType;
-
-            if (hasExplicitWeight) {
-              // Use explicit weight from Claude parsing
-              valueToAdd = item.weight || item.weightInGrams || 0;
-              unitType = item.weightUnit || 'g';
-            } else {
-              // Use embedded weight from unit string (e.g., "Sac 50lb" × 2 = 100lb)
-              valueToAdd = embeddedWeight.totalWeight;
-              unitType = embeddedWeight.weightUnit;
-            }
-
-            const isVolume = isVolumeUnitType(unitType);
-            updates.stockWeight = (existingItem.stockWeight || 0) + valueToAdd;
-            updates.stockWeightUnit = isVolume
-              ? normalizeVolumeUnit(unitType)
-              : normalizeWeightUnit(unitType);
-          }
-
-          // currentStock - use actual weight if available, else quantity
-          const stockAddition = hasWeight ? (embeddedWeight.totalWeight || item.weight || item.quantity || 1) : (item.quantity || 1);
-          const newStock = (existingItem.currentStock || 0) + stockAddition;
-          updates.currentStock = newStock;
-
-          // Add normalized price for easy recipe cost calculation (use pre-calculated values)
-          if (pricePerG != null) {
-            updates.pricePerG = pricePerG;
-            updates.pricePerML = null; // Clear if previously set
-          } else if (pricePerML != null) {
-            updates.pricePerML = pricePerML;
-            updates.pricePerG = null; // Clear if previously set
-          }
-
-          await inventoryItemDB.update(existingItem.id, updates);
-          console.log(`  UPDATED: ${existingItem.name} - stock updated, pricePerG: ${updates.pricePerG}, pricePerML: ${updates.pricePerML}`);
-
-          // Update line item with inventory link and tracking info
-          if (lineItemId) {
-            await invoiceLineDB.update(lineItemId, {
-              inventoryItemId: existingItem.id,
-              matchStatus: 'auto_matched',
-              matchConfidence: 100,
-              matchedBy: 'system',
-              matchedAt: now,
-              addedToInventory: true,
-              addedToInventoryAt: now,
-              addedToInventoryBy: 'system',
-              previousPrice,
-              newPrice: item.unitPrice || 0,
-              previousStock,
-              newStock
-            });
-          }
-        } else {
-          // Create new inventory item with initial stock from invoice
-          console.log(`  CREATING NEW: ${itemName} for vendor ${vendorName}`);
-          const newItem = {
-            name: itemName,
-            category: item.category || 'Other',
-            vendorId: vendorId,
-            vendorName: vendorName,
-            unit: item.unit || buildPackageUnit(item), // Use merged unit or build it
-            currentPrice: item.unitPrice || 0,
-            // Normalized price for easy recipe cost calculation (use pre-calculated values)
-            pricePerG: pricePerG,
-            pricePerML: pricePerML,
-            lastPurchaseDate: invoiceData.invoiceDate,
-            lastInvoiceId: invoiceId,
-            isActive: true
-          };
-
-          // Set quantity if present
-          if (hasQuantity) {
-            newItem.stockQuantity = item.quantity;
-            newItem.stockQuantityUnit = normalizeQuantityUnit(item.quantityUnit || 'pc');
-            newItem.parQuantity = item.quantity;
-          } else {
-            newItem.stockQuantity = 0;
-            newItem.stockQuantityUnit = 'pc';
-            newItem.parQuantity = 0;
-          }
-
-          // Set weight/volume if present (explicit or embedded in unit string)
-          if (hasWeight) {
-            let weightValue, unitType;
-
-            if (hasExplicitWeight) {
-              // Use explicit weight from Claude parsing
-              weightValue = item.weight || item.weightInGrams || 0;
-              unitType = item.weightUnit || 'g';
-            } else {
-              // Use embedded weight from unit string (e.g., "Sac 50lb" × 2 = 100lb)
-              weightValue = embeddedWeight.totalWeight;
-              unitType = embeddedWeight.weightUnit;
-            }
-
-            const isVolume = isVolumeUnitType(unitType);
-            newItem.stockWeight = weightValue;
-            newItem.stockWeightUnit = isVolume
-              ? normalizeVolumeUnit(unitType)
-              : normalizeWeightUnit(unitType);
-            newItem.parWeight = weightValue;
-          } else {
-            newItem.stockWeight = 0;
-            newItem.stockWeightUnit = 'g';
-            newItem.parWeight = 0;
-          }
-
-          // Stock tracking - use actual weight if available, else quantity
-          const stockValue = hasWeight ? (embeddedWeight.totalWeight || item.weight || item.quantity || 1) : (item.quantity || 1);
-          newItem.currentStock = stockValue;
-          newItem.parLevel = stockValue;
-
-          const newItemId = await inventoryItemDB.create(newItem);
-          console.log(`  CREATED: ${itemName} with ID ${newItemId}, pricePerG: ${pricePerG}, pricePerML: ${pricePerML}`);
-
-          // Update line item with new inventory item link and tracking info
-          if (lineItemId) {
-            await invoiceLineDB.update(lineItemId, {
-              inventoryItemId: newItemId,
-              matchStatus: 'new_item',
-              matchConfidence: 100,
-              matchedBy: 'system',
-              matchedAt: now,
-              addedToInventory: true,
-              addedToInventoryAt: now,
-              addedToInventoryBy: 'system',
-              previousPrice: null,
-              newPrice: item.unitPrice || 0,
-              previousStock: null,
-              newStock: stockValue  // Use actual weight, not case count
-            });
-          }
-        }
-      }
+      const inventoryResult = await processLinesToInventory({
+        lineItems: finalLineItems,
+        lineItemIds,
+        vendor: { id: vendorId, name: vendorName },
+        invoiceId,
+        invoiceDate: invoiceData.invoiceDate
+      });
 
       setSaved(true);
-      console.log('Invoice saved with ID:', invoiceId, '- inventory items processed');
 
-      // Navigate to inventory dashboard after delay to see new items
+      // Save training data if user opted in
+      if (contributeTraining) {
+        try {
+          await saveTrainingData({
+            pdfFile: file,
+            pdfName: file?.name || 'invoice.pdf',
+            visionResponse: visionResult?.rawJson || null,
+            parsedLines: visionResult?.lineItems || [],
+            correctedLines: finalLineItems,
+            invoiceType: selectedType || visionResult?.detectedType?.type || 'foodSupply',
+            invoiceHeader: {
+              vendorName,
+              invoiceNumber: invoiceData.invoiceNumber,
+              invoiceDate: invoiceData.invoiceDate,
+            },
+            pageCount: visionResult?.pages || 1,
+          });
+          console.log('[InvoiceUpload] Training data saved');
+        } catch (trainErr) {
+          console.error('[InvoiceUpload] Failed to save training data:', trainErr);
+        }
+      }
+
+      // Navigate to invoice list
       redirectTimerRef.current = setTimeout(() => {
-        navigate('/inventory');
+        navigate('/invoices/list');
       }, 1500);
 
     } catch (err) {
@@ -1004,147 +634,47 @@ function InvoiceUploadPage() {
     setItemDepartments({});
     setBulkDepartment('');
     setManualVendorName('');
-    setIntelligentResult(null);
-    setShowProfileWizard(false);
+    setVisionResult(null);
+    setNewDeptName('');
+    setShowNewDeptInput(false);
+    setShowRawJson(false);
+    setSelectedType(null);
+    setEditingLine(null);
+    setIsEditModalOpen(false);
   };
 
-  // Handle vendor profile wizard completion
-  const handleProfileWizardComplete = async (vendorData, profile, itemCorrections = null) => {
-    setShowProfileWizard(false);
-    setLoading(true);
-    setLoadingStep('parsing');
-
-    try {
-      // Complete onboarding - this creates/updates vendor and re-processes invoice
-      // itemCorrections contains Type 2 corrections from wizard Step 4 (line value changes)
-      const result = await completeOnboarding(vendorData, profile, intelligentResult, itemCorrections);
-
-      if (result.status === PROCESSING_STATUS.ERROR) {
-        throw new Error(result.error || 'Failed to complete vendor setup');
-      }
-
-      setIntelligentResult(result);
-
-      // Convert to existing parsedInvoice format for display
-      const convertedInvoice = {
-        vendor: {
-          name: result.vendor?.name,
-          invoiceNumber: result.invoice?.invoiceNumber,
-          invoiceDate: result.invoice?.invoiceDate,
-          ...result.vendorInfo
-        },
-        totals: {
-          subtotal: result.invoice?.subtotal,
-          taxAmount: result.invoice?.taxGST,
-          totalAmount: result.invoice?.total,
-          currency: result.invoice?.currency || 'CAD'
-        },
-        lineItems: result.lines.map(line => ({
-          itemCode: line.itemCode,
-          sku: line.itemCode,
-          name: line.description || line.name,
-          description: line.rawDescription,
-          quantity: line.quantity,
-          orderedQuantity: line.orderedQuantity, // What was ordered (may differ from delivered)
-          unit: line.unit,
-          unitPrice: line.unitPrice,
-          totalPrice: line.totalPrice,
-          category: line.category,
-          weight: line.weight,
-          weightUnit: line.weightUnit,
-          priceUnit: line.priceUnit,
-          pricePerG: line.pricePerG,
-          pricePerML: line.pricePerML,
-          // Pricing type (for highlighting weight-based rows)
-          isWeightBasedPricing: line.isWeightBasedPricing || false,
-          pricingType: line.pricingType || 'unit',
-          matchResult: line.matchResult,
-          // Raw column values from invoice (for displaying unmapped columns like FORMAT, ORIGINE)
-          rawColumns: line.rawColumns,
-          // Learned corrections from vendor profile (auto-applied)
-          learnedCorrection: line.learnedCorrection || false,
-          learnedFormat: line.learnedFormat || null
-        })),
-        notes: ''
-      };
-
-      setParsedInvoice(convertedInvoice);
-
-      // Show matching summary
-      if (result.matchingSummary) {
-        console.log(`[InvoiceUpload] After onboarding: ${result.matchingSummary.matched}/${result.matchingSummary.total} items auto-matched`);
-      }
-
-    } catch (err) {
-      console.error('[InvoiceUpload] Profile wizard completion error:', err);
-      setError(err.message || 'Failed to complete vendor setup');
-    } finally {
-      setLoading(false);
-      setLoadingStep('');
-    }
+  // Handle training consent checkbox toggle
+  const handleTrainingToggle = async (checked) => {
+    setContributeTraining(checked);
+    // Save preference: 'always' if checked, 'never' if unchecked
+    await updateSetting('trainingDataConsent', checked ? 'always' : 'never');
   };
 
-  // Handle wizard close without completing
-  const handleProfileWizardClose = () => {
-    setShowProfileWizard(false);
-    setIntelligentResult(null);
-    // Reset to initial state - user can re-upload or complete wizard next time
-    setFile(null);
-    setFileType(null);
+  // Open line edit modal
+  const handleOpenLineEdit = (line) => {
+    setEditingLine(line);
+    setIsEditModalOpen(true);
   };
 
-  // Handle opening line review modal
-  const handleOpenLineReview = () => {
-    setFlaggedLines(linesNeedingReview);
-    setShowLineReviewModal(true);
+  // Close line edit modal
+  const handleCloseLineEdit = () => {
+    setEditingLine(null);
+    setIsEditModalOpen(false);
   };
 
-  // Handle saving line corrections from review modal
-  const handleLineCorrectionsave = (updatedLines) => {
-    // Update the parsed invoice with corrections
-    if (!parsedInvoice?.lineItems) return;
-
-    const newLineItems = [...parsedInvoice.lineItems];
-    updatedLines.forEach(line => {
-      if (line.lineIndex !== undefined && line.correctedUnit) {
-        // Update the line item with the corrected unit
-        newLineItems[line.lineIndex] = {
-          ...newLineItems[line.lineIndex],
-          weightUnit: line.correctedUnit,
-          correctedUnit: line.correctedUnit,
-          correctedUnitType: line.correctedUnitType
-        };
-      }
-    });
+  // Save line edits back to parsedInvoice
+  const handleSaveLineEdit = (updatedLine) => {
+    if (!parsedInvoice || updatedLine.id === undefined) return;
 
     setParsedInvoice(prev => ({
       ...prev,
-      lineItems: newLineItems
+      lineItems: prev.lineItems.map((item, index) =>
+        index === updatedLine.id ? { ...item, ...updatedLine } : item
+      ),
     }));
   };
 
   // Department assignment helpers
-  const toggleItemSelection = (index) => {
-    setSelectedItems(prev => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (!parsedInvoice?.lineItems) return;
-    if (selectedItems.size === parsedInvoice.lineItems.length) {
-      setSelectedItems(new Set());
-    } else {
-      setSelectedItems(new Set(parsedInvoice.lineItems.map((_, i) => i)));
-    }
-  };
-
   const assignDepartmentToSelected = () => {
     if (!bulkDepartment || selectedItems.size === 0) return;
     setItemDepartments(prev => {
@@ -1157,22 +687,41 @@ function InvoiceUploadPage() {
     setSelectedItems(new Set()); // Clear selection after assignment
   };
 
-  const assignDepartmentToItem = (index, departmentId) => {
-    setItemDepartments(prev => ({
-      ...prev,
-      [index]: departmentId
-    }));
+  // Get department info by ID (with color from palette)
+  const getDepartment = (id) => {
+    const dept = departments.find(d => d.id === id);
+    if (dept) {
+      // Assign color based on index in departments array
+      const colorIndex = departments.indexOf(dept) % DEPT_COLORS.length;
+      return { ...dept, color: DEPT_COLORS[colorIndex] };
+    }
+    // Fallback for unassigned
+    return { id: null, name: 'Unassigned', color: '#f5f5f5' };
   };
 
-  // Get department info by ID
-  const getDepartment = (id) => DEPARTMENTS.find(d => d.id === id) || DEPARTMENTS[0];
+  // Create new department
+  const handleCreateDepartment = async () => {
+    const name = newDeptName.trim();
+    if (!name) return;
+
+    try {
+      const newId = await departmentDB.add(name);
+      const newDept = { id: newId, name, isDefault: false };
+      setDepartments(prev => [...prev, newDept]);
+      setNewDeptName('');
+      setShowNewDeptInput(false);
+      setBulkDepartment(newId); // Auto-select the new department
+    } catch (err) {
+      console.error('[InvoiceUpload] Failed to create department:', err);
+    }
+  };
 
   // Calculate totals by department
   const departmentTotals = useMemo(() => {
     if (!parsedInvoice?.lineItems) return {};
     const totals = {};
     parsedInvoice.lineItems.forEach((item, index) => {
-      const deptId = itemDepartments[index] || 'default';
+      const deptId = itemDepartments[index] || null; // null = unassigned
       if (!totals[deptId]) {
         totals[deptId] = { count: 0, total: 0 };
       }
@@ -1182,116 +731,15 @@ function InvoiceUploadPage() {
     return totals;
   }, [parsedInvoice, itemDepartments]);
 
-  // Detect lines that need review (anomaly flagging)
-  // Only applies when "Package Format (weight embedded)" is selected
-  // If "Package Format (units per case)" is selected, no review needed - all numbers are count
-  const linesNeedingReview = useMemo(() => {
-    if (!parsedInvoice?.lineItems) return [];
-
-    // profile.columns is an OBJECT: { packageFormat: { index: 3, ... }, description: { index: 1, ... } }
-    const profileColumns = intelligentResult?.profile?.columns || {};
-
-    // Check profile.packageFormat.type (set by wizard based on user's column selection)
-    const packageFormatType = intelligentResult?.profile?.packageFormat?.type;
-    if (packageFormatType === 'units') {
-      // User selected "Package Format (units per case)" - no review needed
-      return [];
-    }
-
-    // Check if user mapped a column as 'packageUnits' (units per case)
-    const hasPackageUnitsColumn = !!profileColumns.packageUnits;
-    if (hasPackageUnitsColumn) {
-      // User selected "units per case" column type - no review needed
-      return [];
-    }
-
-    // Only flag if user selected "weight embedded" package format column
-    const hasPackageFormatColumn = !!profileColumns.packageFormat;
-    if (!hasPackageFormatColumn) {
-      // No weight-embedded package format column - no flagging needed
-      return [];
-    }
-
-    // Get the FORMAT column index for rawColumns lookup
-    const formatColIndex = profileColumns.packageFormat?.index;
-
-    return parsedInvoice.lineItems
-      .map((item, index) => {
-        // Skip items that already have learned corrections from vendor profile
-        if (item.learnedCorrection && item.learnedFormat) {
-          return null;
-        }
-
-        // Get FORMAT column value from rawColumns
-        const formatString = formatColIndex != null && item.rawColumns
-          ? item.rawColumns[formatColIndex]
-          : (item.priceUnit || item.unit);
-
-        if (!formatString) return null;
-
-        // Parse the format string to check for anomalies
-        const parsed = parsePackageFormat(formatString);
-
-        // Only flag if needs review (bare number, no unit, etc.)
-        if (parsed.needsReview) {
-          return {
-            lineIndex: index,
-            ...item,
-            formatParsed: parsed
-          };
-        }
-        return null;
-      })
-      .filter(Boolean);
-  }, [parsedInvoice, intelligentResult]);
-
-  // Set of line indices that need review (for quick lookup in table rendering)
-  const needsReviewIndices = useMemo(() => {
-    return new Set(linesNeedingReview.map(line => line.lineIndex));
-  }, [linesNeedingReview]);
-
-  // Get unique item identifier (prefer itemCode, fallback to name)
-  const getItemIdentifier = (item) => {
-    return item.itemCode || item.name || item.description || `line-${item.lineIndex}`;
-  };
-
-  // Handle inline FORMAT correction
-  const handleFormatCorrection = (item, lineIndex, newValue) => {
-    const itemId = getItemIdentifier(item);
-    const profileColumns = intelligentResult?.profile?.columns || {};
-    const formatColIndex = profileColumns.packageFormat?.index;
-
-    // Get original value from rawColumns
-    const originalValue = formatColIndex != null && item.rawColumns
-      ? item.rawColumns[formatColIndex]
-      : '';
-
-    setItemFormatCorrections(prev => ({
-      ...prev,
-      [itemId]: {
-        original: originalValue,
-        corrected: newValue,
-        lineIndex,
-        itemCode: item.itemCode,
-        itemName: item.name || item.description
-      }
-    }));
-  };
-
-  // Check if item has a correction applied
-  const getItemCorrection = (item) => {
-    const itemId = getItemIdentifier(item);
-    return itemFormatCorrections[itemId] || null;
-  };
-
   // Split invoice by department - saves separate invoices
+  // Uses type-specific handlers for correct calculations
   const handleSplitByDepartment = async () => {
     if (!parsedInvoice) return;
 
     // Group items by department
     const itemsByDept = {};
     parsedInvoice.lineItems.forEach((item, index) => {
-      const deptId = itemDepartments[index] || 'default';
+      const deptId = itemDepartments[index] || null; // null = unassigned
       if (!itemsByDept[deptId]) {
         itemsByDept[deptId] = [];
       }
@@ -1335,6 +783,11 @@ function InvoiceUploadPage() {
         });
       }
 
+      // Get vendor for handler selection
+      const fullVendor = await vendorDB.getById(vendorId);
+      const vendorObj = { id: vendorId, name: vendorName };
+      const invoiceType = selectedType || fullVendor?.invoiceType || visionResult?.detectedType?.type || 'generic';
+
       // Create separate invoice for each department
       const savedInvoices = [];
       for (const deptId of deptIds) {
@@ -1359,212 +812,64 @@ function InvoiceUploadPage() {
 
         const invoiceId = await invoiceDB.create(invoiceData);
 
-        // Save line items to invoiceLineItems table (with raw data and normalized prices)
+        // Save line items to invoiceLineItems table
+        // V2 handlers already calculated weight, pricePerG in processLinesV2()
         let lineItemIds = [];
         if (deptItems.length > 0) {
-          const lineItemsForDB = deptItems.map((item, index) => {
-            const normalizedPrice = calculateNormalizedPrice(item);
-            // Extract weight from unit (e.g., "Sac 50lb" × qty 2 = 100lb total)
-            const weightInfo = extractWeightFromUnit(item);
-            return {
-              invoiceId,
-              lineNumber: index + 1,
-              description: item.name || '',
-              rawDescription: item.name || '',
-              rawQuantity: item.quantity != null ? String(item.quantity) : '',
-              rawUnitPrice: item.unitPrice != null ? String(item.unitPrice) : '',
-              rawTotal: item.totalPrice != null ? String(item.totalPrice) : '',
-              rawUnit: item.unit || item.quantityUnit || '',
-              quantity: item.quantity || item.weight || 0,
-              unit: buildPackageUnit(item),
-              unitPrice: item.unitPrice || 0,
-              totalPrice: item.totalPrice || 0,
-              // Weight extraction for inventory (e.g., "Sac 50lb" × 2 = 100lb)
-              weight: item.weight || weightInfo.weightPerUnit || 0,
-              weightPerUnit: weightInfo.weightPerUnit || item.weightPerUnit || 0,
-              totalWeight: weightInfo.totalWeight || item.totalWeight || 0,
-              weightUnit: weightInfo.weightUnit || item.weightUnit || '',
-              pricePerG: normalizedPrice.pricePerG,
-              pricePerML: normalizedPrice.pricePerML,
-              totalBaseUnits: normalizedPrice.totalBaseUnits,
-              baseUnit: normalizedPrice.baseUnit,
-              category: item.category || '',
-              matchStatus: 'unmatched'
-            };
-          });
+          const lineItemsForDB = deptItems.map((item, index) => ({
+            invoiceId,
+            lineNumber: index + 1,
+            sku: item.itemCode || item.sku || '',
+            description: item.name || item.description || '',
+            rawDescription: item.rawDescription || item.name || '',
+            rawQuantity: item.quantity != null ? String(item.quantity) : '',
+            rawUnitPrice: item.unitPrice != null ? String(item.unitPrice) : '',
+            rawTotal: item.totalPrice != null ? String(item.totalPrice) : '',
+            rawUnit: item.unit || item.quantityUnit || '',
+            quantity: item.quantity || 0,
+            unit: item.unit || buildPackageUnit(item),
+            unitPrice: item.unitPrice || 0,
+            totalPrice: item.totalPrice || 0,
+            format: item.format || '',
+            // V2: Weight extraction
+            weight: item.weight || 0,
+            weightPerUnit: item.weightPerUnit || 0,
+            totalWeight: item.weightInGrams || item.weight || 0,
+            weightUnit: item.weightUnit || '',
+            // V2: Pricing calculations
+            pricePerG: item.pricePerG || null,
+            pricePerUnit: item.pricePerUnit || null,
+            pricingType: item.pricingType || null,
+            // V2: Validation
+            canBill: item.canBill ?? true,
+            canProcess: item.canProcess ?? true,
+            // Base units in grams
+            totalBaseUnits: item.weightInGrams || item.totalBaseUnits || 0,
+            baseUnit: item.baseUnit || (item.pricePerML ? 'ml' : 'g'),
+            category: item.category || '',
+            matchStatus: 'unmatched',
+            v2Processed: item._v2Processed ?? false,
+            // V2: Routing flags (for QuickBooks integration)
+            lineType: item.lineType || 'product',
+            forInventory: item.forInventory ?? true,
+            forAccounting: item.forAccounting ?? true,
+            isDeposit: item.isDeposit ?? false
+          }));
           lineItemIds = await invoiceLineDB.bulkCreate(invoiceId, lineItemsForDB);
         }
 
         savedInvoices.push({ invoiceId, department: dept.name, itemCount: deptItems.length, total: deptTotal });
 
-        // Update inventory items and link line items
-        const now = new Date().toISOString();
-        for (let itemIndex = 0; itemIndex < deptItems.length; itemIndex++) {
-          const item = deptItems[itemIndex];
-          const lineItemId = lineItemIds[itemIndex];
-          if (!item.name) continue;
-
-          // Calculate normalized price per gram/ml for this item
-          const normalizedPrice = calculateNormalizedPrice(item);
-
-          // Check if inventory item exists (by vendor + name)
-          let existingItem = null;
-          if (vendorId) {
-            existingItem = await inventoryItemDB.getByVendorAndName(vendorId, item.name);
-          }
-
-          // If not found by vendor, try fuzzy search
-          if (!existingItem) {
-            const searchResults = await inventoryItemDB.search(item.name, { limit: 1 });
-            if (searchResults.length > 0 && searchResults[0].name.toLowerCase() === item.name.toLowerCase()) {
-              existingItem = searchResults[0];
-            }
-          }
-
-          // Determine if this is a weight, volume, or quantity based on unit
-          const itemUnit = buildPackageUnit(item);
-          const itemQty = item.quantity || 1;
-          const unitIsWeight = isWeightUnit(itemUnit);
-          const unitIsVolume = isVolumeUnitType(itemUnit);
-
-          // Check for embedded weight in unit string (e.g., "Sac 50lb", "Caisse 4x5lb")
-          const embeddedWeightInfo = extractWeightFromUnit(item);
-          const hasEmbeddedWeight = embeddedWeightInfo.hasEmbeddedWeight;
-
-          if (existingItem) {
-            const previousPrice = existingItem.currentPrice || 0;
-            const previousStock = existingItem.currentStock || 0;
-
-            await inventoryItemDB.updatePriceFromInvoice(
-              existingItem.id,
-              item.unitPrice || 0,
-              {
-                quantity: itemQty,
-                invoiceId,
-                purchaseDate: invoiceData.invoiceDate
-              }
-            );
-
-            // Update stock - add to appropriate field based on unit type
-            const updates = {};
-
-            // Always set quantity for package-type items (sac, caisse, etc.)
-            if (!unitIsWeight && !unitIsVolume) {
-              updates.stockQuantity = (existingItem.stockQuantity || 0) + itemQty;
-              updates.stockQuantityUnit = normalizeQuantityUnit(item.quantityUnit || itemUnit);
-            }
-
-            // Set weight if unit is weight/volume OR if weight is embedded in unit string
-            if (unitIsWeight || unitIsVolume) {
-              updates.stockWeight = (existingItem.stockWeight || 0) + itemQty;
-              updates.stockWeightUnit = unitIsVolume
-                ? normalizeVolumeUnit(itemUnit)
-                : normalizeWeightUnit(itemUnit);
-            } else if (hasEmbeddedWeight) {
-              // Extract weight from unit string (e.g., "Sac 50lb" × 2 = 100lb)
-              updates.stockWeight = (existingItem.stockWeight || 0) + embeddedWeightInfo.totalWeight;
-              updates.stockWeightUnit = normalizeWeightUnit(embeddedWeightInfo.weightUnit);
-            }
-            const newStock = (existingItem.currentStock || 0) + itemQty;
-            updates.currentStock = newStock;
-
-            // Add normalized price for easy recipe cost calculation
-            if (normalizedPrice.pricePerG != null) {
-              updates.pricePerG = normalizedPrice.pricePerG;
-              updates.pricePerML = null;
-            } else if (normalizedPrice.pricePerML != null) {
-              updates.pricePerML = normalizedPrice.pricePerML;
-              updates.pricePerG = null;
-            }
-
-            await inventoryItemDB.update(existingItem.id, updates);
-
-            // Update line item with inventory link
-            if (lineItemId) {
-              await invoiceLineDB.update(lineItemId, {
-                inventoryItemId: existingItem.id,
-                matchStatus: 'auto_matched',
-                matchConfidence: 100,
-                matchedBy: 'system',
-                matchedAt: now,
-                addedToInventory: true,
-                addedToInventoryAt: now,
-                addedToInventoryBy: 'system',
-                previousPrice,
-                newPrice: item.unitPrice || 0,
-                previousStock,
-                newStock
-              });
-            }
-          } else {
-            const newItem = {
-              name: item.name,
-              category: item.category || 'Other',
-              vendorId: vendorId,
-              vendorName: vendorName,
-              unit: itemUnit,
-              currentPrice: item.unitPrice || 0,
-              // Normalized price for easy recipe cost calculation
-              pricePerG: normalizedPrice.pricePerG,
-              pricePerML: normalizedPrice.pricePerML,
-              lastPurchaseDate: invoiceData.invoiceDate,
-              lastInvoiceId: invoiceId,
-              isActive: true
-            };
-
-            if (unitIsWeight || unitIsVolume) {
-              // Pure weight/volume unit (e.g., "kg", "lb", "ml")
-              newItem.stockWeight = itemQty;
-              newItem.stockWeightUnit = unitIsVolume
-                ? normalizeVolumeUnit(itemUnit)
-                : normalizeWeightUnit(itemUnit);
-              newItem.parWeight = itemQty;
-              newItem.stockQuantity = 0;
-              newItem.stockQuantityUnit = 'pc';
-            } else if (hasEmbeddedWeight) {
-              // Package with embedded weight (e.g., "Sac 50lb" × 2)
-              // Set BOTH quantity (2 sacs) AND weight (100lb)
-              newItem.stockQuantity = itemQty;
-              newItem.stockQuantityUnit = normalizeQuantityUnit(item.quantityUnit || 'sac');
-              newItem.parQuantity = itemQty;
-              newItem.stockWeight = embeddedWeightInfo.totalWeight;
-              newItem.stockWeightUnit = normalizeWeightUnit(embeddedWeightInfo.weightUnit);
-              newItem.parWeight = embeddedWeightInfo.totalWeight;
-            } else {
-              // Pure quantity unit (e.g., "pc", "case", "doz")
-              newItem.stockQuantity = itemQty;
-              newItem.stockQuantityUnit = normalizeQuantityUnit(itemUnit);
-              newItem.parQuantity = itemQty;
-              newItem.stockWeight = 0;
-              newItem.stockWeightUnit = 'g';
-            }
-            newItem.currentStock = itemQty;
-            newItem.parLevel = itemQty;
-
-            const newItemId = await inventoryItemDB.create(newItem);
-
-            // Update line item with new inventory item link
-            if (lineItemId) {
-              await invoiceLineDB.update(lineItemId, {
-                inventoryItemId: newItemId,
-                matchStatus: 'new_item',
-                matchConfidence: 100,
-                matchedBy: 'system',
-                matchedAt: now,
-                addedToInventory: true,
-                addedToInventoryAt: now,
-                addedToInventoryBy: 'system',
-                previousPrice: null,
-                newPrice: item.unitPrice || 0,
-                previousStock: null,
-                newStock: itemQty
-              });
-            }
-          }
-        }
+        // Update inventory items using type-specific handlers
+        const inventoryResult = await processLinesToInventory({
+          lineItems: deptItems,
+          lineItemIds,
+          vendor: vendorObj,
+          invoiceId,
+          invoiceDate: invoiceData.invoiceDate
+        });
       }
 
-      console.log('Split invoices saved:', savedInvoices);
       setSaved(true);
 
       redirectTimerRef.current = setTimeout(() => {
@@ -1607,21 +912,245 @@ function InvoiceUploadPage() {
         </Alert>
       )}
 
-      {/* Lines Needing Review Info */}
-      {parsedInvoice && linesNeedingReview.length > 0 && (
-        <Alert variant="warning">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>
-              <strong>{linesNeedingReview.length} yellow row{linesNeedingReview.length !== 1 ? 's' : ''}</strong> need unit info.
-              Edit the FORMAT column directly (e.g., "Caisse 24" → "Caisse 24kg"). Changes are saved per item.
+      {/* Parse Info Badge */}
+      {visionResult && parsedInvoice && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '8px 16px',
+          background: visionResult.meta?.source === 'json-import' ? '#fef3c7' : '#f0f9ff',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          fontSize: '13px',
+          color: visionResult.meta?.source === 'json-import' ? '#92400e' : '#1e40af'
+        }}>
+          <span style={{ fontWeight: 600 }}>
+            {visionResult.meta?.source === 'json-import' ? 'DEV: JSON Import' : 'Vision AI'}
+          </span>
+          <span>•</span>
+          <span>{visionResult.meta?.pageCount || 1} page{(visionResult.meta?.pageCount || 1) > 1 ? 's' : ''}</span>
+          <span>•</span>
+          <span>{visionResult.meta?.parseTimeMs ? `${(visionResult.meta.parseTimeMs / 1000).toFixed(1)}s` : '-'}</span>
+          {visionResult.vendor && (
+            <>
+              <span>•</span>
+              <span style={{ color: '#059669' }}>Vendor matched: {visionResult.vendor.name}</span>
+            </>
+          )}
+          <span>•</span>
+          <button
+            onClick={() => setShowRawJson(!showRawJson)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#6366f1',
+              cursor: 'pointer',
+              fontSize: '13px',
+              textDecoration: 'underline',
+              padding: 0
+            }}
+          >
+            {showRawJson ? 'Hide' : 'Show'} Raw JSON
+          </button>
+        </div>
+      )}
+
+      {/* Invoice Type Detection */}
+      {visionResult?.detectedType && parsedInvoice && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          padding: '12px 16px',
+          background: isHighConfidence(visionResult.detectedType.confidence) ? '#f0fdf4' : '#fffbeb',
+          border: `1px solid ${isHighConfidence(visionResult.detectedType.confidence) ? '#bbf7d0' : '#fde68a'}`,
+          borderRadius: '8px',
+          marginBottom: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '24px' }}>
+              {getTypeIcon(selectedType || visionResult.detectedType.type)}
             </span>
-            {Object.keys(itemFormatCorrections).length > 0 && (
-              <span style={{ marginLeft: '12px', color: '#059669', fontWeight: 500 }}>
-                ✓ {Object.keys(itemFormatCorrections).length} corrected
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '14px', color: '#374151' }}>
+                {visionResult.detectedType.source === 'vendor_profile' ? 'Known Vendor Type' : 'Detected Type'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                {visionResult.detectedType.confidence}% confidence
+                {visionResult.detectedType.topMatches?.length > 0 && (
+                  <span> ({visionResult.detectedType.topMatches.length} signals)</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <select
+            value={selectedType || visionResult.detectedType.type}
+            onChange={(e) => setSelectedType(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db',
+              fontSize: '14px',
+              fontWeight: 500,
+              background: '#fff',
+              cursor: 'pointer',
+              minWidth: '180px'
+            }}
+          >
+            <option value="foodSupply">Food Supplier</option>
+            <option value="packagingDistributor">Packaging Distributor</option>
+            <option value="utilities">Utilities</option>
+            <option value="services">Services</option>
+            <option value="generic">General</option>
+          </select>
+
+          {selectedType && selectedType !== visionResult.detectedType.type && (
+            <button
+              onClick={() => setSelectedType(null)}
+              style={{
+                padding: '6px 12px',
+                fontSize: '12px',
+                background: '#e5e7eb',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                color: '#374151'
+              }}
+            >
+              Reset to detected
+            </button>
+          )}
+
+          {!isHighConfidence(visionResult.detectedType.confidence) && !selectedType && (
+            <span style={{
+              fontSize: '12px',
+              color: '#d97706',
+              fontStyle: 'italic'
+            }}>
+              Low confidence - please verify
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* V2 Processing Summary */}
+      {visionResult?.v2Available && visionResult?.v2Summary && parsedInvoice && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          padding: '12px 16px',
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          fontSize: '13px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            color: '#059669',
+            fontWeight: 600
+          }}>
+            <span>✓</span>
+            <span>V2 Pipeline Active</span>
+          </div>
+          <span style={{ color: '#94a3b8' }}>|</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ color: '#374151' }}>
+              <strong>{visionResult.v2Summary.billable ?? visionResult.v2Summary.canBillCount ?? 0}</strong>/{visionResult.v2Summary.totalLines ?? visionResult.v2Summary.total ?? 0} ready to bill
+            </span>
+            <span style={{ color: '#374151' }}>
+              <strong>{visionResult.v2Summary.valid ?? visionResult.v2Summary.canProcessCount ?? 0}</strong>/{visionResult.v2Summary.totalLines ?? visionResult.v2Summary.total ?? 0} fully processed
+            </span>
+            {(visionResult.v2Summary.warnings > 0 || visionResult.v2Summary.warningCount > 0) && (
+              <span style={{ color: '#d97706' }}>
+                ⚠ {visionResult.v2Summary.warnings ?? visionResult.v2Summary.warningCount} warning{(visionResult.v2Summary.warnings ?? visionResult.v2Summary.warningCount) > 1 ? 's' : ''}
               </span>
             )}
           </div>
-        </Alert>
+          <span style={{ color: '#94a3b8' }}>|</span>
+          <span style={{ color: '#6b7280', fontSize: '12px' }}>
+            Handler: {visionResult.handlerLabel}
+          </span>
+        </div>
+      )}
+
+      {/* V2 Not Available Notice */}
+      {visionResult && visionResult.v2Available === false && parsedInvoice && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '10px 16px',
+          background: '#fef3c7',
+          border: '1px solid #fcd34d',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          fontSize: '13px',
+          color: '#92400e'
+        }}>
+          <span>ℹ</span>
+          <span>
+            V2 pipeline not yet implemented for <strong>{visionResult.handlerLabel}</strong>.
+            Using basic processing.
+          </span>
+        </div>
+      )}
+
+      {/* DEV: Raw Vision JSON Panel */}
+      {showRawJson && visionResult?._rawJson && (
+        <div style={{
+          marginBottom: '16px',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '10px 16px',
+            background: '#f9fafb',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            <span style={{ fontWeight: 600, fontSize: '14px', color: '#374151' }}>
+              Raw Vision JSON
+            </span>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(JSON.stringify(visionResult._rawJson, null, 2));
+              }}
+              style={{
+                padding: '4px 10px',
+                fontSize: '12px',
+                background: '#e5e7eb',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                color: '#374151'
+              }}
+            >
+              Copy
+            </button>
+          </div>
+          <pre style={{
+            margin: 0,
+            padding: '16px',
+            background: '#1f2937',
+            color: '#e5e7eb',
+            fontSize: '12px',
+            lineHeight: '1.5',
+            overflow: 'auto',
+            maxHeight: '400px',
+            fontFamily: 'Monaco, Consolas, "Courier New", monospace'
+          }}>
+            {JSON.stringify(visionResult._rawJson, null, 2)}
+          </pre>
+        </div>
       )}
 
       {/* Upload Section */}
@@ -1648,6 +1177,38 @@ function InvoiceUploadPage() {
                 style={{ display: 'none' }}
               />
               <p className={styles.dropHint}>Supports PDF and images (JPEG, PNG) up to 10MB</p>
+
+              {/* Sample Invoices */}
+              <div className={styles.sampleSection}>
+                <p className={styles.sampleLabel}>Or try a sample invoice:</p>
+                <div className={styles.sampleButtons}>
+                  {SAMPLE_INVOICES.map((sample) => (
+                    <div key={sample.id} className={styles.sampleButtonGroup}>
+                      <button
+                        className={styles.sampleButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLoadSample(sample);
+                        }}
+                        disabled={loading}
+                        title={`Load ${sample.vendor} sample`}
+                      >
+                        <span className={styles.sampleIcon}>{sample.icon}</span>
+                        <span className={styles.sampleName}>{sample.name}</span>
+                      </button>
+                      <a
+                        href={sample.file}
+                        download={`${sample.vendor.replace(/\s+/g, '_')}_Sample.pdf`}
+                        className={styles.sampleDownload}
+                        onClick={(e) => e.stopPropagation()}
+                        title={`Download ${sample.vendor} PDF`}
+                      >
+                        ⬇
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
             <>
@@ -1673,26 +1234,15 @@ function InvoiceUploadPage() {
               {loading && (
                 <div className={styles.progressContainer}>
                   <div className={styles.progressSteps}>
-                    {fileType === 'pdf' && (
-                      <>
-                        <div className={`${styles.progressStep} ${loadingStep === 'extracting' ? styles.active : ''} ${loadingStep === 'parsing' || loadingStep === 'saving' ? styles.completed : ''}`}>
-                          <div className={styles.stepIcon}>
-                            {loadingStep === 'parsing' || loadingStep === 'saving' ? '✓' : '1'}
-                          </div>
-                          <div className={styles.stepLabel}>Extract text</div>
-                        </div>
-                        <div className={styles.progressLine}></div>
-                      </>
-                    )}
-                    <div className={`${styles.progressStep} ${loadingStep === 'parsing' ? styles.active : ''} ${loadingStep === 'saving' ? styles.completed : ''}`}>
+                    <div className={`${styles.progressStep} ${loadingStep === 'vision' ? styles.active : ''} ${loadingStep === 'saving' ? styles.completed : ''}`}>
                       <div className={styles.stepIcon}>
-                        {loadingStep === 'saving' ? '✓' : fileType === 'pdf' ? '2' : '1'}
+                        {loadingStep === 'saving' ? '✓' : '1'}
                       </div>
-                      <div className={styles.stepLabel}>AI parsing</div>
+                      <div className={styles.stepLabel}>Vision AI</div>
                     </div>
                     <div className={styles.progressLine}></div>
                     <div className={`${styles.progressStep} ${loadingStep === 'saving' ? styles.active : ''}`}>
-                      <div className={styles.stepIcon}>{fileType === 'pdf' ? '3' : '2'}</div>
+                      <div className={styles.stepIcon}>2</div>
                       <div className={styles.stepLabel}>Save</div>
                     </div>
                   </div>
@@ -1702,6 +1252,23 @@ function InvoiceUploadPage() {
           )}
         </Card>
       )}
+
+      {/* Training Data Contribution - Always visible */}
+      <div className={styles.trainingConsent}>
+        <label className={styles.trainingCheckbox}>
+          <input
+            type="checkbox"
+            checked={contributeTraining}
+            onChange={(e) => handleTrainingToggle(e.target.checked)}
+          />
+          <span className={styles.checkboxLabel}>
+            Help improve KitchenCommand
+          </span>
+        </label>
+        <p className={styles.trainingHint}>
+          Contribute invoices to help train our AI parser. Your data helps improve accuracy for everyone.
+        </p>
+      </div>
 
       {/* Parsed Invoice Review */}
       {parsedInvoice && (
@@ -1778,203 +1345,6 @@ function InvoiceUploadPage() {
             </div>
           </div>
 
-          {/* Analysis Warnings Panel */}
-          {showWarnings && mergedInvoice && mergedInvoice.summary.totalIssues > 0 && (
-            <div className={styles.section}>
-              <div className={styles.warningsPanel}>
-                <div className={styles.warningsHeader}>
-                  <h3>
-                    Analysis Results
-                    {mergedInvoice.summary.errorCount > 0 && (
-                      <span className={styles.errorBadge}>{mergedInvoice.summary.errorCount} errors</span>
-                    )}
-                    {mergedInvoice.summary.warningCount > 0 && (
-                      <span className={styles.warningBadge}>{mergedInvoice.summary.warningCount} warnings</span>
-                    )}
-                  </h3>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowWarnings(false)}
-                    style={{ padding: '4px 8px', fontSize: '12px' }}
-                  >
-                    Dismiss
-                  </Button>
-                </div>
-
-                {/* Weight Extraction Stats */}
-                {analysisResult && (
-                  <div className={styles.analysisStats}>
-                    <span className={styles.statItem}>
-                      Weight extracted: {analysisResult.lineItems.summary.linesWithWeight}/{analysisResult.lineItems.summary.totalLines} lines
-                      ({analysisResult.lineItems.summary.weightExtractionRate}%)
-                    </span>
-                  </div>
-                )}
-
-                {/* Invoice Reconciliation Summary */}
-                {mergedInvoice?.summary?.byType && (
-                  <div className={styles.reconciliationPanel}>
-                    <h4 className={styles.reconciliationTitle}>Invoice Breakdown</h4>
-                    <div className={styles.reconciliationGrid}>
-                      {/* Products */}
-                      <div className={styles.reconciliationRow}>
-                        <span className={styles.reconciliationLabel}>
-                          Products ({mergedInvoice.summary.byType.product?.count || 0} items)
-                        </span>
-                        <span className={styles.reconciliationValue}>
-                          {formatCurrency(mergedInvoice.summary.byType.product?.total || 0, parsedInvoice.totals?.currency)}
-                        </span>
-                      </div>
-
-                      {/* Deposits - only show if present */}
-                      {mergedInvoice.summary.byType.deposit?.count > 0 && (
-                        <div className={styles.reconciliationRow}>
-                          <span className={styles.reconciliationLabel}>
-                            Deposits ({mergedInvoice.summary.byType.deposit.count} items)
-                            <span className={styles.reconciliationHint}> - tracked separately</span>
-                          </span>
-                          <span className={styles.reconciliationValue}>
-                            {formatCurrency(mergedInvoice.summary.byType.deposit.total, parsedInvoice.totals?.currency)}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Fees - only show if present */}
-                      {mergedInvoice.summary.byType.fee?.count > 0 && (
-                        <div className={styles.reconciliationRow}>
-                          <span className={styles.reconciliationLabel}>
-                            Fees ({mergedInvoice.summary.byType.fee.count} items)
-                          </span>
-                          <span className={styles.reconciliationValue}>
-                            {formatCurrency(mergedInvoice.summary.byType.fee.total, parsedInvoice.totals?.currency)}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Credits - only show if present */}
-                      {mergedInvoice.summary.byType.credit?.count > 0 && (
-                        <div className={styles.reconciliationRow}>
-                          <span className={styles.reconciliationLabel}>
-                            Credits ({mergedInvoice.summary.byType.credit.count} items)
-                          </span>
-                          <span className={`${styles.reconciliationValue} ${styles.creditValue}`}>
-                            {formatCurrency(mergedInvoice.summary.byType.credit.total, parsedInvoice.totals?.currency)}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Zero items - only show if present */}
-                      {mergedInvoice.summary.byType.zero?.count > 0 && (
-                        <div className={styles.reconciliationRow}>
-                          <span className={styles.reconciliationLabel}>
-                            Zero/Info ({mergedInvoice.summary.byType.zero.count} items)
-                            <span className={styles.reconciliationHint}> - excluded</span>
-                          </span>
-                          <span className={styles.reconciliationValue}>
-                            $0.00
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Divider */}
-                      <div className={styles.reconciliationDivider}></div>
-
-                      {/* Calculated Subtotal */}
-                      <div className={styles.reconciliationRow}>
-                        <span className={styles.reconciliationLabel}>Calculated Subtotal</span>
-                        <span className={styles.reconciliationValue}>
-                          {formatCurrency(mergedInvoice.summary.calculatedSubtotal, parsedInvoice.totals?.currency)}
-                        </span>
-                      </div>
-
-                      {/* QuickBooks effective total */}
-                      <div className={`${styles.reconciliationRow} ${styles.qbTotal}`}>
-                        <span className={styles.reconciliationLabel}>
-                          <span className={styles.qbIcon}>QB</span>
-                          QuickBooks will receive
-                        </span>
-                        <span className={styles.reconciliationValue}>
-                          {formatCurrency(mergedInvoice.summary.effectiveSubtotal, parsedInvoice.totals?.currency)}
-                        </span>
-                      </div>
-
-                      {/* Balance check */}
-                      {mergedInvoice.summary.byType.deposit?.count > 0 && (
-                        <div className={styles.reconciliationNote}>
-                          <span className={styles.checkIcon}>✓</span>
-                          Subtotal difference of {formatCurrency(mergedInvoice.summary.depositTotal, parsedInvoice.totals?.currency)} explained by deposits
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Errors */}
-                {mergedInvoice.issues.errors.length > 0 && (
-                  <div className={styles.issuesList}>
-                    <h4 className={styles.errorTitle}>Errors (blocking)</h4>
-                    {mergedInvoice.issues.errors.map((issue, idx) => (
-                      <div key={idx} className={styles.issueError}>
-                        <span className={styles.issueIcon}>!</span>
-                        <span>{issue.message}</span>
-                        {issue.lineNumber && <span className={styles.lineRef}>Line {issue.lineNumber}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Warnings */}
-                {mergedInvoice.issues.warnings.length > 0 && (
-                  <div className={styles.issuesList}>
-                    <h4 className={styles.warningTitle}>Warnings</h4>
-                    {mergedInvoice.issues.warnings.slice(0, 10).map((issue, idx) => (
-                      <div
-                        key={idx}
-                        className={`${styles.issueWarning} ${styles.clickable}`}
-                        onClick={() => {
-                          if (issue.lineNumber) {
-                            const lineElement = document.getElementById(`line-item-${issue.lineNumber - 1}`);
-                            if (lineElement) {
-                              lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              lineElement.classList.add(styles.highlighted);
-                              setTimeout(() => lineElement.classList.remove(styles.highlighted), 2000);
-                            }
-                          }
-                        }}
-                        title="Click to scroll to this item"
-                      >
-                        <span className={styles.issueIcon}>!</span>
-                        <div className={styles.issueContent}>
-                          {issue.name && <span className={styles.issueName}>{issue.name}</span>}
-                          <span className={styles.issueMessage}>{issue.message}</span>
-                        </div>
-                        {issue.lineNumber && <span className={styles.lineRef}>Line {issue.lineNumber}</span>}
-                      </div>
-                    ))}
-                    {mergedInvoice.issues.warnings.length > 10 && (
-                      <div className={styles.moreIssues}>
-                        +{mergedInvoice.issues.warnings.length - 10} more warnings
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Zero Price Items */}
-                {mergedInvoice.lineItems.filter(l => l.isZeroPrice).length > 0 && (
-                  <div className={styles.issuesList}>
-                    <h4 className={styles.infoTitle}>Zero Price Items (likely unavailable)</h4>
-                    {mergedInvoice.lineItems.filter(l => l.isZeroPrice).map((item, idx) => (
-                      <div key={idx} className={styles.issueInfo}>
-                        <span className={styles.issueIcon}>*</span>
-                        <span>{item.name || item.description} (qty: {item.quantity})</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Department Assignment Toolbar */}
           <div className={styles.section}>
             <div className={styles.departmentToolbar}>
@@ -1983,37 +1353,45 @@ function InvoiceUploadPage() {
                 {selectedItems.size > 0 && (
                   <span className={styles.selectedCount}>{selectedItems.size} selected</span>
                 )}
-                {/* View Mode Toggle */}
-                {intelligentResult?.detectedColumns?.length > 0 && (
-                  <div className={styles.viewToggle}>
-                    <button
-                      className={`${styles.toggleBtn} ${tableViewMode === 'original' ? styles.active : ''}`}
-                      onClick={() => setTableViewMode('original')}
-                      title="Show original invoice column headers"
-                    >
-                      Original
-                    </button>
-                    <button
-                      className={`${styles.toggleBtn} ${tableViewMode === 'normalized' ? styles.active : ''}`}
-                      onClick={() => setTableViewMode('normalized')}
-                      title="Show normalized field names"
-                    >
-                      Normalized
-                    </button>
-                  </div>
-                )}
               </div>
               <div className={styles.toolbarRight}>
-                <select
-                  value={bulkDepartment}
-                  onChange={(e) => setBulkDepartment(e.target.value)}
-                  className={styles.departmentSelect}
-                >
-                  <option value="">Assign to department...</option>
-                  {DEPARTMENTS.map(dept => (
-                    <option key={dept.id} value={dept.id}>{dept.name}</option>
-                  ))}
-                </select>
+                {showNewDeptInput ? (
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      value={newDeptName}
+                      onChange={(e) => setNewDeptName(e.target.value)}
+                      placeholder="Department name"
+                      style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '13px' }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateDepartment()}
+                      autoFocus
+                    />
+                    <Button variant="primary" onClick={handleCreateDepartment} style={{ padding: '6px 12px', fontSize: '13px' }}>
+                      Add
+                    </Button>
+                    <Button variant="secondary" onClick={() => { setShowNewDeptInput(false); setNewDeptName(''); }} style={{ padding: '6px 12px', fontSize: '13px' }}>
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <select
+                    value={bulkDepartment}
+                    onChange={(e) => {
+                      if (e.target.value === '__new__') {
+                        setShowNewDeptInput(true);
+                      } else {
+                        setBulkDepartment(e.target.value);
+                      }
+                    }}
+                    className={styles.departmentSelect}
+                  >
+                    <option value="">Assign to department...</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                    <option value="__new__">+ Create new department...</option>
+                  </select>
+                )}
                 <Button
                   variant="secondary"
                   onClick={assignDepartmentToSelected}
@@ -2053,129 +1431,38 @@ function InvoiceUploadPage() {
               </div>
             )}
 
-            {/* Items Table - Adaptive based on view mode */}
-            <div className={styles.itemsTable}>
-              {(() => {
-                const displayColumns = getDisplayColumns();
-                const currency = parsedInvoice.totals?.currency;
-                return (
-                  <>
-                    <div className={styles.tableHeader} style={{ gridTemplateColumns: `40px repeat(${displayColumns.length}, 1fr)${intelligentResult ? ' 80px' : ''}` }}>
-                      <span className={styles.checkboxCol}>
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.size === parsedInvoice.lineItems?.length && parsedInvoice.lineItems?.length > 0}
-                          onChange={toggleSelectAll}
-                          title="Select all"
-                        />
-                      </span>
-                      {displayColumns.map((col, idx) => (
-                        <span key={idx} title={tableViewMode === 'original' ? `Mapped to: ${col.aiLabel}` : undefined}>
-                          {col.header}
-                        </span>
-                      ))}
-                      {intelligentResult && <span>Match</span>}
-                    </div>
-                    {parsedInvoice.lineItems?.map((item, index) => {
-                      const dept = getDepartment(itemDepartments[index]);
-                      // Highlight rows with weight/volume pricing (pricePerG/pricePerML calculated)
-                      const isWeightPriced = item.isWeightBasedPricing || item.pricingType === 'weight' || item.pricePerG || item.pricePerML;
-                      // Check if row needs FORMAT review (yellow highlight)
-                      const needsReview = needsReviewIndices.has(index);
-                      const itemCorrection = getItemCorrection(item);
-                      const hasCorrection = !!itemCorrection?.corrected;
-                      // Row is resolved if corrected or has weight pricing
-                      const isResolved = hasCorrection || isWeightPriced;
-                      return (
-                        <div
-                          key={index}
-                          id={`line-item-${index}`}
-                          className={`${styles.tableRow} ${selectedItems.has(index) ? styles.selectedRow : ''} ${isWeightPriced ? styles.weightBasedRow : ''} ${needsReview && !isResolved ? styles.needsReviewRow : ''}`}
-                          style={{
-                            backgroundColor: itemDepartments[index] ? dept.color : (needsReview && !isResolved ? 'rgba(251, 191, 36, 0.15)' : (isWeightPriced ? 'rgba(0, 0, 0, 0.04)' : 'transparent')),
-                            gridTemplateColumns: `40px repeat(${displayColumns.length}, 1fr)${intelligentResult ? ' 80px' : ''}`
-                          }}
-                          onClick={() => toggleItemSelection(index)}
-                          title={needsReview && !isResolved ? 'Click FORMAT cell to add unit (e.g., kg, lb)' : (isWeightPriced ? `Price per unit weight calculated${item.pricePerG ? ` ($${item.pricePerG.toFixed(4)}/g)` : item.pricePerML ? ` ($${item.pricePerML.toFixed(4)}/ml)` : ''}` : '')}
-                        >
-                          <span className={styles.checkboxCol} onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedItems.has(index)}
-                              onChange={() => toggleItemSelection(index)}
-                            />
-                          </span>
-                          {displayColumns.map((col, colIdx) => {
-                            // Check if this is the FORMAT column and row needs review
-                            const isFormatColumn = col.aiLabel === 'packageFormat' || col.key === 'packageFormat';
-                            // If learned correction was applied, row doesn't need review
-                            const hasLearnedCorrection = item.learnedCorrection && item.learnedFormat;
-                            const isEditableFormat = isFormatColumn && needsReview && !hasLearnedCorrection;
-                            // Priority: user correction > learned format > raw column value
-                            const rawFormatValue = item.rawColumns && col.colIndex != null
-                              ? item.rawColumns[col.colIndex]
-                              : '';
-                            const formatValue = isFormatColumn
-                              ? (itemCorrection?.corrected || item.learnedFormat || rawFormatValue || '')
-                              : null;
-
-                            return (
-                              <span key={colIdx} className={`${col.aiLabel === 'description' ? styles.itemName : ''} ${isEditableFormat ? styles.editableCell : ''}`}>
-                                {col.key === 'category' ? (
-                                  item.category || '-'
-                                ) : col.aiLabel === 'description' ? (
-                                  <>
-                                    <strong>{item.name}</strong>
-                                    {item.description && item.description !== item.name && <small>{item.description}</small>}
-                                  </>
-                                ) : isEditableFormat ? (
-                                  <>
-                                    <input
-                                      type="text"
-                                      value={itemCorrection?.corrected ?? formatValue ?? ''}
-                                      onChange={(e) => handleFormatCorrection(item, index, e.target.value)}
-                                      onClick={(e) => e.stopPropagation()}
-                                      placeholder="e.g., Caisse 24kg"
-                                      title="Add unit: kg, lb, g, L, ml, etc."
-                                    />
-                                    {hasCorrection && <span className={styles.correctedBadge}>✓</span>}
-                                  </>
-                                ) : isFormatColumn && hasLearnedCorrection ? (
-                                  // Display learned correction with checkmark
-                                  <>
-                                    {item.learnedFormat}
-                                    <span className={styles.correctedBadge} title="Auto-applied from vendor profile">✓</span>
-                                  </>
-                                ) : (
-                                  getItemValueByLabel(item, col.aiLabel, currency, col.colIndex)
-                                )}
-                              </span>
-                            );
-                          })}
-                          {intelligentResult && (
-                            <span className={styles.matchStatus}>
-                              {item.matchResult?.autoApplied ? (
-                                <span className={styles.matchSuccess} title={`Matched to: ${item.matchResult?.bestMatch?.name || 'Unknown'}`}>
-                                  ✓ {Math.round((item.matchResult?.bestMatch?.score || 0) * 100)}%
-                                </span>
-                              ) : item.matchResult?.bestMatch ? (
-                                <span className={styles.matchPending} title={`Best match: ${item.matchResult?.bestMatch?.name || 'Unknown'}`}>
-                                  ? {Math.round((item.matchResult?.bestMatch?.score || 0) * 100)}%
-                                </span>
-                              ) : (
-                                <span className={styles.matchNew} title="New item - no match found">
-                                  New
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </>
-                );
-              })()}
-            </div>
+            {/* Line Items - New Two-Row Layout with Tags */}
+            <InvoiceLineList
+              lines={parsedInvoice.lineItems?.map((item, index) => ({
+                ...item,
+                id: index,
+                // Add weight display data
+                weight: item.weight > 0 ? {
+                  total: item.weight,
+                  unit: item.weightUnit || 'lb',
+                } : null,
+                // Add pricing display data
+                pricePerLb: item.pricePerG ? item.pricePerG * 453.592 : null,
+                pricePerKg: item.pricePerG ? item.pricePerG * 1000 : null,
+                // Volume display data (for liquids like olive oil, vinegar)
+                totalVolume: item.isVolume ? (item.totalWeightGrams / 1000) : null, // Convert ML to L for display
+                volumeUnit: item.isVolume ? 'L' : null,
+                pricePerL: item.pricePerL || null,
+                // Boxing format for volume items (e.g., "12 × 500ml")
+                format: item.isVolume && item.unitsPerCase && item.unitSize
+                  ? `${item.unitsPerCase} × ${item.unitSize}${item.unitSizeUnit || 'ml'}`
+                  : item.format || item.lastBoxingFormat || null,
+                totalUnits: item.totalBaseUnits || null,
+                sku: item.itemCode,
+              })) || []}
+              onSelectionChange={(ids) => {
+                setSelectedItems(new Set(ids));
+              }}
+              onLineEdit={handleOpenLineEdit}
+              showFilters={true}
+              showSummary={true}
+              showSelectAll={true}
+            />
           </div>
 
           {/* Notes */}
@@ -2203,24 +1490,12 @@ function InvoiceUploadPage() {
         </p>
       </Card>
 
-      {/* Vendor Profile Wizard - shown for new vendors */}
-      <VendorProfileWizard
-        open={showProfileWizard}
-        vendorInfo={intelligentResult?.vendorInfo}
-        suggestedProfile={intelligentResult?.suggestedProfile}
-        sampleLines={intelligentResult?.sampleLines || intelligentResult?.lines?.slice(0, 5) || []}
-        detectedColumns={intelligentResult?.detectedColumns || []}
-        autoCorrections={intelligentResult?.autoCorrections}
-        onClose={handleProfileWizardClose}
-        onComplete={handleProfileWizardComplete}
-      />
-
-      {/* Line Review Modal - for reviewing flagged lines (per-item corrections, not per-tag) */}
-      <LineReviewModal
-        open={showLineReviewModal}
-        flaggedLines={flaggedLines}
-        onClose={() => setShowLineReviewModal(false)}
-        onSave={handleLineCorrectionsave}
+      {/* Line Edit Modal */}
+      <LineEditModal
+        line={editingLine}
+        isOpen={isEditModalOpen}
+        onClose={handleCloseLineEdit}
+        onSave={handleSaveLineEdit}
       />
     </div>
   );

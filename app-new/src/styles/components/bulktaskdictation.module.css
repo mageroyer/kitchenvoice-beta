@@ -1,0 +1,459 @@
+/* BulkTaskDictation Component Styles */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+  padding: 20px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--color-white);
+  z-index: 1;
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: var(--color-gray);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color var(--transition-fast);
+}
+
+.closeBtn:hover {
+  color: var(--color-text-primary);
+}
+
+/* Recording Section */
+.recordingSection {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.micButton {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: #27ae60;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+.micButton:hover:not(:disabled) {
+  background: #219a52;
+  transform: scale(1.05);
+}
+
+.micButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.micButton.recording {
+  background: #e74c3c;
+  animation: pulse 1s ease-in-out infinite;
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(231, 76, 60, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
+}
+
+.recordingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recordingStatus {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.recordingHint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Transcript Section */
+.transcriptSection {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sectionLabel {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-xs);
+  display: block;
+}
+
+.transcript {
+  padding: var(--spacing-md);
+  background: #f8f9fa;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  min-height: 60px;
+  line-height: 1.6;
+}
+
+.currentLine {
+  color: var(--color-primary);
+  font-weight: 500;
+  background: rgba(52, 152, 219, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* Tasks Section */
+.tasksSection {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tasksList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  margin-top: var(--spacing-sm);
+}
+
+.taskItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: #f8f9fa;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-primary);
+  transition: all 0.2s;
+}
+
+.taskItem:hover {
+  background: #e9ecef;
+}
+
+.taskItem.customTask {
+  border-left-color: #17a2b8;
+}
+
+.taskType {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.taskType.custom {
+  background: #d4edda;
+  color: #155724;
+}
+
+.taskName {
+  flex: 1;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taskPortions {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.taskAssignee {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  background: #e9ecef;
+  border-radius: var(--radius-sm);
+}
+
+.confidence {
+  font-size: 14px;
+  font-weight: bold;
+  min-width: 20px;
+  text-align: center;
+}
+
+.taskActions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.editBtn,
+.removeBtn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.editBtn:hover,
+.removeBtn:hover {
+  opacity: 1;
+}
+
+.removeBtn:hover {
+  color: #e74c3c;
+}
+
+/* Task Edit Mode */
+.taskEdit {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.editInput {
+  flex: 1;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.editPortions {
+  width: 60px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.editSelect {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  min-width: 100px;
+}
+
+.editDone {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: #27ae60;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editDone:hover {
+  background: #219a52;
+}
+
+/* Error */
+.error {
+  margin: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: #ffebee;
+  color: #c62828;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+/* Results */
+.results {
+  margin: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: #f8f9fa;
+  border-radius: var(--radius-md);
+}
+
+.resultsSuccess {
+  color: #27ae60;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.resultsFailed {
+  color: #e74c3c;
+  font-size: var(--font-size-sm);
+}
+
+.resultsFailed ul {
+  margin: var(--spacing-xs) 0 0 var(--spacing-md);
+  padding: 0;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+  background: #f8f9fa;
+}
+
+.clearBtn,
+.createBtn {
+  flex: 1;
+  padding: var(--spacing-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clearBtn {
+  background: var(--color-white);
+  color: var(--color-text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.clearBtn:hover:not(:disabled) {
+  background: #e9ecef;
+}
+
+.clearBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.createBtn {
+  background: var(--color-primary);
+  color: white;
+}
+
+.createBtn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.createBtn:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+  .modal {
+    max-width: 100%;
+    margin: 10px;
+  }
+
+  .recordingSection {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-md);
+  }
+
+  .taskItem {
+    flex-wrap: wrap;
+  }
+
+  .taskEdit {
+    flex-wrap: wrap;
+  }
+
+  .editInput {
+    width: 100%;
+    flex: none;
+  }
+}

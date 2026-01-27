@@ -76,6 +76,90 @@
   color: var(--color-text-tertiary);
 }
 
+/* Sample Recipes */
+.sampleSection {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--color-border, #ddd);
+}
+
+.sampleLabel {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+  margin: 0 0 12px 0;
+}
+
+.sampleButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.sampleButtonGroup {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--color-border, #ddd);
+  transition: border-color 0.2s ease;
+}
+
+.sampleButtonGroup:hover {
+  border-color: var(--color-primary, #1976d2);
+}
+
+.sampleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--color-surface, #fff);
+  border: none;
+  border-radius: 0;
+  font-size: 13px;
+  color: var(--color-text, #333);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sampleButton:hover:not(:disabled) {
+  background: var(--color-primary-light, #e3f2fd);
+  color: var(--color-primary, #1976d2);
+}
+
+.sampleButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sampleDownload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  background: var(--color-bg-secondary, #f5f5f5);
+  border-left: 1px solid var(--color-border, #ddd);
+  color: var(--color-text-secondary, #666);
+  text-decoration: none;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sampleDownload:hover {
+  background: var(--color-primary, #1976d2);
+  color: white;
+}
+
+.sampleIcon {
+  font-size: 16px;
+}
+
+.sampleName {
+  font-weight: 500;
+}
+
 /* File Info */
 .fileInfo {
   display: flex;

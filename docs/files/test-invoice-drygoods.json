@@ -1,0 +1,140 @@
+{
+  "invoice_header": {
+    "company": "Gordon Food Service",
+    "invoice_number": "TEST-DRY-001",
+    "date": "2025-12-29",
+    "address": "1000 Food Service Way, Laval, QC",
+    "phone": "450-555-9012"
+  },
+  "customer": {
+    "name": "Aux saveurs des Sévelin"
+  },
+  "line_items": [
+    {
+      "code": "BASE-POULET",
+      "description": "Base de poulet (Chicken Base) 1KG",
+      "quantity": 1,
+      "unit": "jar",
+      "unit_price": 24.95,
+      "total": 24.95,
+      "weight": 1.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "HERB-PROV",
+      "description": "Herbes de Provence 500G",
+      "quantity": 1,
+      "unit": "jar",
+      "unit_price": 18.50,
+      "total": 18.50,
+      "weight": 0.5,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "AIL-POUDRE",
+      "description": "Ail en poudre (Garlic Powder) 500G",
+      "quantity": 1,
+      "unit": "jar",
+      "unit_price": 12.95,
+      "total": 12.95,
+      "weight": 0.5,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "OIG-VERT-SEC",
+      "description": "Oignons verts séchés (Dried Green Onions) 250G",
+      "quantity": 1,
+      "unit": "bag",
+      "unit_price": 8.75,
+      "total": 8.75,
+      "weight": 0.25,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "SUCRE-BLANC",
+      "description": "Sucre blanc (White Sugar) 2KG",
+      "quantity": 1,
+      "unit": "bag",
+      "unit_price": 4.95,
+      "total": 4.95,
+      "weight": 2.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "SEL-TABLE",
+      "description": "Sel de table (Table Salt) 1KG",
+      "quantity": 1,
+      "unit": "box",
+      "unit_price": 2.50,
+      "total": 2.50,
+      "weight": 1.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "POIVRE-NOIR",
+      "description": "Poivre noir moulu (Ground Black Pepper) 500G",
+      "quantity": 1,
+      "unit": "jar",
+      "unit_price": 14.95,
+      "total": 14.95,
+      "weight": 0.5,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "MOUT-DIJON",
+      "description": "Moutarde de Dijon (Dijon Mustard) 500ML",
+      "quantity": 1,
+      "unit": "jar",
+      "unit_price": 6.50,
+      "total": 6.50,
+      "weight": 0.5,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "LAURIER-FEU",
+      "description": "Feuilles de laurier (Bay Leaves) 100G",
+      "quantity": 1,
+      "unit": "bag",
+      "unit_price": 9.95,
+      "total": 9.95,
+      "weight": 0.1,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "CHAMP-SEC",
+      "description": "Champignons secs (Dried Mushrooms) 250G",
+      "quantity": 1,
+      "unit": "bag",
+      "unit_price": 16.50,
+      "total": 16.50,
+      "weight": 0.25,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "FECULE-MAIS",
+      "description": "Fécule de maïs (Corn Starch) 1KG",
+      "quantity": 1,
+      "unit": "box",
+      "unit_price": 5.95,
+      "total": 5.95,
+      "weight": 1.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "HUILE-VEG",
+      "description": "Huile végétale (Vegetable Oil) 3L",
+      "quantity": 1,
+      "unit": "jug",
+      "unit_price": 12.95,
+      "total": 12.95,
+      "weight": 2.7,
+      "weight_unit": "kg"
+    }
+  ],
+  "totals": {
+    "subtotal": 139.40,
+    "tps": 6.97,
+    "tvq": 13.91,
+    "total": 160.28
+  }
+}

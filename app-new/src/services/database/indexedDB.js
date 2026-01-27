@@ -12,7 +12,7 @@
 // - inventoryItemDB.js: Inventory item management
 // - invoiceDB.js: Invoice and invoice line item processing
 // - orderDB.js: Purchase orders and stock transactions
-// - supportingDB.js: Department, category, slider, settings, productionLog, priceHistory
+// - supportingDB.js: Department, category, slider, settings, productionLog, priceHistory, expenseCategory, expenseRecord
 //
 // =============================================================================
 
@@ -22,7 +22,8 @@ export {
   getCloudSync,
   clearAllLocalData,
   DEFAULT_DEPARTMENTS,
-  DEFAULT_CATEGORIES_BY_DEPT
+  DEFAULT_CATEGORIES_BY_DEPT,
+  DEFAULT_EXPENSE_CATEGORIES
 } from './db.js';
 
 // Recipe module
@@ -64,7 +65,9 @@ export {
   sliderDB,
   kitchenSettingsDB,
   productionLogDB,
-  priceHistoryDB
+  priceHistoryDB,
+  expenseCategoryDB,
+  expenseRecordDB
 } from './supportingDB.js';
 
 // Default export for backwards compatibility

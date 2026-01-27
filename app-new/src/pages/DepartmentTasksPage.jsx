@@ -15,11 +15,19 @@ import {
   getTaskProgress,
   claimTask,
   releaseTask,
+  clearCompletedTasks,
+  deleteTask,
+  updateTask,
   TASK_STATUS
 } from '../services/tasks/tasksService';
-import { isDemoMode } from '../services/demo/demoService';
-import { DEMO_TASKS } from '../services/demo/demoData';
+import {
+  getSuggestionsForDay,
+  createTasksFromSuggestions
+} from '../services/tasks/taskSuggestionService';
+import { getAllPrivileges, ACCESS_LEVELS } from '../services/auth/privilegesService';
+import { recipeDB } from '../services/database/indexedDB';
 import AssignTaskModal from '../components/common/AssignTaskModal';
+import BulkTaskDictation from '../components/tasks/BulkTaskDictation';
 import styles from '../styles/pages/departmenttaskspage.module.css';
 
 function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
@@ -29,40 +37,49 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
   const [filter, setFilter] = useState('today'); // 'today', 'active', 'all', 'completed'
   const [stationFilter, setStationFilter] = useState('all');
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showBulkDictation, setShowBulkDictation] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState(null);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [clearingTasks, setClearingTasks] = useState(false);
+  const [recipes, setRecipes] = useState([]);
+  const [users, setUsers] = useState([]);
 
   // Subscribe to department tasks (or all tasks if no department set)
-  // In demo mode, use mock data instead
   useEffect(() => {
     setLoading(true);
 
-    // Check if in demo mode
-    if (isDemoMode()) {
-      console.log('📋 Loading demo tasks...');
-      // Filter demo tasks by department if set
-      const filteredDemoTasks = currentDepartment
-        ? DEMO_TASKS.filter(t => t.department === currentDepartment || !t.department)
-        : DEMO_TASKS;
-      setTasks(filteredDemoTasks);
-      setLoading(false);
-      return () => {}; // No cleanup needed for demo mode
-    }
-
-    // Real mode: Pass null/empty to get all tasks, or specific department to filter
+    // Pass null/empty to get all tasks, or specific department to filter
     const unsubscribe = subscribeToDepartmentTasks(currentDepartment || null, (deptTasks) => {
-      console.log('Team tasks received:', deptTasks.length, 'department filter:', currentDepartment);
-      console.log('Tasks detail:', deptTasks.map(t => ({
-        id: t.id,
-        name: t.recipeName,
-        recipeId: t.recipeId,
-        type: t.type,
-        hasRecipeId: !!t.recipeId
-      })));
       setTasks(deptTasks);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [currentDepartment]);
+
+  // Load recipes and users for bulk dictation
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load recipes
+        const allRecipes = await recipeDB.getAll();
+        setRecipes(allRecipes || []);
+
+        // Load users (privileges)
+        const privileges = await getAllPrivileges();
+        const cooksList = (privileges || []).filter(p =>
+          p.accessLevel === ACCESS_LEVELS.EDITOR ||
+          p.accessLevel === ACCESS_LEVELS.VIEWER ||
+          p.accessLevel === ACCESS_LEVELS.OWNER
+        );
+        setUsers(cooksList);
+      } catch (error) {
+        console.error('Error loading data for bulk dictation:', error);
+      }
+    };
+    loadData();
+  }, []);
 
   // Get unique stations from tasks
   const stations = useMemo(() => {
@@ -137,27 +154,8 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
     return getTaskProgress(todayTasks);
   }, [tasks]);
 
-  // Helper to update demo task locally
-  const updateDemoTask = (taskId, updates) => {
-    setTasks(prev => prev.map(t =>
-      t.id === taskId ? { ...t, ...updates } : t
-    ));
-  };
-
   // Handle task status toggle
   const handleToggleComplete = async (task) => {
-    // Demo mode: update locally
-    if (isDemoMode()) {
-      const newStatus = task.status === TASK_STATUS.COMPLETED
-        ? TASK_STATUS.PENDING
-        : TASK_STATUS.COMPLETED;
-      updateDemoTask(task.id, {
-        status: newStatus,
-        completedAt: newStatus === TASK_STATUS.COMPLETED ? new Date() : null
-      });
-      return;
-    }
-
     try {
       if (task.status === TASK_STATUS.COMPLETED) {
         // Uncomplete - set back to pending
@@ -181,12 +179,6 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
 
   // Handle start task
   const handleStartTask = async (taskId) => {
-    // Demo mode: update locally
-    if (isDemoMode()) {
-      updateDemoTask(taskId, { status: TASK_STATUS.IN_PROGRESS });
-      return;
-    }
-
     try {
       await updateTaskStatus(taskId, TASK_STATUS.IN_PROGRESS);
     } catch (error) {
@@ -196,15 +188,6 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
 
   // Handle claim task (team member takes ownership)
   const handleClaimTask = async (taskId) => {
-    // Demo mode: update locally with demo owner
-    if (isDemoMode()) {
-      updateDemoTask(taskId, {
-        assignedTo: 'demo-owner',
-        assignedToName: 'Demo Owner'
-      });
-      return;
-    }
-
     if (!currentPrivilege) {
       alert('Please log in to claim tasks');
       return;
@@ -219,15 +202,6 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
 
   // Handle release task (give back to team)
   const handleReleaseTask = async (taskId) => {
-    // Demo mode: update locally
-    if (isDemoMode()) {
-      updateDemoTask(taskId, {
-        assignedTo: null,
-        assignedToName: null
-      });
-      return;
-    }
-
     try {
       await releaseTask(taskId);
     } catch (error) {
@@ -236,12 +210,102 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
     }
   };
 
+  // Handle cancel/delete task
+  const handleCancelTask = async (task) => {
+    const taskName = task.recipeName || 'this task';
+    if (!confirm(`Cancel "${taskName}"?\n\nThis will permanently delete the task.`)) {
+      return;
+    }
+    try {
+      await deleteTask(task.id);
+    } catch (error) {
+      console.error('Error canceling task:', error);
+      alert('Failed to cancel task: ' + error.message);
+    }
+  };
+
+  // Handle editing task portions/scale
+  const handleEditPortions = async (task) => {
+    const currentPortions = task.portions || 1;
+    const input = prompt(`Change portions for "${task.recipeName}":\n\nCurrent: ${currentPortions}`, currentPortions);
+
+    if (input === null) return; // Cancelled
+
+    const newPortions = parseInt(input, 10);
+    if (isNaN(newPortions) || newPortions < 1) {
+      alert('Please enter a valid number (1 or more)');
+      return;
+    }
+
+    if (newPortions === currentPortions) return; // No change
+
+    try {
+      // When user manually sets portions, scaleFactor should be 1
+      // (the portions value IS the final quantity they want)
+      await updateTask(task.id, {
+        portions: newPortions,
+        scaleFactor: 1
+      });
+    } catch (error) {
+      console.error('Error updating portions:', error);
+      alert('Failed to update portions: ' + error.message);
+    }
+  };
+
+  // Handle clearing all completed tasks
+  const handleClearCompleted = async () => {
+    if (!confirm('Clear all completed tasks? History is preserved in production logs.')) {
+      return;
+    }
+
+    setClearingTasks(true);
+    try {
+      const result = await clearCompletedTasks();
+      alert(`Cleared ${result.deleted} completed task(s).`);
+    } catch (error) {
+      console.error('Error clearing tasks:', error);
+      alert('Failed to clear tasks: ' + error.message);
+    } finally {
+      setClearingTasks(false);
+    }
+  };
+
+  // Handle getting task suggestions
+  const handleGetSuggestions = async () => {
+    setSuggestionsLoading(true);
+    setShowSuggestions(true);
+
+    try {
+      const result = await getSuggestionsForDay(currentDepartment || null);
+      setSuggestions(result);
+    } catch (error) {
+      console.error('Error getting suggestions:', error);
+      alert('Failed to get suggestions: ' + error.message);
+      setShowSuggestions(false);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  // Handle creating tasks from suggestions
+  const handleApplySuggestions = async (selectedSuggestions) => {
+    try {
+      const result = await createTasksFromSuggestions(selectedSuggestions, {
+        department: currentDepartment,
+        dueDate: new Date().toISOString().split('T')[0]
+      });
+
+      alert(`Created ${result.created} task(s)${result.errors > 0 ? `, ${result.errors} failed` : ''}.`);
+      setShowSuggestions(false);
+      setSuggestions(null);
+    } catch (error) {
+      console.error('Error creating tasks:', error);
+      alert('Failed to create tasks: ' + error.message);
+    }
+  };
+
   // Check if current user owns this task
   const isMyTask = (task) => {
-    // In demo mode, check for demo-owner
-    if (isDemoMode()) {
-      return task.assignedTo === 'demo-owner';
-    }
     return currentPrivilege && task.assignedTo === currentPrivilege.id;
   };
 
@@ -291,6 +355,29 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
           </div>
         </div>
         <div className={styles.headerRight}>
+          <button
+            className={styles.iconBtn}
+            onClick={handleGetSuggestions}
+            disabled={suggestionsLoading}
+            title="Suggest tasks based on last week"
+          >
+            {suggestionsLoading ? '...' : '💡'}
+          </button>
+          <button
+            className={styles.iconBtn}
+            onClick={handleClearCompleted}
+            disabled={clearingTasks || progress.completed === 0}
+            title="Clear all completed tasks"
+          >
+            {clearingTasks ? '...' : '🗑️'}
+          </button>
+          <button
+            className={styles.dictationBtn}
+            onClick={() => setShowBulkDictation(true)}
+            title="Bulk Task Dictation"
+          >
+            🎤
+          </button>
           <button
             className={styles.addTaskBtn}
             onClick={() => setShowTaskModal(true)}
@@ -388,20 +475,21 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
               {/* Task Info */}
               <div className={styles.taskContent}>
                 <div className={styles.taskMain}>
-                  {task.type === 'custom' && (
-                    <span className={styles.customBadge}>Task</span>
-                  )}
                   <span className={styles.taskName}>{task.recipeName}</span>
-                  {task.type !== 'custom' && task.portions > 1 && (
-                    <span className={styles.portions}>
-                      x{task.portions}
-                      {task.scaleFactor !== 1 && ` (${task.scaleFactor.toFixed(1)}x)`}
-                    </span>
+                  {task.type !== 'custom' && (
+                    <button
+                      className={styles.portionsBtn}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditPortions(task);
+                      }}
+                      title="Click to change portions"
+                    >
+                      x{task.portions || 1} {task.portionUnit || ''}
+                    </button>
                   )}
-                </div>
-                <div className={styles.taskMeta}>
-                  {task.station && (
-                    <span className={styles.station}>{task.station}</span>
+                  {task.recipeId && (
+                    <span className={styles.linkedIcon} title="Linked to recipe">🔗</span>
                   )}
                   {isTeamTask(task) ? (
                     <span className={styles.teamBadge}>Team</span>
@@ -410,10 +498,17 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
                       {isMyTask(task) ? 'You' : task.assignedToName}
                     </span>
                   )}
-                  {task.dueDate && (
-                    <span className={styles.dueTime}>Due: {formatTime(task.dueDate)}</span>
-                  )}
                 </div>
+                {(task.station || task.dueDate || task.chefNotes) && (
+                  <div className={styles.taskMeta}>
+                    {task.station && (
+                      <span className={styles.station}>{task.station}</span>
+                    )}
+                    {task.dueDate && (
+                      <span className={styles.dueTime}>Due: {formatTime(task.dueDate)}</span>
+                    )}
+                  </div>
+                )}
                 {task.chefNotes && (
                   <div className={styles.notes}>{task.chefNotes}</div>
                 )}
@@ -456,12 +551,30 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
                     className={styles.viewBtn}
                     onClick={(e) => {
                       e.stopPropagation();
-                      console.log('View Recipe clicked, recipeId:', task.recipeId);
-                      navigate(`/recipes/${task.recipeId}/edit`);
+                      // Pass task portions as query param so recipe opens scaled in view mode
+                      const params = new URLSearchParams();
+                      if (task.portions) params.set('portions', task.portions);
+                      if (task.scaleFactor) params.set('scale', task.scaleFactor);
+                      params.set('taskId', task.id);
+                      params.set('viewMode', 'true');
+                      navigate(`/recipes/${task.recipeId}/edit?${params.toString()}`);
                     }}
-                    title="View recipe"
+                    title="View recipe with task scaling"
                   >
                     View
+                  </button>
+                )}
+                {/* Cancel button - always visible for non-completed tasks */}
+                {task.status !== TASK_STATUS.COMPLETED && (
+                  <button
+                    className={styles.cancelBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCancelTask(task);
+                    }}
+                    title="Cancel task"
+                  >
+                    Cancel
                   </button>
                 )}
               </div>
@@ -487,6 +600,91 @@ function DepartmentTasksPage({ currentDepartment, currentPrivilege, isOwner }) {
           onClose={() => setShowTaskModal(false)}
           onTaskCreated={() => setShowTaskModal(false)}
         />
+      )}
+
+      {/* Bulk Task Dictation Modal */}
+      {showBulkDictation && (
+        <BulkTaskDictation
+          recipes={recipes}
+          users={users}
+          currentDepartment={currentDepartment}
+          onTasksCreated={() => setShowBulkDictation(false)}
+          onClose={() => setShowBulkDictation(false)}
+        />
+      )}
+
+      {/* Task Suggestions Modal */}
+      {showSuggestions && (
+        <div className={styles.modalOverlay} onClick={() => setShowSuggestions(false)}>
+          <div className={styles.suggestionsModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.suggestionsHeader}>
+              <h2>Task Suggestions</h2>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowSuggestions(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            {suggestionsLoading ? (
+              <div className={styles.loading}>Loading suggestions...</div>
+            ) : suggestions?.suggestions?.length === 0 ? (
+              <div className={styles.emptyState}>
+                <span className={styles.emptyIcon}>📊</span>
+                <p>{suggestions?.message || 'No suggestions available.'}</p>
+                <p className={styles.hint}>
+                  Complete some tasks to build production history!
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className={styles.suggestionsInfo}>
+                  <p>
+                    Based on <strong>{suggestions?.dayName}</strong> last week
+                    ({suggestions?.referenceDate?.toLocaleDateString('fr-CA')})
+                  </p>
+                  <p className={styles.suggestionsCount}>
+                    {suggestions?.suggestions?.length} recipe(s) found
+                  </p>
+                </div>
+
+                <div className={styles.suggestionsList}>
+                  {suggestions?.suggestions?.map((suggestion, index) => (
+                    <div key={index} className={styles.suggestionItem}>
+                      <div className={styles.suggestionInfo}>
+                        <span className={styles.suggestionName}>
+                          {suggestion.recipeName}
+                        </span>
+                        <span className={styles.suggestionQty}>
+                          {suggestion.suggestedPortions} portions
+                        </span>
+                      </div>
+                      <div className={styles.suggestionReason}>
+                        {suggestion.reason}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={styles.suggestionsActions}>
+                  <button
+                    className={styles.cancelBtn}
+                    onClick={() => setShowSuggestions(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className={styles.applyBtn}
+                    onClick={() => handleApplySuggestions(suggestions.suggestions)}
+                  >
+                    Create {suggestions?.suggestions?.length} Task(s)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

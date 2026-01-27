@@ -49,6 +49,7 @@
     "prettier": "^3.7.1",
     "rollup-plugin-visualizer": "^6.0.5",
     "vite": "^7.2.4",
+    "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.15"
   }
 }

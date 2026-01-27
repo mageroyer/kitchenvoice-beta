@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80">
+  <!-- Background -->
+  <rect width="200" height="80" rx="8" fill="#e8e8e8"/>
+
+  <!-- Subtle AI watermark -->
+  <text x="100" y="58" font-family="Arial, sans-serif" font-size="55" font-weight="bold" fill="#d0d0d0" text-anchor="middle">AI</text>
+
+  <!-- K letter - blue -->
+  <path d="M20 12 L20 68 L38 68 L38 48 L58 68 L82 68 L52 40 L78 12 L56 12 L38 32 L38 12 Z" fill="#3b6cb5"/>
+
+  <!-- C with circuit traces -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Main C curve - outer -->
+    <path d="M85 22 Q130 22 130 40 Q130 58 85 58" stroke-width="14" stroke="#4a5568"/>
+    <!-- Inner C cutout -->
+    <path d="M85 32 Q115 32 115 40 Q115 48 85 48" stroke-width="7" stroke="#e8e8e8"/>
+
+    <!-- Top circuit trace -->
+    <path d="M122 30 L150 30 L162 20" stroke-width="4" stroke="#4a5568"/>
+    <circle cx="168" cy="15" r="7" fill="#4a5568"/>
+    <circle cx="168" cy="15" r="3.5" fill="#e8e8e8"/>
+
+    <!-- Bottom circuit trace -->
+    <path d="M122 50 L150 50 L162 60" stroke-width="4" stroke="#4a5568"/>
+    <circle cx="168" cy="65" r="7" fill="#4a5568"/>
+    <circle cx="168" cy="65" r="3.5" fill="#e8e8e8"/>
+  </g>
+</svg>

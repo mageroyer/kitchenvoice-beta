@@ -274,6 +274,69 @@
   transform: scale(1.05);
 }
 
+/* Recipe Actions Container */
+.recipeActions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Website Toggle Button */
+.webToggleBtn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--color-bg-tertiary, #e0e0e0);
+  color: var(--color-text-secondary, #666);
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.webToggleBtn:hover {
+  background: #2C5530;
+  color: white;
+}
+
+.webToggleBtn.active {
+  background: #2C5530;
+  color: white;
+}
+
+/* Today Toggle Button */
+.todayToggleBtn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--color-bg-tertiary, #e0e0e0);
+  color: var(--color-text-secondary, #666);
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.todayToggleBtn:hover {
+  background: #D4AF37;
+  color: white;
+}
+
+.todayToggleBtn.active {
+  background: #D4AF37;
+  color: white;
+}
+
 /* Responsive: Mobile Layout */
 @media (max-width: 768px) {
   .listPage {

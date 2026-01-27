@@ -31,6 +31,7 @@ export const ROUTES = {
 
   // Settings
   SETTINGS: '/settings',
+  WEBSITE_SETTINGS: '/website-settings',
 
   // Admin
   CONTROL_PANEL: '/control-panel',

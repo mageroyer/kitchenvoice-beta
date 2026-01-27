@@ -10,16 +10,21 @@
  * - Consistent behavior across all devices
  * - Supports French (Canada) and other languages
  * - Configurable silence detection for different speaking patterns
+ *
+ * SECURITY: Uses Firebase Cloud Function proxy for API calls.
+ * The Google Speech API key is stored in Firebase Secrets.
  */
 
 import { TIMEOUTS } from '../../constants/limits';
 import { createLogger } from '../../utils/logger';
+import { getAuth } from 'firebase/auth';
 
 // Create scoped logger
 const logger = createLogger('GoogleCloudVoice');
 
-// Use environment variable for backend URL, fallback to localhost for development
-const BACKEND_URL = import.meta.env.VITE_SPEECH_API_URL || 'https://localhost:3000';
+// Default to Firebase Cloud Function URL, allow override for development
+const CLOUD_FUNCTION_URL = 'https://us-central1-smartcookbook-2afe2.cloudfunctions.net/speechProxy';
+const BACKEND_URL = import.meta.env.VITE_SPEECH_API_URL || CLOUD_FUNCTION_URL;
 
 /**
  * Silence timeout presets for different speaking patterns
@@ -214,7 +219,6 @@ export class GoogleCloudVoiceService {
         await this.processRecording();
       };
 
-      console.log('🎤 Google Cloud Voice service initialized');
       return true;
 
     } catch (error) {
@@ -273,7 +277,6 @@ export class GoogleCloudVoiceService {
       this.startFeedback();
 
       this.onRecordingStart();
-      console.log('🎤 Recording started');
 
     } catch (error) {
       console.error('Error starting recording:', error);
@@ -371,8 +374,6 @@ export class GoogleCloudVoiceService {
         isProcessing: true
       });
 
-      console.log(`📤 Sending ${(audioBlob.size / 1024).toFixed(2)}KB audio to backend...`);
-
       // Convert blob to base64
       base64Audio = await this.blobToBase64(audioBlob);
 
@@ -385,12 +386,37 @@ export class GoogleCloudVoiceService {
       // Clear the full base64 string immediately to free memory
       base64Audio = null;
 
+      // Get Firebase auth token for Cloud Function authentication
+      let authToken = null;
+      try {
+        const auth = getAuth();
+        if (auth.currentUser) {
+          authToken = await auth.currentUser.getIdToken();
+        }
+      } catch (authError) {
+        console.warn('Could not get auth token:', authError.message);
+      }
+
+      // Build request headers
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      // Add auth token if available (required for Cloud Function)
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
+      // Determine the correct URL:
+      // - Cloud Function: use directly (no path)
+      // - Custom backend: use /api/speech/recognize path
+      const isCloudFunction = BACKEND_URL.includes('cloudfunctions.net');
+      const url = isCloudFunction ? BACKEND_URL : `${BACKEND_URL}/api/speech/recognize`;
+
       // Send to backend
-      const response = await fetch(`${BACKEND_URL}/api/speech/recognize`, {
+      const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({
           audio: audioData,
           sampleRate: 48000,
@@ -402,7 +428,6 @@ export class GoogleCloudVoiceService {
 
       if (result.success && result.transcript) {
         const transcript = result.transcript.trim();
-        console.log(`✅ Transcription: "${transcript}" (confidence: ${(result.confidence * 100).toFixed(1)}%)`);
 
         // Parse transcript into lines (split by periods or new sentences)
         const newLines = this.parseTranscriptIntoLines(transcript);
@@ -455,8 +480,6 @@ export class GoogleCloudVoiceService {
   parseTranscriptIntoLines(transcript) {
     if (!transcript) return [];
 
-    console.log('📝 [PARSE] Raw transcript from Google:', transcript);
-
     // Split on:
     // 1. Period, semicolon, colon followed by space or end
     // 2. Comma followed by space (Google adds commas between ingredients)
@@ -467,12 +490,8 @@ export class GoogleCloudVoiceService {
       .map(line => line.trim())
       .filter(line => line.length > 2); // Filter out very short fragments
 
-    console.log('📝 [PARSE] Split into lines:', lines);
-    console.log('📝 [PARSE] Line count:', lines.length);
-
     // If no splits found, treat the whole thing as one line
     if (lines.length === 0 && transcript.trim()) {
-      console.log('📝 [PARSE] No splits found, using whole transcript as one line');
       return [transcript.trim()];
     }
 
@@ -744,7 +763,6 @@ export function useGoogleCloudVoice(options = {}) {
     if (serviceRef.current) {
       serviceRef.current.destroy();
       serviceRef.current = null;
-      console.log('🧹 useGoogleCloudVoice hook cleaned up');
     }
   };
 

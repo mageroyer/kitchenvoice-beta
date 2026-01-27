@@ -1,0 +1,12 @@
+<svg width="240" height="240" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="240" height="240" rx="48" fill="#1e293b"/>
+
+  <!-- KC Letters -->
+  <text x="120" y="155"
+        font-family="Arial, sans-serif"
+        font-size="100"
+        font-weight="bold"
+        fill="#667eea"
+        text-anchor="middle">KC</text>
+</svg>

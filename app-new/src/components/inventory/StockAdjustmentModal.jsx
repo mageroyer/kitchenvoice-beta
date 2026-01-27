@@ -82,8 +82,9 @@ function StockAdjustmentModal({ item, onClose, onSave }) {
 
   // Initialize with current stock value
   useEffect(() => {
-    if (item?.currentStock !== undefined) {
-      setNewValue(String(item.currentStock));
+    const effectiveStock = item?.stockQuantity ?? item?.stockWeight ?? item?.currentStock;
+    if (effectiveStock !== undefined) {
+      setNewValue(String(effectiveStock));
     }
   }, [item]);
 
@@ -128,8 +129,8 @@ function StockAdjustmentModal({ item, onClose, onSave }) {
   }, []);
 
   // Calculate derived values
-  const currentStock = item?.currentStock || 0;
-  const parLevel = item?.parLevel || item?.fullStock || 0;
+  const currentStock = item?.stockQuantity ?? item?.stockWeight ?? 0;
+  const parLevel = item?.parQuantity ?? item?.parWeight ?? item?.fullStock ?? 0;
   const unit = item?.unit || 'units';
 
   // Parse new value

@@ -185,6 +185,31 @@
   outline-offset: 2px;
 }
 
+/* Clear In-House Button */
+.clearInHouseBtn {
+  margin-left: auto;
+  padding: 6px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-danger);
+  background: transparent;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.clearInHouseBtn:hover:not(:disabled) {
+  color: var(--color-white);
+  background: var(--color-danger);
+}
+
+.clearInHouseBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Items Container */
 .itemsContainer {
   position: relative;
@@ -318,7 +343,7 @@
 /* Row: Stock display */
 .rowStock {
   flex-shrink: 0;
-  min-width: 120px;
+  min-width: 200px;
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
@@ -326,10 +351,44 @@
   white-space: nowrap;
 }
 
+/* Format hint (e.g., "6 × 500ml") */
+.formatHint {
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* Normalized price (e.g., "$15.19/L") */
+.normalizedPrice {
+  font-weight: 500;
+  color: var(--color-primary-light);
+}
+
 /* Row: Progress bar */
 .rowProgress {
   flex-shrink: 0;
   width: 100px;
+}
+
+/* Row: Delete button (In-House view only) */
+.rowDeleteBtn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.rowDeleteBtn:hover {
+  opacity: 1;
+  background: var(--color-danger-light);
 }
 
 /* Order Preview */

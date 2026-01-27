@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { recipeDB, departmentDB, categoryDB } from '../services/database/indexedDB';
 import { subscribeToTasks, deleteTask, TASK_STATUS } from '../services/tasks/tasksService';
-import { isDemoMode } from '../services/demo/demoService';
-import { DEMO_TASKS, DEMO_DEPARTMENTS } from '../services/demo/demoData';
 import Badge from '../components/common/Badge';
 import Spinner from '../components/common/Spinner';
 import PrivilegesModal from '../components/common/PrivilegesModal';
@@ -97,13 +95,8 @@ function ControlPanelPage() {
     loadOwnerPrivilege();
   }, [userListRefresh, user]);
 
-  // Subscribe to tasks (or use demo tasks in demo mode)
+  // Subscribe to tasks
   useEffect(() => {
-    if (isDemoMode()) {
-      setTasks(DEMO_TASKS);
-      return () => {};
-    }
-
     const unsubscribe = subscribeToTasks((allTasks) => {
       setTasks(allTasks);
     });
@@ -113,24 +106,14 @@ function ControlPanelPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      if (isDemoMode()) {
-        const [recipesData, catsData] = await Promise.all([
-          recipeDB.getAll(),
-          categoryDB.getAll()
-        ]);
-        setRecipes(recipesData);
-        setDepartments(DEMO_DEPARTMENTS);
-        setCategories(catsData);
-      } else {
-        const [recipesData, deptsData, catsData] = await Promise.all([
-          recipeDB.getAll(),
-          departmentDB.getAll(),
-          categoryDB.getAll()
-        ]);
-        setRecipes(recipesData);
-        setDepartments(deptsData);
-        setCategories(catsData);
-      }
+      const [recipesData, deptsData, catsData] = await Promise.all([
+        recipeDB.getAll(),
+        departmentDB.getAll(),
+        categoryDB.getAll()
+      ]);
+      setRecipes(recipesData);
+      setDepartments(deptsData);
+      setCategories(catsData);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -323,6 +306,7 @@ function ControlPanelPage() {
               onAddUser={handleAddUser}
               onEditAccount={handleEditAccount}
               userListRefresh={userListRefresh}
+              tasks={tasks}
             />
           )}
 

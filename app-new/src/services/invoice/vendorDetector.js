@@ -242,7 +242,6 @@ export async function detect(invoiceData) {
   if (invoiceData.taxNumber) {
     const vendor = findByTaxNumber(invoiceData.taxNumber, vendors);
     if (vendor) {
-      console.log(`[VendorDetector] Matched by tax number: ${vendor.name}`);
       return {
         vendor,
         confidence: 'exact',
@@ -257,7 +256,6 @@ export async function detect(invoiceData) {
   if (invoiceData.phone) {
     const vendor = findByPhone(invoiceData.phone, vendors);
     if (vendor) {
-      console.log(`[VendorDetector] Matched by phone: ${vendor.name}`);
       return {
         vendor,
         confidence: 'high',
@@ -272,7 +270,6 @@ export async function detect(invoiceData) {
   if (invoiceData.email) {
     const vendor = findByEmail(invoiceData.email, vendors);
     if (vendor) {
-      console.log(`[VendorDetector] Matched by email: ${vendor.name}`);
       return {
         vendor,
         confidence: 'high',
@@ -288,7 +285,6 @@ export async function detect(invoiceData) {
   if (searchName) {
     const vendor = findByExactName(searchName, vendors);
     if (vendor) {
-      console.log(`[VendorDetector] Matched by exact name: ${vendor.name}`);
       return {
         vendor,
         confidence: 'medium',
@@ -301,7 +297,6 @@ export async function detect(invoiceData) {
     // 5. Fuzzy Name Detection
     const fuzzyResult = findByFuzzyName(searchName, vendors);
     if (fuzzyResult) {
-      console.log(`[VendorDetector] Matched by fuzzy name: ${fuzzyResult.vendor.name} (${Math.round(fuzzyResult.similarity * 100)}%)`);
       return {
         vendor: fuzzyResult.vendor,
         confidence: 'low',
@@ -314,7 +309,6 @@ export async function detect(invoiceData) {
   }
 
   // No match found
-  console.log(`[VendorDetector] No match found for: ${searchName || 'unknown vendor'}`);
   return {
     vendor: null,
     confidence: 'none',
@@ -394,9 +388,7 @@ export function validateDetection(result) {
     warnings.push('Detection failed - manual selection required');
   }
 
-  if (result.vendor && !result.vendor.parsingProfile) {
-    warnings.push('Vendor has no parsing profile - onboarding required');
-  }
+  // Invoice type is now auto-detected, no warning needed
 
   return {
     valid: result.vendor !== null || result.isNew,

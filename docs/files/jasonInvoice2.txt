@@ -1,0 +1,707 @@
+{
+  "invoice_number": "93664",
+  "date": "2025-11-25",
+  "vendor": {
+    "name": "Acema Importations inc.",
+    "address": "2616 Jacques-Cartier est\nLongueuil QC J4N 1P8",
+    "phone": "450-646-2591"
+  },
+  "sold_to": {
+    "account_number": "75",
+    "name": "Boucherie Sévelin",
+    "address": "1575, Boul. Jacques-Cartier\nLongueuil QC J4M 2B5\nCANADA",
+    "phone": "450 448-3918"
+  },
+  "ship_to": {
+    "name": "Boucherie Sévelin",
+    "address": "1575, Boul. Jacques-Cartier\nLongueuil QC J4M 2B5\nCANADA",
+    "phone": "450 448-3918"
+  },
+  "salesperson": "Katia Bétournay",
+  "customer_number": "480460435",
+  "delivery_terms": "Liv. en premier si possible - À partir de 5:00 en tout temps. Ouvert à l'avant",
+  "items": [
+    {
+      "type": "N",
+      "product_code": "BC-1160",
+      "description": "BOUCHÉES FEUILLETÉES À GARNIR LP 150G",
+      "ordered": 6,
+      "shipped": 0,
+      "unit_price": 3.99,
+      "total": 0
+    },
+    {
+      "type": "N",
+      "product_code": "BC-1675",
+      "description": "BISCUITS FILET-BLEU SABLÉ NOIX DE COCO 150G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 3.99,
+      "total": 47.88
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2833",
+      "description": "BISCUITS LU BARQUETTE CHOCOLAT 120G",
+      "ordered": 20,
+      "shipped": 20,
+      "unit_price": 2.99,
+      "total": 59.8
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2835",
+      "description": "BISCUITS LU BARQUETTE FRAMBOISE 120G",
+      "ordered": 10,
+      "shipped": 10,
+      "unit_price": 2.99,
+      "total": 29.9
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2836",
+      "description": "BISCUITS LU GRANOLA CHOCOLAT NOIR 195G",
+      "ordered": 9,
+      "shipped": 9,
+      "unit_price": 4.49,
+      "total": 40.41
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2837",
+      "description": "BISCUITS LU GRANOLA CHOCOLAT LAIT 195G",
+      "ordered": 9,
+      "shipped": 9,
+      "unit_price": 4.49,
+      "total": 40.41
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2840",
+      "description": "BISCUITS LU PAILLE D'OR FRAMBOISE 170G",
+      "ordered": 8,
+      "shipped": 8,
+      "unit_price": 4.99,
+      "total": 39.92
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2842",
+      "description": "BISCUITS LU PÉPITO CHOCOLAT LAIT 192G",
+      "ordered": 9,
+      "shipped": 9,
+      "unit_price": 3.69,
+      "total": 33.21
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2843",
+      "description": "BISCUITS LU PÉPITO CHOCOLAT NOIR 192G",
+      "ordered": 9,
+      "shipped": 9,
+      "unit_price": 3.69,
+      "total": 33.21
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2879",
+      "description": "BISCUITS LU PETITS COEURS CHOCOLAT 125G",
+      "ordered": 8,
+      "shipped": 8,
+      "unit_price": 3.29,
+      "total": 26.32
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2880",
+      "description": "BISCUITS LU VÉRITABLE PETIT BEURRE 200G",
+      "ordered": 20,
+      "shipped": 20,
+      "unit_price": 2.89,
+      "total": 57.8
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2987",
+      "description": "BISCUITS LU BASTOGNE 260G",
+      "ordered": 11,
+      "shipped": 11,
+      "unit_price": 4.29,
+      "total": 47.19
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2989",
+      "description": "BISCUITS LU CHAMONIX 250G",
+      "ordered": 15,
+      "shipped": 15,
+      "unit_price": 4.79,
+      "total": 71.85
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2991",
+      "description": "BISCUIT LU PETIT ÉCOLIER CHOCOLAT BLANC 150G",
+      "ordered": 14,
+      "shipped": 14,
+      "unit_price": 4.99,
+      "total": 69.86
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2994",
+      "description": "BISCUITS LU NAPOLITAIN CLASSIC 180G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 4.69,
+      "total": 56.28
+    },
+    {
+      "type": "N",
+      "product_code": "BC-2995",
+      "description": "CRAQUELINS HEUDEBERT NATURE 300G",
+      "ordered": 15,
+      "shipped": 15,
+      "unit_price": 4.49,
+      "total": 67.35
+    },
+    {
+      "type": "N",
+      "product_code": "BC-3178",
+      "description": "BISCUITS LU COQUELINE CHOCOLAT 155G",
+      "ordered": 8,
+      "shipped": 8,
+      "unit_price": 4.39,
+      "total": 35.12
+    },
+    {
+      "type": "Y",
+      "product_code": "BC-3412",
+      "description": "CRAQUELINS BELIN TRIANGOLIN SÉSAME 100G",
+      "ordered": 8,
+      "shipped": 0,
+      "unit_price": 3.39,
+      "total": 0
+    },
+    {
+      "type": "Y",
+      "product_code": "BC-3413",
+      "description": "CRAQUELINS BELIN SNACKY 100G",
+      "ordered": 8,
+      "shipped": 8,
+      "unit_price": 3.39,
+      "total": 27.12
+    },
+    {
+      "type": "N",
+      "product_code": "BC-3416",
+      "description": "BISCUITS LU FIGOLU 192G",
+      "ordered": 14,
+      "shipped": 14,
+      "unit_price": 4.69,
+      "total": 65.66
+    },
+    {
+      "type": "N",
+      "product_code": "BC-3443",
+      "description": "BISCUITS LU PRINCE MINI 4X40G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 3.49,
+      "total": 41.88
+    },
+    {
+      "type": "N",
+      "product_code": "BC-3711",
+      "description": "BISCUITS LU PETITS COEURS CHOCO CROC 90G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 4.29,
+      "total": 51.48
+    },
+    {
+      "type": "N",
+      "product_code": "BC-3716",
+      "description": "CRAQUELINS BELIN GRILLÉS ORIGINAL 150G",
+      "ordered": 8,
+      "shipped": 8,
+      "unit_price": 4.39,
+      "total": 35.12
+    },
+    {
+      "type": "Y",
+      "product_code": "BC-3793",
+      "description": "CROUSTILLES MTL GRINGO TORTILLAS CHIPOTLE 250G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 4.49,
+      "total": 53.88
+    },
+    {
+      "type": "Y",
+      "product_code": "BC-3794",
+      "description": "CROUSTILLES MTL GRINGO TORTILLAS MULTIGRAINS 250G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 4.49,
+      "total": 53.88
+    },
+    {
+      "type": "N",
+      "product_code": "BC-4077",
+      "description": "CRAQUELINS CRISPS FIGUE SÉSAME NOIRE 150G",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 5.99,
+      "total": 35.94
+    },
+    {
+      "type": "N",
+      "product_code": "BC-67",
+      "description": "AMANDIER DU VENTOUX AMANDE ET VANILLE 240G",
+      "ordered": 5,
+      "shipped": 5,
+      "unit_price": 12.99,
+      "total": 64.95
+    },
+    {
+      "type": "N",
+      "product_code": "BC-706",
+      "description": "CRAQUELINS LP OLIVE ROMARIN 250G",
+      "ordered": 24,
+      "shipped": 24,
+      "unit_price": 3.19,
+      "total": 76.56
+    },
+    {
+      "type": "N",
+      "product_code": "BC-85",
+      "description": "AMANDIER DU VENTOUX CITRON 240G",
+      "ordered": 5,
+      "shipped": 5,
+      "unit_price": 12.99,
+      "total": 64.95
+    },
+    {
+      "type": "N",
+      "product_code": "CC-1376",
+      "description": "CONFITURE C.P. FRAISE 370G",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 6.29,
+      "total": 37.74
+    },
+    {
+      "type": "N",
+      "product_code": "CC-2795",
+      "description": "GELÉE ÉPICÉA PIMENTS À LA MARGUERITE 150ML",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 6.99,
+      "total": 41.94
+    },
+    {
+      "type": "N",
+      "product_code": "CC-4103",
+      "description": "TARTINADE YOLO DUBAI PISTACHE KADAIF CHOCOLAT BLANC & LAIT 250G",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 10.49,
+      "total": 62.94
+    },
+    {
+      "type": "Y",
+      "product_code": "CD-1546",
+      "description": "CALISSONS SOUBEYRAN PRÉSENTOIR GROSSES BOUCHÉES 20X37G",
+      "ordered": 1,
+      "shipped": 1,
+      "unit_price": 64.99,
+      "total": 64.99
+    },
+    {
+      "type": "Y",
+      "product_code": "CD-1547",
+      "description": "CALISSONS SOUBEYRAN PRÉSENTOIR MINI BOUCHÉES (40) 460G",
+      "ordered": 1,
+      "shipped": 1,
+      "unit_price": 43.99,
+      "total": 43.99
+    },
+    {
+      "type": "Y",
+      "product_code": "CD-18",
+      "description": "NOUGAT NCG PRÉSENTOIR BOUCHÉES AMANDES 24X30G",
+      "ordered": 1,
+      "shipped": 1,
+      "unit_price": 42.99,
+      "total": 42.99
+    },
+    {
+      "type": "Y",
+      "product_code": "CD-3239",
+      "description": "PRALINÉ J&C ROCHER (PRÉSENTOIR 24 UNITÉS)",
+      "ordered": 1,
+      "shipped": 0,
+      "unit_price": 84.99,
+      "total": 0
+    },
+    {
+      "type": "Y",
+      "product_code": "CD-4023",
+      "description": "CHOCOLAT CÔTE D'OR DÉGUSTATION BRUT NOIR 86% 100G",
+      "ordered": 10,
+      "shipped": 10,
+      "unit_price": 4.99,
+      "total": 49.9
+    },
+    {
+      "type": "Y",
+      "product_code": "CD-4025",
+      "description": "CHOCOLAT CÔTE D'OR DÉGUSTATION NOIR 70% 100G",
+      "ordered": 10,
+      "shipped": 10,
+      "unit_price": 4.99,
+      "total": 49.9
+    },
+    {
+      "type": "Y",
+      "product_code": "CD-4028",
+      "description": "CHOCOLAT CÔTE D'OR MIGNONNETTE LAIT EXTRA FIN 240G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 11.19,
+      "total": 134.28
+    },
+    {
+      "type": "Y",
+      "product_code": "CD-4029",
+      "description": "CHOCOLAT CÔTE D'OR MIGNONNETTE NOIR 240G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 11.19,
+      "total": 134.28
+    },
+    {
+      "type": "Y",
+      "product_code": "CD-4109",
+      "description": "CHOCOLAT CÔTE D'OR BÂTON DOUBLE LAIT 46G",
+      "ordered": 32,
+      "shipped": 32,
+      "unit_price": 3.29,
+      "total": 105.28
+    },
+    {
+      "type": "N",
+      "product_code": "CRPF-257",
+      "description": "TABOULÉ LP 730 g",
+      "ordered": 8,
+      "shipped": 8,
+      "unit_price": 6.49,
+      "total": 51.92
+    },
+    {
+      "type": "N",
+      "product_code": "CRPF-2906",
+      "description": "PÂTES FILOTEA TAGLIATELLE 250G",
+      "ordered": 10,
+      "shipped": 10,
+      "unit_price": 6.49,
+      "total": 64.9
+    },
+    {
+      "type": "N",
+      "product_code": "D-1572",
+      "description": "LÉG. LUBERON CITRON CONFIT 200G",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 5.99,
+      "total": 35.94
+    },
+    {
+      "type": "Y",
+      "product_code": "D-3240",
+      "description": "FRUITS LILLIFRUIT BIO PRUNEAUX D'AGEN DÉNOYAUTÉS 150G",
+      "ordered": 8,
+      "shipped": 8,
+      "unit_price": 5.99,
+      "total": 47.92
+    },
+    {
+      "type": "Y",
+      "product_code": "D-3241",
+      "description": "FRUITS LILLIFRUIT BIO FIGUES 150G",
+      "ordered": 8,
+      "shipped": 8,
+      "unit_price": 5.99,
+      "total": 47.92
+    },
+    {
+      "type": "N",
+      "product_code": "EA-4114",
+      "description": "SEL TERRE DU 9 AIL NOIR 120G",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 12.59,
+      "total": 75.54
+    },
+    {
+      "type": "Y",
+      "product_code": "EB-2970",
+      "description": "BOISSON VIVALOE BLEUET 500ML",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 3.29,
+      "total": 39.48
+    },
+    {
+      "type": "N",
+      "product_code": "C-001",
+      "description": "CONSIGNATION POUR BOUTEILLE",
+      "ordered": 1,
+      "shipped": 12,
+      "unit_price": 0.1,
+      "total": 1.2
+    },
+    {
+      "type": "Y",
+      "product_code": "EB-3746",
+      "description": "MOÛT PÉTILLANT VERGERS PÊCHE ANANAS 355ML",
+      "ordered": 24,
+      "shipped": 24,
+      "unit_price": 1.89,
+      "total": 45.36
+    },
+    {
+      "type": "N",
+      "product_code": "C-001",
+      "description": "CONSIGNATION POUR BOUTEILLE",
+      "ordered": 1,
+      "shipped": 24,
+      "unit_price": 0.1,
+      "total": 2.4
+    },
+    {
+      "type": "Y",
+      "product_code": "EB-937",
+      "description": "LIMONADE RIEME ORANGE SANGUINE 330ML",
+      "ordered": 24,
+      "shipped": 24,
+      "unit_price": 2.59,
+      "total": 62.16
+    },
+    {
+      "type": "N",
+      "product_code": "C-001",
+      "description": "CONSIGNATION POUR BOUTEILLE",
+      "ordered": 1,
+      "shipped": 24,
+      "unit_price": 0.1,
+      "total": 2.4
+    },
+    {
+      "type": "N",
+      "product_code": "EB-945",
+      "description": "EAU VOLVIC 6 PACK 1.5L",
+      "ordered": 18,
+      "shipped": 18,
+      "unit_price": 2.29,
+      "total": 41.22
+    },
+    {
+      "type": "N",
+      "product_code": "C-001",
+      "description": "CONSIGNATION POUR BOUTEILLE",
+      "ordered": 1,
+      "shipped": 18,
+      "unit_price": 0.1,
+      "total": 1.8
+    },
+    {
+      "type": "Y",
+      "product_code": "EB-948",
+      "description": "EAU BADOIT 1L",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 2.39,
+      "total": 14.34
+    },
+    {
+      "type": "N",
+      "product_code": "C-001",
+      "description": "CONSIGNATION POUR BOUTEILLE",
+      "ordered": 1,
+      "shipped": 6,
+      "unit_price": 0.1,
+      "total": 0.6
+    },
+    {
+      "type": "Y",
+      "product_code": "EB-971",
+      "description": "LIMONADE RIEME CITRON 750ML",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 4.99,
+      "total": 59.88
+    },
+    {
+      "type": "N",
+      "product_code": "C-002",
+      "description": "CONSIGNATION POUR BOUTEILLE $0.25",
+      "ordered": 1,
+      "shipped": 12,
+      "unit_price": 0.25,
+      "total": 3
+    },
+    {
+      "type": "Y",
+      "product_code": "EB-972",
+      "description": "LIMONADE RIEME ORANGE SANGUINE 750ML",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 4.99,
+      "total": 59.88
+    },
+    {
+      "type": "N",
+      "product_code": "C-002",
+      "description": "CONSIGNATION POUR BOUTEILLE $0.25",
+      "ordered": 1,
+      "shipped": 12,
+      "unit_price": 0.25,
+      "total": 3
+    },
+    {
+      "type": "N",
+      "product_code": "HV-2539",
+      "description": "VINAIGRE BALSAMIQUE MUSSINI SÉRIE IV 100ML",
+      "ordered": 3,
+      "shipped": 3,
+      "unit_price": 19.99,
+      "total": 59.97
+    },
+    {
+      "type": "N",
+      "product_code": "HV-2552",
+      "description": "VINAIGRE MUSSINI FRAMBOISE 250ML",
+      "ordered": 3,
+      "shipped": 3,
+      "unit_price": 15.99,
+      "total": 47.97
+    },
+    {
+      "type": "N",
+      "product_code": "HV-4117",
+      "description": "VINAIGRE TERRE DU 9 AIL NOIR 250ML",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 13.29,
+      "total": 79.74
+    },
+    {
+      "type": "N",
+      "product_code": "L-1019",
+      "description": "LÉG. FRANPRIX POIS CAROTTES 720ML",
+      "ordered": 6,
+      "shipped": 0,
+      "unit_price": 4.69,
+      "total": 0
+    },
+    {
+      "type": "N",
+      "product_code": "L-126",
+      "description": "LÉG. LP POIS EXTRA-FINS 720ML",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 4.19,
+      "total": 25.14
+    },
+    {
+      "type": "N",
+      "product_code": "LS-3139",
+      "description": "LÉG. SABAROT LENTILLES VERTES DU PUY 450G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 10.99,
+      "total": 131.88
+    },
+    {
+      "type": "N",
+      "product_code": "LS-3804",
+      "description": "LÉG. ST-ÉLOI LINGOTS BLANCS 500G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 4.19,
+      "total": 50.28
+    },
+    {
+      "type": "N",
+      "product_code": "MD-155",
+      "description": "SUCRE LP VANILLÉ 10X7.5G",
+      "ordered": 15,
+      "shipped": 0,
+      "unit_price": 2.99,
+      "total": 0
+    },
+    {
+      "type": "N",
+      "product_code": "MD-156",
+      "description": "LEVURE LP CHIMIQUE 6X11G",
+      "ordered": 12,
+      "shipped": 12,
+      "unit_price": 1.99,
+      "total": 23.88
+    },
+    {
+      "type": "N",
+      "product_code": "MD-442",
+      "description": "FLEUR D'ORANGER CHABRIOR EAU 250ML",
+      "ordered": 10,
+      "shipped": 10,
+      "unit_price": 1.99,
+      "total": 19.9
+    },
+    {
+      "type": "N",
+      "product_code": "SA-975",
+      "description": "SAUCE BENEDICTA AIOLI 260G",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 4.69,
+      "total": 28.14
+    },
+    {
+      "type": "N",
+      "product_code": "SP-276",
+      "description": "POTAGE ST-ÉLOI LÉGUMES DU SUD 1L",
+      "ordered": 6,
+      "shipped": 0,
+      "unit_price": 3.99,
+      "total": 0
+    },
+    {
+      "type": "N",
+      "product_code": "TT-1431",
+      "description": "THÉ FOUR O'CLOCK EARL GREY 20S",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 4.79,
+      "total": 28.74
+    },
+    {
+      "type": "N",
+      "product_code": "TT-1415",
+      "description": "TISANE COURTISANE CAMOMILLE 20S",
+      "ordered": 6,
+      "shipped": 6,
+      "unit_price": 4.69,
+      "total": 28.14
+    }
+  ],
+  "totals": {
+    "subtotal": 3280.8,
+    "tvq": 113.45,
+    "tps": 56.87,
+    "total": 3451.13
+  },
+  "note": "** Les produits identifiés d'un astérisque ont subi une variation de prix"
+}

@@ -2,6 +2,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 // Firebase configuration - loaded from environment variables only
 // Set these in .env.local or .env.production
@@ -25,15 +26,16 @@ if (missingKeys.length > 0) {
 let app = null;
 let db = null;
 let auth = null;
+let storage = null;
 
 try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   auth = getAuth(app);
-  console.log('✅ Firebase initialized successfully');
+  storage = getStorage(app);
 } catch (error) {
   console.warn('⚠️ Firebase not configured yet. App will work offline-only.', error);
 }
 
-export { app, db, auth };
+export { app, db, auth, storage };
 export default app;

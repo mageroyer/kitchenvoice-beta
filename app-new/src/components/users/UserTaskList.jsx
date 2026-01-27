@@ -11,58 +11,46 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { getAllPrivileges, ACCESS_LEVELS, getAccessLevelDisplay } from '../../services/auth/privilegesService';
 import { subscribeToTasks, TASK_STATUS } from '../../services/tasks/tasksService';
-import { isDemoMode } from '../../services/demo/demoService';
-import { DEMO_TASKS, DEMO_TEAM_MEMBERS } from '../../services/demo/demoData';
 import AssignTaskModal from '../common/AssignTaskModal';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
 import styles from '../../styles/components/usertasklist.module.css';
 
-function UserTaskList({ currentDepartment = '', onEditUser, refreshTrigger = 0 }) {
+function UserTaskList({ currentDepartment = '', onEditUser, refreshTrigger = 0, tasks: tasksProp = null }) {
   const [users, setUsers] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  const [localTasks, setLocalTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [error, setError] = useState(null);
+
+  // Use provided tasks or local state
+  const tasks = tasksProp || localTasks;
 
   // Load users (privileges) - reload when refreshTrigger changes
   useEffect(() => {
     loadUsers();
   }, [refreshTrigger]);
 
-  // Subscribe to tasks (or use demo tasks)
+  // Subscribe to tasks ONLY if not provided as prop (avoids duplicate subscriptions)
   useEffect(() => {
-    if (isDemoMode()) {
-      setTasks(DEMO_TASKS);
-      return () => {};
-    }
+    // Skip subscription if tasks are passed as prop
+    if (tasksProp !== null) return;
 
     const unsubscribe = subscribeToTasks((allTasks) => {
-      setTasks(allTasks);
+      setLocalTasks(allTasks);
     });
     return () => unsubscribe();
-  }, []);
+  }, [tasksProp]);
 
   const loadUsers = async () => {
     setLoading(true);
     setError(null);
 
-    // In demo mode, use demo team members
-    if (isDemoMode()) {
-      console.log('Loading demo team members...');
-      setUsers(DEMO_TEAM_MEMBERS);
-      setLoading(false);
-      return;
-    }
-
     try {
-      console.log('Loading privileges...');
       const privileges = await getAllPrivileges();
-      console.log('All privileges loaded:', privileges);
 
       if (!privileges || !Array.isArray(privileges)) {
-        console.log('No privileges array returned');
         setUsers([]);
         setLoading(false);
         return;
@@ -75,7 +63,6 @@ function UserTaskList({ currentDepartment = '', onEditUser, refreshTrigger = 0 }
         p.accessLevel === ACCESS_LEVELS.VIEWER ||
         p.accessLevel === ACCESS_LEVELS.OWNER
       );
-      console.log('Filtered users:', allUsers);
       setUsers(allUsers);
     } catch (err) {
       console.error('Error loading users:', err);
@@ -107,8 +94,7 @@ function UserTaskList({ currentDepartment = '', onEditUser, refreshTrigger = 0 }
   };
 
   // Handle task creation callback
-  const handleTaskCreated = (task) => {
-    console.log('Task created for user:', selectedUser?.name, task);
+  const handleTaskCreated = () => {
     setShowTaskModal(false);
     setSelectedUser(null);
   };

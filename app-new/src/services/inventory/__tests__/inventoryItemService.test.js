@@ -153,11 +153,11 @@ describe('InventoryItemService', () => {
         name: 'Test',
         vendorId: 1,
         unit: 'kg',
-        currentStock: -5
+        stockQuantity: -5
       });
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Current stock must be a non-negative number');
+      expect(result.errors).toContain('Stock quantity must be a non-negative number');
     });
 
     it('should reject threshold > 100', () => {
@@ -189,8 +189,8 @@ describe('InventoryItemService', () => {
         name: 'Complete Item',
         vendorId: 1,
         unit: 'kg',
-        currentStock: 10,
-        parLevel: 50,
+        stockQuantity: 10,
+        parQuantity: 50,
         reorderPoint: 10,
         criticalThreshold: 10,
         lowStockThreshold: 25,
@@ -206,7 +206,7 @@ describe('InventoryItemService', () => {
 
     it('should not require fields on update', () => {
       const result = validateItemData({
-        currentStock: 20
+        stockQuantity: 20
       }, { isUpdate: true });
 
       expect(result.valid).toBe(true);
@@ -279,8 +279,8 @@ describe('InventoryItemService', () => {
         vendorId: 1,
         vendorName: 'Sysco Canada',
         unit: 'kg',
-        currentStock: 0,
-        parLevel: 0,
+        stockQuantity: 0,
+        parQuantity: 0,
         isActive: true,
         nameNormalized: 'flour'
       };
@@ -331,8 +331,8 @@ describe('InventoryItemService', () => {
         name: 'Test Item',
         vendorId: 1,
         unit: 'kg',
-        currentStock: -10
-      })).rejects.toThrow('Current stock must be a non-negative number');
+        stockQuantity: -10
+      })).rejects.toThrow('Stock quantity must be a non-negative number');
     });
 
     it('should throw validation error for threshold > 100', async () => {
@@ -416,7 +416,7 @@ describe('InventoryItemService', () => {
       inventoryItemDB.getById.mockResolvedValue({
         id: 1,
         name: 'Flour',
-        currentStock: 50,
+        stockQuantity: 50,
         unit: 'kg'
       });
 
@@ -424,7 +424,7 @@ describe('InventoryItemService', () => {
         name: 'Flour',
         vendorId: 1,
         unit: 'kg',
-        currentStock: 50,
+        stockQuantity: 50,
         createdBy: 'user123'
       });
 
@@ -447,7 +447,7 @@ describe('InventoryItemService', () => {
       inventoryItemDB.getById.mockResolvedValue({
         id: 1,
         name: 'New Item',
-        currentStock: 0
+        stockQuantity: 0
       });
 
       await createItem({
@@ -471,7 +471,7 @@ describe('InventoryItemService', () => {
         name: 'Old Name',
         vendorId: 1,
         unit: 'kg',
-        currentStock: 10
+        stockQuantity: 10
       };
 
       const updatedItem = {
@@ -500,12 +500,12 @@ describe('InventoryItemService', () => {
         name: 'Item',
         vendorId: 1,
         unit: 'kg',
-        currentStock: 10
+        stockQuantity: 10
       };
 
       const updatedItem = {
         ...existingItem,
-        currentStock: 25
+        stockQuantity: 25
       };
 
       inventoryItemDB.getById
@@ -513,7 +513,7 @@ describe('InventoryItemService', () => {
         .mockResolvedValueOnce(updatedItem);
       inventoryItemDB.update.mockResolvedValue(true);
 
-      await updateItem(1, { currentStock: 25 }, {
+      await updateItem(1, { stockQuantity: 25 }, {
         stockChangeReason: 'Inventory count',
         updatedBy: 'user123'
       });
@@ -571,15 +571,15 @@ describe('InventoryItemService', () => {
         id: 1,
         name: 'Item',
         unit: 'kg',
-        currentStock: 10
+        stockQuantity: 10
       };
 
       inventoryItemDB.getById
         .mockResolvedValueOnce(existingItem)
-        .mockResolvedValueOnce({ ...existingItem, currentStock: 25 });
+        .mockResolvedValueOnce({ ...existingItem, stockQuantity: 25 });
       inventoryItemDB.update.mockResolvedValue(true);
 
-      await updateItem(1, { currentStock: 25 }, { trackStockChange: false });
+      await updateItem(1, { stockQuantity: 25 }, { trackStockChange: false });
 
       expect(stockTransactionDB.create).not.toHaveBeenCalled();
     });
@@ -670,9 +670,9 @@ describe('InventoryItemService', () => {
   describe('getLowStockItems', () => {
     it('should return items below threshold', async () => {
       const mockItems = [
-        { id: 1, name: 'Item 1', currentStock: 5, parLevel: 100, isActive: true },
-        { id: 2, name: 'Item 2', currentStock: 50, parLevel: 100, isActive: true },
-        { id: 3, name: 'Item 3', currentStock: 10, parLevel: 100, isActive: true }
+        { id: 1, name: 'Item 1', stockQuantity: 5, parQuantity: 100, isActive: true },
+        { id: 2, name: 'Item 2', stockQuantity: 50, parQuantity: 100, isActive: true },
+        { id: 3, name: 'Item 3', stockQuantity: 10, parQuantity: 100, isActive: true }
       ];
 
       inventoryItemDB.getActive.mockResolvedValue(mockItems);
@@ -686,7 +686,7 @@ describe('InventoryItemService', () => {
 
     it('should return items at threshold', async () => {
       const mockItems = [
-        { id: 1, name: 'Item 1', currentStock: 25, parLevel: 100, isActive: true }
+        { id: 1, name: 'Item 1', stockQuantity: 25, parQuantity: 100, isActive: true }
       ];
 
       inventoryItemDB.getActive.mockResolvedValue(mockItems);
@@ -698,8 +698,8 @@ describe('InventoryItemService', () => {
 
     it('should not return items above threshold', async () => {
       const mockItems = [
-        { id: 1, name: 'Item 1', currentStock: 80, parLevel: 100, isActive: true },
-        { id: 2, name: 'Item 2', currentStock: 90, parLevel: 100, isActive: true }
+        { id: 1, name: 'Item 1', stockQuantity: 80, parQuantity: 100, isActive: true },
+        { id: 2, name: 'Item 2', stockQuantity: 90, parQuantity: 100, isActive: true }
       ];
 
       inventoryItemDB.getActive.mockResolvedValue(mockItems);
@@ -714,8 +714,8 @@ describe('InventoryItemService', () => {
         {
           id: 1,
           name: 'Item 1',
-          currentStock: 15,
-          parLevel: 100,
+          stockQuantity: 15,
+          parQuantity: 100,
           criticalThreshold: 20, // Custom threshold
           lowStockThreshold: 30,
           isActive: true
@@ -733,9 +733,9 @@ describe('InventoryItemService', () => {
 
     it('should sort by urgency with critical first', async () => {
       const mockItems = [
-        { id: 1, name: 'Low Item', currentStock: 20, parLevel: 100, isActive: true },
-        { id: 2, name: 'Critical Item', currentStock: 5, parLevel: 100, isActive: true },
-        { id: 3, name: 'Medium Item', currentStock: 15, parLevel: 100, isActive: true }
+        { id: 1, name: 'Low Item', stockQuantity: 20, parQuantity: 100, isActive: true },
+        { id: 2, name: 'Critical Item', stockQuantity: 5, parQuantity: 100, isActive: true },
+        { id: 3, name: 'Medium Item', stockQuantity: 15, parQuantity: 100, isActive: true }
       ];
 
       inventoryItemDB.getActive.mockResolvedValue(mockItems);
@@ -750,7 +750,7 @@ describe('InventoryItemService', () => {
 
     it('should use default threshold constant', async () => {
       const mockItems = [
-        { id: 1, name: 'Item', currentStock: 20, parLevel: 100, isActive: true }
+        { id: 1, name: 'Item', stockQuantity: 20, parQuantity: 100, isActive: true }
       ];
 
       inventoryItemDB.getActive.mockResolvedValue(mockItems);
@@ -769,9 +769,9 @@ describe('InventoryItemService', () => {
   describe('getCriticalStockItems', () => {
     it('should return only critical items', async () => {
       const mockItems = [
-        { id: 1, name: 'Critical', currentStock: 5, parLevel: 100, isActive: true },
-        { id: 2, name: 'Low', currentStock: 20, parLevel: 100, isActive: true },
-        { id: 3, name: 'OK', currentStock: 50, parLevel: 100, isActive: true }
+        { id: 1, name: 'Critical', stockQuantity: 5, parQuantity: 100, isActive: true },
+        { id: 2, name: 'Low', stockQuantity: 20, parQuantity: 100, isActive: true },
+        { id: 3, name: 'OK', stockQuantity: 50, parQuantity: 100, isActive: true }
       ];
 
       inventoryItemDB.getActive.mockResolvedValue(mockItems);
@@ -788,8 +788,8 @@ describe('InventoryItemService', () => {
         {
           id: 1,
           name: 'Item with custom threshold',
-          currentStock: 18,
-          parLevel: 100,
+          stockQuantity: 18,
+          parQuantity: 100,
           criticalThreshold: 20, // Custom: 20% is critical
           isActive: true
         }

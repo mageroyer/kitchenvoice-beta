@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <!-- Apple touch icon - iOS adds its own rounding -->
+  <rect width="180" height="180" fill="#1a2332"/>
+
+  <!-- Subtle AI watermark -->
+  <text x="90" y="108" font-family="Arial, sans-serif" font-size="68" font-weight="bold" fill="#252f3d" text-anchor="middle">AI</text>
+
+  <!-- K letter - blue -->
+  <path d="M28 38 L28 142 L45 142 L45 102 L72 142 L95 142 L60 90 L92 38 L69 38 L45 82 L45 38 Z" fill="#3b6cb5"/>
+
+  <!-- C with circuit traces -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Main C curve -->
+    <path d="M95 55 Q135 55 135 90 Q135 125 95 125" stroke-width="14" stroke="#3d4654"/>
+    <!-- Inner C cutout -->
+    <path d="M95 66 Q122 66 122 90 Q122 114 95 114" stroke-width="7" stroke="#1a2332"/>
+
+    <!-- Top circuit trace -->
+    <path d="M128 66 L145 66 L151 60" stroke-width="3.5" stroke="#3d4654"/>
+    <circle cx="156" cy="55" r="5" fill="#3d4654"/>
+    <circle cx="156" cy="55" r="2.5" fill="#1a2332"/>
+
+    <!-- Bottom circuit trace -->
+    <path d="M128 114 L145 114 L151 120" stroke-width="3.5" stroke="#3d4654"/>
+    <circle cx="156" cy="125" r="5" fill="#3d4654"/>
+    <circle cx="156" cy="125" r="2.5" fill="#1a2332"/>
+  </g>
+</svg>

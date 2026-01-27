@@ -193,12 +193,6 @@ function FixPriceModal({ inventoryItemId, onClose, onFixed }) {
         pricePerML: preview.pricePerML ? Math.round(preview.pricePerML * 1000000) / 1000000 : null,
       });
 
-      console.log('[FixPriceModal] Price fixed successfully:', {
-        inventoryItemId,
-        pricePerG: preview.pricePerG,
-        pricePerML: preview.pricePerML,
-      });
-
       // Notify parent
       onFixed?.();
       onClose();

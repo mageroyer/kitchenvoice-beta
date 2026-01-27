@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { db as firestore, auth } from '../services/database/firebase';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
@@ -22,6 +24,7 @@ import {
   runFullCleanup,
   validateDataIntegrity
 } from '../services/database/cleanupService';
+import CreditsDisplay from '../components/common/CreditsDisplay';
 import styles from '../styles/pages/settings.module.css';
 
 /**
@@ -50,6 +53,10 @@ function SettingsPage() {
   // Data cleanup state
   const [cleanupRunning, setCleanupRunning] = useState(false);
   const [cleanupResult, setCleanupResult] = useState(null);
+
+  // Cloud data clear state
+  const [clearingCloud, setClearingCloud] = useState(false);
+  const [clearCloudStatus, setClearCloudStatus] = useState('');
 
   // Load kitchen settings on mount
   useEffect(() => {
@@ -97,7 +104,6 @@ function SettingsPage() {
   const handleReset = () => {
     if (confirm('Reset all settings to default? This cannot be undone.')) {
       const defaultSettings = {
-        claudeApiKey: '',
         voiceLanguage: 'fr-CA',
         autoSave: true,
         theme: 'light',
@@ -240,6 +246,77 @@ function SettingsPage() {
     setCleanupResult(null);
   };
 
+  // Clear all cloud data from Firestore
+  const handleClearCloudData = useCallback(async () => {
+    if (!confirm('⚠️ WARNING: This will DELETE ALL your cloud data (recipes, departments, categories, inventory, invoices, etc.).\n\nThis cannot be undone!\n\nAre you sure?')) {
+      return;
+    }
+
+    if (!confirm('This is your LAST CHANCE to cancel.\n\nPress OK to permanently delete all cloud data.')) {
+      return;
+    }
+
+    setClearingCloud(true);
+    setClearCloudStatus('Starting...');
+
+    try {
+      if (!auth || !auth.currentUser) {
+        alert('Not logged in. Please login first.');
+        setClearingCloud(false);
+        return;
+      }
+
+      const userId = auth.currentUser.uid;
+      const syncId = `user_${userId}`;
+
+      // Collections under /cookbooks/{syncId}/
+      const cookbookCollections = [
+        'recipes', 'departments', 'categories', 'vendors',
+        'inventoryItems', 'invoices', 'invoiceLineItems',
+        'stockTransactions', 'purchaseOrders', 'purchaseOrderLines',
+        'priceHistory', 'ingredients'
+      ];
+
+      // Collections under /users/{userId}/
+      const userCollections = ['tasks', 'privileges', 'settings'];
+
+      let totalDeleted = 0;
+
+      // Clear cookbook collections
+      for (const colName of cookbookCollections) {
+        setClearCloudStatus(`Clearing ${colName}...`);
+        const colRef = collection(firestore, 'cookbooks', syncId, colName);
+        const snapshot = await getDocs(colRef);
+
+        for (const docSnap of snapshot.docs) {
+          await deleteDoc(doc(firestore, 'cookbooks', syncId, colName, docSnap.id));
+          totalDeleted++;
+        }
+      }
+
+      // Clear user collections
+      for (const colName of userCollections) {
+        setClearCloudStatus(`Clearing user ${colName}...`);
+        const colRef = collection(firestore, 'users', userId, colName);
+        const snapshot = await getDocs(colRef);
+
+        for (const docSnap of snapshot.docs) {
+          await deleteDoc(doc(firestore, 'users', userId, colName, docSnap.id));
+          totalDeleted++;
+        }
+      }
+
+      setClearCloudStatus(`✅ Deleted ${totalDeleted} documents from cloud`);
+      alert(`Successfully deleted ${totalDeleted} documents from Firestore.\n\nNow clear your browser data to start fresh.`);
+    } catch (err) {
+      console.error('Error clearing cloud data:', err);
+      setClearCloudStatus(`❌ Error: ${err.message}`);
+      alert('Error clearing cloud data: ' + err.message);
+    } finally {
+      setClearingCloud(false);
+    }
+  }, []);
+
   return (
     <div className={styles.settingsPage}>
       <div className={styles.header}>
@@ -258,6 +335,9 @@ function SettingsPage() {
           {error}
         </Alert>
       )}
+
+      {/* API Credits */}
+      <CreditsDisplay />
 
       {/* Voice Settings */}
       <Card>
@@ -357,19 +437,6 @@ function SettingsPage() {
             <option value="dark">Dark (Coming Soon)</option>
             <option value="auto">Auto (System)</option>
           </select>
-        </div>
-
-        <div className={styles.settingGroup} style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #eee' }}>
-          <label className={styles.label}>Feature Sliders</label>
-          <p className={styles.hint} style={{ marginBottom: '10px' }}>
-            Configure image sliders with animated bubble text for landing pages
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => navigate('/admin/sliders')}
-          >
-            🎠 Configure Sliders
-          </Button>
         </div>
       </Card>
 
@@ -667,169 +734,13 @@ function SettingsPage() {
         </div>
       </Card>
 
-      {/* Data Cleanup */}
-      <Card>
-        <h2>🧹 Data Cleanup</h2>
-        <p style={{ color: '#666', marginBottom: '20px' }}>
-          Check and fix data integrity issues, orphaned references, and incomplete records
-        </p>
-
-        <div className={styles.settingGroup}>
-          <label className={styles.label}>Database Maintenance</label>
-          <p className={styles.hint} style={{ marginBottom: '15px' }}>
-            Scans for orphaned category references, deleted recipe remnants, and data integrity issues.
-          </p>
-
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-            <Button
-              variant="outline"
-              onClick={handleCleanupCheck}
-              loading={cleanupRunning}
-              disabled={cleanupRunning}
-            >
-              {cleanupRunning ? 'Checking...' : 'Check for Issues'}
-            </Button>
-            {cleanupResult && cleanupResult.summary.totalIssuesFound > 0 && cleanupResult.dryRun && (
-              <Button
-                variant="primary"
-                onClick={handleCleanupFix}
-                loading={cleanupRunning}
-                disabled={cleanupRunning}
-              >
-                Fix {cleanupResult.summary.totalIssuesFound} Issues
-              </Button>
-            )}
-          </div>
-
-          {/* Cleanup Results */}
-          {cleanupResult && (
-            <div className={styles.cleanupResult}>
-              <div className={styles.cleanupHeader}>
-                <strong>
-                  {cleanupResult.dryRun ? 'Scan Results' : 'Cleanup Complete'}
-                </strong>
-                <button
-                  className={styles.dismissButton}
-                  onClick={handleCleanupDismiss}
-                  aria-label="Dismiss"
-                >
-                  &times;
-                </button>
-              </div>
-
-              {/* Summary Stats */}
-              <div className={styles.cleanupSummary}>
-                <div className={styles.cleanupStat}>
-                  <span className={styles.statNumber}>{cleanupResult.summary.totalIssuesFound}</span>
-                  <span className={styles.statLabel}>Issues Found</span>
-                </div>
-                {!cleanupResult.dryRun && (
-                  <>
-                    <div className={styles.cleanupStat}>
-                      <span className={styles.statNumber} style={{ color: '#27ae60' }}>{cleanupResult.summary.totalFixed}</span>
-                      <span className={styles.statLabel}>Fixed</span>
-                    </div>
-                    <div className={styles.cleanupStat}>
-                      <span className={styles.statNumber} style={{ color: '#e74c3c' }}>{cleanupResult.summary.totalDeleted}</span>
-                      <span className={styles.statLabel}>Deleted</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Integrity Status */}
-              {cleanupResult.integrity && (
-                <div className={cleanupResult.integrity.healthy ? styles.healthyStatus : styles.unhealthyStatus}>
-                  {cleanupResult.integrity.healthy ? '✓ Data integrity OK' : '⚠ Data integrity issues detected'}
-                </div>
-              )}
-
-              {/* Issue Details (collapsed by default) */}
-              {cleanupResult.summary.totalIssuesFound > 0 && (
-                <details className={styles.cleanupDetails}>
-                  <summary>View Details ({cleanupResult.summary.totalIssuesFound} issues)</summary>
-                  <div className={styles.issuesList}>
-                    {/* Orphaned Categories */}
-                    {cleanupResult.orphanedCategories?.found > 0 && (
-                      <div className={styles.issueGroup}>
-                        <strong>Orphaned Categories: {cleanupResult.orphanedCategories.found}</strong>
-                        <ul>
-                          {cleanupResult.orphanedCategories.details.slice(0, 5).map((d, i) => (
-                            <li key={i}>"{d.categoryName}" - missing department #{d.missingDepartmentId}</li>
-                          ))}
-                          {cleanupResult.orphanedCategories.details.length > 5 && (
-                            <li>...and {cleanupResult.orphanedCategories.details.length - 5} more</li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Orphaned Recipes */}
-                    {cleanupResult.orphanedRecipes?.found > 0 && (
-                      <div className={styles.issueGroup}>
-                        <strong>Orphaned Recipe References: {cleanupResult.orphanedRecipes.found}</strong>
-                        <ul>
-                          {cleanupResult.orphanedRecipes.details.slice(0, 5).map((d, i) => (
-                            <li key={i}>"{d.recipeName}" - {d.issues.join(', ')}</li>
-                          ))}
-                          {cleanupResult.orphanedRecipes.details.length > 5 && (
-                            <li>...and {cleanupResult.orphanedRecipes.details.length - 5} more</li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Incomplete Recipes */}
-                    {cleanupResult.incompleteRecipes?.found > 0 && (
-                      <div className={styles.issueGroup}>
-                        <strong>Incomplete Recipes: {cleanupResult.incompleteRecipes.found}</strong>
-                        <ul>
-                          {cleanupResult.incompleteRecipes.details.slice(0, 5).map((d, i) => (
-                            <li key={i}>"{d.recipeName}" - {d.issues.join(', ')}</li>
-                          ))}
-                          {cleanupResult.incompleteRecipes.details.length > 5 && (
-                            <li>...and {cleanupResult.incompleteRecipes.details.length - 5} more</li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Orphaned Price History */}
-                    {cleanupResult.orphanedPriceHistory?.found > 0 && (
-                      <div className={styles.issueGroup}>
-                        <strong>Orphaned Price History: {cleanupResult.orphanedPriceHistory.found}</strong>
-                        <p>Records for deleted ingredients</p>
-                      </div>
-                    )}
-
-                    {/* Orphaned Production Logs */}
-                    {cleanupResult.orphanedProductionLogs?.found > 0 && (
-                      <div className={styles.issueGroup}>
-                        <strong>Orphaned Production Logs: {cleanupResult.orphanedProductionLogs.found}</strong>
-                        <p>Logs for deleted recipes</p>
-                      </div>
-                    )}
-                  </div>
-                </details>
-              )}
-
-              {cleanupResult.summary.totalIssuesFound === 0 && (
-                <p style={{ color: '#27ae60', margin: '10px 0 0' }}>
-                  ✓ No issues found - your data is clean!
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </Card>
-
       {/* Info Section */}
       <Card variant="outlined">
         <h3>ℹ️ About Settings</h3>
         <p style={{ fontSize: '14px', lineHeight: '1.6', color: '#666' }}>
           Settings are stored locally in your browser's localStorage. They will persist
           across sessions but are device-specific. If you clear your browser data, you'll
-          need to re-enter your API key and preferences.
+          need to re-enter your preferences.
         </p>
       </Card>
 

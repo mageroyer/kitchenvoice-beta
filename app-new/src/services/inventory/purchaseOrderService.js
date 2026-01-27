@@ -268,9 +268,10 @@ export async function getOrder(id, { includeItemDetails = true } = {}) {
               id: item.id,
               name: item.name,
               sku: item.sku,
-              unit: item.unit,
-              currentStock: item.currentStock,
-              parLevel: item.parLevel,
+              stockQuantity: item.stockQuantity,
+              stockWeight: item.stockWeight,
+              parQuantity: item.parQuantity,
+              parWeight: item.parWeight,
               currentPrice: item.currentPrice
             }
           };
@@ -381,15 +382,19 @@ export async function addLineToOrder(orderId, itemId, quantity, options = {}) {
   }
 
   // Create line item
+  // Get effective stock based on item type
+  const effectiveStock = item.stockWeight > 0 ? item.stockWeight : (item.stockQuantity || 0);
+  const effectiveUnit = item.stockWeightUnit || item.stockQuantityUnit || 'ea';
+
   const line = await purchaseOrderLineDB.create({
     purchaseOrderId: orderId,
     inventoryItemId: itemId,
     inventoryItemName: item.name,
     inventoryItemSku: item.sku,
     quantity,
-    unit: item.unit,
+    unit: effectiveUnit,
     unitPrice: options.unitPrice ?? item.currentPrice ?? 0,
-    stockAtOrder: item.currentStock,
+    stockAtOrder: effectiveStock,
     notes: options.notes
   });
 
@@ -723,10 +728,11 @@ export async function createOrderFromLowStock(vendorId, options = {}) {
   const items = await inventoryItemDB.getByVendor(vendorId);
   const lowStockItems = items.filter(item => {
     if (!item.isActive) return false;
-    const parLevel = item.parLevel || 0;
-    const currentStock = item.currentStock || 0;
-    const reorderPoint = item.reorderPoint || (parLevel * 0.25);
-    return currentStock <= reorderPoint;
+    // Use effective stock (weight-based or quantity-based)
+    const effectiveStock = item.stockWeight > 0 ? item.stockWeight : (item.stockQuantity || 0);
+    const effectivePar = item.parWeight > 0 ? item.parWeight : (item.parQuantity || 0);
+    const reorderPoint = item.reorderPoint || (effectivePar * 0.25);
+    return effectiveStock <= reorderPoint;
   });
 
   if (lowStockItems.length === 0) {
@@ -741,10 +747,11 @@ export async function createOrderFromLowStock(vendorId, options = {}) {
 
   // Add lines for each low stock item
   for (const item of lowStockItems) {
-    const parLevel = item.parLevel || 0;
-    const currentStock = item.currentStock || 0;
+    const effectiveStock = item.stockWeight > 0 ? item.stockWeight : (item.stockQuantity || 0);
+    const effectivePar = item.parWeight > 0 ? item.parWeight : (item.parQuantity || 0);
+    const effectiveUnit = item.stockWeightUnit || item.stockQuantityUnit || 'ea';
     const suggestedQty = options.includeParLevel !== false
-      ? Math.max(parLevel - currentStock, item.reorderQuantity || 1)
+      ? Math.max(effectivePar - effectiveStock, item.reorderQuantity || 1)
       : (item.reorderQuantity || 1);
 
     await purchaseOrderLineDB.create({
@@ -753,9 +760,9 @@ export async function createOrderFromLowStock(vendorId, options = {}) {
       inventoryItemName: item.name,
       inventoryItemSku: item.sku,
       quantity: suggestedQty,
-      unit: item.unit,
+      unit: effectiveUnit,
       unitPrice: item.currentPrice || 0,
-      stockAtOrder: currentStock,
+      stockAtOrder: effectiveStock,
       suggestedQty
     });
   }

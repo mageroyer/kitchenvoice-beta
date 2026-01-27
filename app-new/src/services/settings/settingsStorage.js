@@ -7,7 +7,6 @@
 const SETTINGS_KEY = 'smartcookbook_settings';
 
 const DEFAULT_SETTINGS = {
-  claudeApiKey: '',
   voiceLanguage: 'fr-CA',
   autoSave: true,
   theme: 'light',
@@ -66,28 +65,6 @@ export function updateSetting(key, value) {
 }
 
 /**
- * Get Claude API key
- * @deprecated SECURITY WARNING: Storing API keys in localStorage is insecure.
- * Use the Cloud Function proxy instead (services/ai/claudeAPI.js useCloudFunction=true)
- * @returns {string} API key or empty string
- */
-export function getClaudeApiKey() {
-  console.warn('⚠️ getClaudeApiKey: Storing API keys in localStorage is insecure. Use Cloud Function proxy.');
-  return getSetting('claudeApiKey') || '';
-}
-
-/**
- * Save Claude API key
- * @deprecated SECURITY WARNING: Storing API keys in localStorage is insecure.
- * Use the Cloud Function proxy instead.
- * @param {string} apiKey - Claude API key
- */
-export function saveClaudeApiKey(apiKey) {
-  console.warn('⚠️ saveClaudeApiKey: Storing API keys in localStorage is insecure. Use Cloud Function proxy.');
-  return updateSetting('claudeApiKey', apiKey);
-}
-
-/**
  * Clear all settings
  */
 export function clearSettings() {
@@ -105,7 +82,5 @@ export default {
   saveSettings,
   getSetting,
   updateSetting,
-  getClaudeApiKey,
-  saveClaudeApiKey,
   clearSettings,
 };

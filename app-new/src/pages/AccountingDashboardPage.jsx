@@ -16,7 +16,7 @@ import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
 import Spinner from '../components/common/Spinner';
 import Alert from '../components/common/Alert';
-import { invoiceDB, inventoryItemDB, priceHistoryDB } from '../services/database/indexedDB';
+import { invoiceDB, invoiceLineDB, inventoryItemDB, priceHistoryDB } from '../services/database/indexedDB';
 import {
   getQBStatus,
   syncInvoiceToQuickBooks,
@@ -247,12 +247,18 @@ function AccountingDashboardPage() {
     setError('');
 
     try {
+      // Load line items from database (they have forAccounting, lineType, etc.)
+      const lineItems = await invoiceLineDB.getByInvoice(invoice.id);
+
       const result = await syncInvoiceToQuickBooks({
         vendorName: invoice.vendorName,
         invoiceNumber: invoice.invoiceNumber,
         date: invoice.invoiceDate,
-        items: invoice.parsedItems || [],
-        totalAmount: invoice.totalAmount
+        lineItems: lineItems || [],
+        totals: {
+          subtotal: invoice.subtotal,
+          total: invoice.total || invoice.totalAmount,
+        }
       }, qbVendors);
 
       // Update invoice with QB bill ID

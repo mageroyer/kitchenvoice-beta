@@ -5,14 +5,15 @@
  * Features: multiple task creation, portion scaling, priority, notes
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { getAllPrivileges, ACCESS_LEVELS } from '../../services/auth/privilegesService';
 import { createTask } from '../../services/tasks/tasksService';
+import { checkRecipeDependencies, createPrerequisiteTasks } from '../../services/tasks/taskDependencyService';
 import { recipeDB } from '../../services/database/indexedDB';
 import styles from '../../styles/components/assigntaskmodal.module.css';
 
-function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null, onClose, onTaskCreated }) {
+function AssignTaskModal({ recipe: initialRecipe = null, currentDepartment = null, preselectedUser = null, onClose, onTaskCreated }) {
   // Recipe state
   const [selectedRecipe, setSelectedRecipe] = useState(initialRecipe);
   const [recipes, setRecipes] = useState([]);
@@ -22,6 +23,7 @@ function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null,
   // Form state
   const [portions, setPortions] = useState(initialRecipe?.portions || 1);
   const [assignedTo, setAssignedTo] = useState(preselectedUser?.id || '');
+  const [selectedDepartment, setSelectedDepartment] = useState(currentDepartment || '');
   const [customTask, setCustomTask] = useState(''); // Free-form task input
   const [dueDate, setDueDate] = useState('');
   const [dueTime, setDueTime] = useState('');
@@ -33,8 +35,15 @@ function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null,
 
   // Data state
   const [cooks, setCooks] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Dependency check state
+  const [dependencyResult, setDependencyResult] = useState(null);
+  const [checkingDependencies, setCheckingDependencies] = useState(false);
+  const [creatingPrerequisites, setCreatingPrerequisites] = useState(false);
+  const [createdPrerequisites, setCreatedPrerequisites] = useState([]);
 
   // Calculate scale factor
   const originalPortions = selectedRecipe?.portions || 1;
@@ -45,6 +54,124 @@ function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null,
     loadData();
   }, []);
 
+  // Check dependencies when recipe or portions change
+  const checkDependencies = useCallback(async (recipe, targetPortions) => {
+    if (!recipe?.id) {
+      setDependencyResult(null);
+      return;
+    }
+
+    setCheckingDependencies(true);
+    try {
+      const result = await checkRecipeDependencies(recipe.id, targetPortions);
+      setDependencyResult(result);
+    } catch (err) {
+      console.error('Error checking dependencies:', err);
+      setDependencyResult(null);
+    } finally {
+      setCheckingDependencies(false);
+    }
+  }, []);
+
+  // Trigger dependency check when recipe or portions change
+  useEffect(() => {
+    // Debounce the check slightly to avoid excessive calls
+    const timer = setTimeout(() => {
+      checkDependencies(selectedRecipe, portions);
+    }, 300);
+    // Reset created prerequisites when recipe/portions change
+    setCreatedPrerequisites([]);
+    return () => clearTimeout(timer);
+  }, [selectedRecipe, portions, checkDependencies]);
+
+  // Handle creating prerequisite tasks AND the main task
+  const handleCreatePrerequisites = async () => {
+    if (!dependencyResult?.hasShortfalls || !selectedRecipe) return;
+
+    setCreatingPrerequisites(true);
+    setError('');
+
+    try {
+      const selectedCook = getSelectedCook();
+      const department = getTaskDepartment();
+
+      // Step 1: Create the MAIN task first
+      const mainTaskId = await createTask({
+        recipeId: selectedRecipe.id,
+        recipeName: selectedRecipe.name,
+        portions,
+        portionUnit: selectedRecipe.portionUnit || '',
+        scaleFactor,
+        assignedTo: assignedTo || null,
+        assignedToName: selectedCook?.name || 'Team',
+        station: null,
+        department: department || null,
+        dueDate: dueDate || null,
+        dueTime: dueTime || null,
+        chefNotes,
+        priority,
+        type: 'recipe',
+        hasDependencies: true, // Mark that this task has dependencies
+      });
+
+      // Add main task to list for display
+      setTaskList(prev => [...prev, {
+        id: mainTaskId,
+        recipeName: selectedRecipe.name,
+        portions,
+        priority,
+        isCustom: false
+      }]);
+
+      onTaskCreated?.({ id: mainTaskId, recipeName: selectedRecipe.name });
+
+      // Step 2: Create prerequisite tasks linked to the main task
+      const result = await createPrerequisiteTasks({
+        mainTaskId: mainTaskId, // Link prerequisites to main task
+        shortfalls: dependencyResult.shortfalls,
+        assignedTo: assignedTo || null,
+        assignedToName: selectedCook?.name || 'Team',
+        department: department || null,
+        dueDate: dueDate || null,
+        dueTime: dueTime || null,
+        priority: 'high', // Prerequisites are high priority
+      });
+
+      if (result.createdTasks.length > 0) {
+        setCreatedPrerequisites(result.createdTasks);
+
+        // Add prerequisites to task list for display
+        for (const prereq of result.createdTasks) {
+          setTaskList(prev => [...prev, {
+            id: prereq.taskId,
+            recipeName: prereq.sourceRecipeName,
+            portions: prereq.portions,
+            priority: 'high',
+            isCustom: false,
+            isPrerequisite: true,
+            forItem: prereq.forItem,
+          }]);
+
+          onTaskCreated?.({ id: prereq.taskId, recipeName: prereq.sourceRecipeName });
+        }
+      }
+
+      if (result.errors.length > 0) {
+        setError(`Some prerequisites failed: ${result.errors.map(e => e.error).join(', ')}`);
+        // Don't close modal if there were errors
+        return;
+      }
+
+      // Step 3: Close modal after both main task and prerequisites are created
+      onClose();
+    } catch (err) {
+      console.error('Error creating prerequisites:', err);
+      setError(err.message || 'Failed to create prerequisite tasks');
+    } finally {
+      setCreatingPrerequisites(false);
+    }
+  };
+
   const loadData = async () => {
     try {
       // Load privileges (cooks)
@@ -54,6 +181,15 @@ function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null,
         p.accessLevel === ACCESS_LEVELS.VIEWER
       );
       setCooks(cooksList);
+
+      // Extract unique departments from all users
+      const deptSet = new Set();
+      privileges.forEach(p => {
+        if (p.departments?.length > 0) {
+          p.departments.forEach(d => deptSet.add(d));
+        }
+      });
+      setDepartments(Array.from(deptSet).sort());
 
       // Load recipes for search
       const allRecipes = await recipeDB.getAll();
@@ -82,13 +218,18 @@ function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null,
     return cooks.find(c => c.id === assignedTo) || null;
   };
 
-  // Get department from selected cook (first department in their list)
-  const getSelectedCookDepartment = () => {
+  // Get department - use selectedDepartment override first
+  const getTaskDepartment = () => {
+    // If user explicitly selected a department, use it
+    if (selectedDepartment) {
+      return selectedDepartment;
+    }
+    // Otherwise use cook's department or currentDepartment as fallback
     const cook = getSelectedCook();
     if (cook?.departments?.length > 0) {
       return cook.departments[0];
     }
-    return null;
+    return currentDepartment || null;
   };
 
   // Add custom (free-form) task to list and save to database
@@ -102,14 +243,7 @@ function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null,
 
     try {
       const selectedCook = getSelectedCook();
-      const department = getSelectedCookDepartment();
-
-      console.log('Creating custom task:', {
-        assignedTo: assignedTo || null,
-        assignedToName: selectedCook?.name || 'Team',
-        department: department,
-        cookDepartments: selectedCook?.departments
-      });
+      const department = getTaskDepartment();
 
       const taskId = await createTask({
         recipeId: null,
@@ -160,12 +294,13 @@ function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null,
 
     try {
       const selectedCook = getSelectedCook();
-      const department = getSelectedCookDepartment();
+      const department = getTaskDepartment();
 
       const taskId = await createTask({
         recipeId: selectedRecipe.id,
         recipeName: selectedRecipe.name,
         portions,
+        portionUnit: selectedRecipe.portionUnit || '',
         scaleFactor,
         assignedTo: assignedTo || null,
         assignedToName: selectedCook?.name || 'Team',
@@ -248,21 +383,38 @@ function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null,
 
         {/* Form */}
         <div className={styles.form}>
-          {/* Assign To - TOP */}
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Assign To</label>
-            <select
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className={styles.select}
-            >
-              <option value="">-- Team (anyone can claim) --</option>
-              {cooks.map(cook => (
-                <option key={cook.id} value={cook.id}>
-                  {cook.name}
-                </option>
-              ))}
-            </select>
+          {/* Assign To and Department Row */}
+          <div className={styles.assignRow}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Assign To</label>
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className={styles.select}
+              >
+                <option value="">-- Team (anyone can claim) --</option>
+                {cooks.map(cook => (
+                  <option key={cook.id} value={cook.id}>
+                    {cook.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Department</label>
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className={styles.select}
+              >
+                <option value="">{currentDepartment || '-- Select --'}</option>
+                {departments.filter(d => d !== currentDepartment).map(dept => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Custom Task Input */}
@@ -379,16 +531,84 @@ function AssignTaskModal({ recipe: initialRecipe = null, preselectedUser = null,
             </div>
           </div>
 
+          {/* Dependency Warning */}
+          {dependencyResult?.hasShortfalls && (
+            <div className={styles.dependencyWarning}>
+              <div className={styles.dependencyHeader}>
+                <span className={styles.warningIcon}>⚠️</span>
+                <span className={styles.warningTitle}>
+                  Missing In-House Items ({dependencyResult.shortfalls.length})
+                </span>
+              </div>
+              <div className={styles.shortfallList}>
+                {dependencyResult.shortfalls.map((item, index) => (
+                  <div key={index} className={styles.shortfallItem}>
+                    <span className={styles.shortfallName}>{item.inventoryItemName}</span>
+                    <span className={styles.shortfallDetail}>
+                      Need {item.requiredDisplay} • Have {item.availableDisplay} •
+                      <strong> Short {item.shortfallDisplay}</strong>
+                    </span>
+                    <span className={styles.sourceRecipe}>
+                      → Make: {item.sourceRecipeName}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className={styles.dependencyActions}>
+                <button
+                  type="button"
+                  className={styles.createPrereqButton}
+                  onClick={handleCreatePrerequisites}
+                  disabled={creatingPrerequisites}
+                >
+                  {creatingPrerequisites ? 'Creating...' : `Create ${dependencyResult.shortfalls.length} Prerequisite Task${dependencyResult.shortfalls.length > 1 ? 's' : ''}`}
+                </button>
+                <span className={styles.dependencyHint}>
+                  or ensure sufficient stock before proceeding
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Created Prerequisites Success */}
+          {createdPrerequisites.length > 0 && (
+            <div className={styles.prerequisitesCreated}>
+              <span className={styles.successIcon}>✓</span>
+              <span>Created {createdPrerequisites.length} prerequisite task{createdPrerequisites.length > 1 ? 's' : ''}</span>
+            </div>
+          )}
+
+          {/* Dependency Check Loading */}
+          {checkingDependencies && selectedRecipe && (
+            <div className={styles.dependencyChecking}>
+              <span>Checking ingredient availability...</span>
+            </div>
+          )}
+
+          {/* All Dependencies Available */}
+          {dependencyResult?.hasDependencies && !dependencyResult.hasShortfalls && (
+            <div className={styles.dependencyOk}>
+              <span className={styles.okIcon}>✓</span>
+              <span>All in-house ingredients available ({dependencyResult.summary.sufficientStock} items)</span>
+            </div>
+          )}
+
           {/* Task List */}
           {taskList.length > 0 && (
             <div className={styles.taskList}>
               <label className={styles.label}>Tasks Added ({taskList.length})</label>
               <div className={styles.taskListItems}>
                 {taskList.map((task, index) => (
-                  <div key={task.id || index} className={`${styles.taskItem} ${task.isCustom ? styles.customTask : ''}`}>
+                  <div key={task.id || index} className={`${styles.taskItem} ${task.isCustom ? styles.customTask : ''} ${task.isPrerequisite ? styles.prerequisiteTask : ''}`}>
                     {task.isCustom && <span className={styles.taskType}>Task</span>}
-                    {!task.isCustom && <span className={styles.taskType}>Recipe</span>}
-                    <span className={styles.taskName}>{task.recipeName}</span>
+                    {task.isPrerequisite && <span className={`${styles.taskType} ${styles.prereqType}`}>Prereq</span>}
+                    {!task.isCustom && !task.isPrerequisite && <span className={styles.taskType}>Recipe</span>}
+                    <span className={styles.taskName}>
+                      {task.recipeName}
+                      {task.isPrerequisite && task.forItem && (
+                        <span className={styles.forItem}> (for {task.forItem})</span>
+                      )}
+                    </span>
                     {!task.isCustom && <span className={styles.taskPortions}>x{task.portions}</span>}
                     <span className={`${styles.taskPriority} ${styles[task.priority]}`}>
                       {task.priority}
@@ -496,6 +716,8 @@ AssignTaskModal.propTypes = {
     name: PropTypes.string,
     portions: PropTypes.number,
   }),
+  /** Current department for task assignment */
+  currentDepartment: PropTypes.string,
   /** Pre-selected user to assign task to */
   preselectedUser: PropTypes.shape({
     id: PropTypes.string,

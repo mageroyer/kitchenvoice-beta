@@ -12,7 +12,6 @@ import {
   hasAccessToDepartment,
   ACCESS_LEVELS
 } from '../services/auth/privilegesService';
-import { isDemoMode } from '../services/demo/demoService';
 import { useAuth } from './AuthContext';
 
 // Create context
@@ -22,10 +21,6 @@ const AccessContext = createContext(null);
 const getSavedDepartment = () => {
   try {
     const saved = localStorage.getItem('smartcookbook_department');
-    // In demo mode, default to first demo department if not set
-    if (isDemoMode() && !saved) {
-      return 'Cuisine';
-    }
     return saved || 'Cuisine';
   } catch {
     return 'Cuisine';
@@ -39,14 +34,6 @@ const saveDepartment = (dept) => {
   } catch {
     // Ignore storage errors
   }
-};
-
-// Demo owner privilege - full access for demo users
-const DEMO_OWNER_PRIVILEGE = {
-  id: 'demo-owner',
-  name: 'Demo Owner',
-  accessLevel: ACCESS_LEVELS.OWNER,
-  departments: null // null = all departments
 };
 
 // Authenticated user owner privilege - full access for logged-in users
@@ -64,14 +51,8 @@ export function AccessProvider({ children }) {
   // Get Firebase auth state
   const { isAuthenticated: isFirebaseAuthenticated, user } = useAuth();
 
-  // Track demo mode state reactively
-  const [inDemoMode, setInDemoMode] = useState(() => isDemoMode());
-
-  // Current privilege (null = viewer mode, auto-set to owner in demo mode or when authenticated)
-  const [currentPrivilege, setCurrentPrivilege] = useState(() => {
-    if (isDemoMode()) return DEMO_OWNER_PRIVILEGE;
-    return null; // Will be set by useEffect when auth state is known
-  });
+  // Current privilege (null = viewer mode, auto-set to owner when authenticated)
+  const [currentPrivilege, setCurrentPrivilege] = useState(null);
   // Current department - load from localStorage
   const [currentDepartment, setCurrentDepartment] = useState(getSavedDepartment);
   // PIN modal visibility
@@ -88,47 +69,13 @@ export function AccessProvider({ children }) {
         name: user.displayName || user.email?.split('@')[0] || 'Owner'
       };
       setCurrentPrivilege(authPrivilege);
-    } else if (!isFirebaseAuthenticated && !isDemoMode()) {
-      // User logged out and not in demo mode - clear privileges
+    } else if (!isFirebaseAuthenticated) {
+      // User logged out - clear privileges
       if (currentPrivilege?.id === 'auth-owner') {
         setCurrentPrivilege(null);
       }
     }
   }, [isFirebaseAuthenticated, user]);
-
-  // Listen for demo mode changes (check on storage event and periodically)
-  useEffect(() => {
-    const checkDemoMode = () => {
-      const currentDemoMode = isDemoMode();
-      setInDemoMode(currentDemoMode);
-
-      // Auto-set owner privilege when demo mode is enabled (only if not already authenticated)
-      if (currentDemoMode && !isFirebaseAuthenticated && (!currentPrivilege || currentPrivilege.id !== 'demo-owner')) {
-        setCurrentPrivilege(DEMO_OWNER_PRIVILEGE);
-      }
-    };
-
-    // Check immediately
-    checkDemoMode();
-
-    // Listen for storage events (cross-tab)
-    window.addEventListener('storage', checkDemoMode);
-
-    // Also check when navigating (for same-tab changes)
-    const interval = setInterval(checkDemoMode, 500);
-
-    return () => {
-      window.removeEventListener('storage', checkDemoMode);
-      clearInterval(interval);
-    };
-  }, [isFirebaseAuthenticated]);
-
-  // Clear demo privilege when exiting demo mode
-  useEffect(() => {
-    if (!inDemoMode && currentPrivilege?.id === 'demo-owner') {
-      setCurrentPrivilege(null);
-    }
-  }, [inDemoMode, currentPrivilege]);
 
   /**
    * Attempt to authenticate with a PIN

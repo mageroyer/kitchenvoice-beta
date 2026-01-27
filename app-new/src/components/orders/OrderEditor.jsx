@@ -9,6 +9,8 @@ import { memo, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
 import OrderLineItem from './OrderLineItem';
 import styles from '../../styles/components/ordereditor.module.css';
+// Import Quebec tax config from central source
+import { QUEBEC_TAX } from '../../services/invoice/mathEngine/types';
 
 // Province options for Canada
 const PROVINCE_OPTIONS = [
@@ -28,10 +30,10 @@ const PROVINCE_OPTIONS = [
   { value: 'YT', label: 'Yukon' },
 ];
 
-// Tax rates
+// Tax rates - mapped from central config (TPS=GST, TVQ=QST)
 const TAX_RATES = {
-  GST: 0.05,
-  QST: 0.09975,
+  GST: QUEBEC_TAX.TPS_RATE,
+  QST: QUEBEC_TAX.TVQ_RATE,
 };
 
 /**
@@ -184,7 +186,7 @@ function OrderEditor({
         quantity: 1,
         unit: item.unit || 'ea',
         unitPrice: item.lastPrice || item.unitPrice || 0,
-        stockAtOrder: item.currentStock || 0,
+        stockAtOrder: item.stockQuantity ?? item.stockWeight ?? 0,
         quantityReceived: 0,
         notes: '',
       };
@@ -400,7 +402,7 @@ function OrderEditor({
                             <span className={styles.itemName}>{item.name}</span>
                             {item.sku && <span className={styles.itemSku}>{item.sku}</span>}
                             <span className={styles.itemStock}>
-                              Stock: {item.currentStock || 0} {item.unit || 'ea'}
+                              Stock: {item.stockQuantity ?? item.stockWeight ?? 0} {item.unit || 'ea'}
                             </span>
                           </button>
                         </li>
@@ -639,7 +641,8 @@ OrderEditor.propTypes = {
       name: PropTypes.string.isRequired,
       sku: PropTypes.string,
       vendorId: PropTypes.string,
-      currentStock: PropTypes.number,
+      stockQuantity: PropTypes.number,
+      stockWeight: PropTypes.number,
       unit: PropTypes.string,
       lastPrice: PropTypes.number,
     })

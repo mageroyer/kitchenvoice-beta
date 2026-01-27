@@ -84,8 +84,6 @@ function ImageImportPage() {
       return;
     }
 
-    console.log(`📁 Selected: ${file.name} (${formatFileSize(file.size)})`);
-
     // Revoke previous preview URL to prevent memory leak
     if (imagePreview) {
       URL.revokeObjectURL(imagePreview);
@@ -145,7 +143,6 @@ function ImageImportPage() {
     try {
       // Step 1: Compress image
       setLoadingStep('compressing');
-      console.log('📦 Compressing image...');
 
       let compressedDataUrl;
       try {
@@ -172,7 +169,6 @@ function ImageImportPage() {
 
       // Step 2: Send to Claude API for OCR (API key handled server-side via Cloud Function)
       setLoadingStep('processing');
-      console.log('🤖 Processing image with Claude API...');
       const recipe = await parseImageRecipeWithClaude(compressedDataUrl);
 
       // Validate we got a recipe back
@@ -182,14 +178,12 @@ function ImageImportPage() {
 
       // Step 3: Save recipe to database
       setLoadingStep('saving');
-      console.log('💾 Saving recipe to database...');
 
       // Determine category: use parsed if it exists in DB, otherwise use first available
       let validCategory = availableCategories[0]; // Default to first available
       if (recipe.category && availableCategories.includes(recipe.category)) {
         validCategory = recipe.category;
       }
-      console.log(`📁 Using category: ${validCategory}`);
 
       // Determine department: use parsed if it exists in DB, otherwise use 'Cuisine' or first available
       let validDepartment = 'Cuisine';
@@ -200,7 +194,6 @@ function ImageImportPage() {
           validDepartment = availableDepartments[0];
         }
       }
-      console.log(`📁 Using department: ${validDepartment}`);
 
       // Sanitize all recipe data before saving
       const recipeData = sanitizeRecipe({
@@ -223,13 +216,11 @@ function ImageImportPage() {
         throw new Error(`Failed to save recipe to database: ${dbError.message}`);
       }
 
-      console.log(`✅ Recipe created with ID: ${newId}`);
-
       // Navigate to editor
       navigate(`/recipes/${newId}/edit`);
 
     } catch (err) {
-      console.error('❌ Error importing image:', err);
+      console.error('Error importing image:', err);
 
       // Provide user-friendly error messages
       let userMessage = err.message;

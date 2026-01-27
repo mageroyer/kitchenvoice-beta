@@ -219,5 +219,128 @@ export const recipeDB = {
 
   async clear() {
     await db.recipes.clear();
+  },
+
+  // ============================================
+  // PUBLIC WEBSITE FUNCTIONS
+  // ============================================
+
+  /**
+   * Get all recipes marked as visible on public website
+   * @returns {Promise<Array>} Recipes with public.isVisible = true
+   */
+  async getPublicRecipes() {
+    const all = await db.recipes.toArray();
+    return all.filter(recipe => recipe.public?.isVisible === true);
+  },
+
+  /**
+   * Get recipes available today (for "Menu du Jour")
+   * @returns {Promise<Array>} Recipes with public.isAvailableToday = true
+   */
+  async getTodayMenu() {
+    const all = await db.recipes.toArray();
+    return all.filter(recipe =>
+      recipe.public?.isVisible === true &&
+      recipe.public?.isAvailableToday === true
+    );
+  },
+
+  /**
+   * Get public recipes grouped by display category
+   * @returns {Promise<Object>} Object with category names as keys, recipe arrays as values
+   */
+  async getPublicRecipesByCategory() {
+    const publicRecipes = await this.getPublicRecipes();
+    const grouped = {};
+
+    publicRecipes.forEach(recipe => {
+      const category = recipe.public?.displayCategory || 'Other';
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      grouped[category].push(recipe);
+    });
+
+    // Sort each category by sortOrder
+    Object.keys(grouped).forEach(cat => {
+      grouped[cat].sort((a, b) => (a.public?.sortOrder || 0) - (b.public?.sortOrder || 0));
+    });
+
+    return grouped;
+  },
+
+  /**
+   * Quick update for public fields only (optimized for toggle operations)
+   * @param {number} id - Recipe ID
+   * @param {Object} publicData - Public fields to update
+   * @returns {Promise<void>}
+   */
+  async updatePublicFields(id, publicData) {
+    const recipe = await db.recipes.get(id);
+    if (!recipe) {
+      throw new Error('Recipe not found');
+    }
+
+    const updatedPublic = {
+      ...recipe.public,
+      ...publicData
+    };
+
+    // Auto-set lastPublished when visibility is enabled
+    if (publicData.isVisible && !recipe.public?.lastPublished) {
+      updatedPublic.lastPublished = new Date().toISOString();
+    }
+
+    await db.recipes.update(id, {
+      public: updatedPublic,
+      updatedAt: new Date().toISOString()
+    });
+
+    // Auto-sync to cloud
+    const updatedRecipe = await db.recipes.get(id);
+    if (updatedRecipe) {
+      const sync = await getCloudSync();
+      sync.pushRecipe(updatedRecipe);
+
+      // Also sync to public collection if visible
+      if (updatedPublic.isVisible) {
+        sync.pushPublicRecipe(updatedRecipe);
+      } else {
+        sync.deletePublicRecipe(id);
+      }
+    }
+  },
+
+  /**
+   * Toggle website visibility for a recipe
+   * @param {number} id - Recipe ID
+   * @returns {Promise<boolean>} New visibility state
+   */
+  async toggleWebsiteVisibility(id) {
+    const recipe = await db.recipes.get(id);
+    if (!recipe) {
+      throw new Error('Recipe not found');
+    }
+
+    const newVisibility = !(recipe.public?.isVisible);
+    await this.updatePublicFields(id, { isVisible: newVisibility });
+    return newVisibility;
+  },
+
+  /**
+   * Toggle "available today" status for a recipe
+   * @param {number} id - Recipe ID
+   * @returns {Promise<boolean>} New availability state
+   */
+  async toggleAvailableToday(id) {
+    const recipe = await db.recipes.get(id);
+    if (!recipe) {
+      throw new Error('Recipe not found');
+    }
+
+    const newAvailability = !(recipe.public?.isAvailableToday);
+    await this.updatePublicFields(id, { isAvailableToday: newAvailability });
+    return newAvailability;
   }
 };

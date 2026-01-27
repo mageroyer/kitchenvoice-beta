@@ -1,0 +1,60 @@
+{
+  "invoice_header": {
+    "company": "Gordon Food Service",
+    "invoice_number": "TEST-CAN-001",
+    "date": "2025-12-29",
+    "address": "1000 Food Service Way, Laval, QC",
+    "phone": "450-555-9012"
+  },
+  "customer": {
+    "name": "Aux saveurs des Sévelin"
+  },
+  "line_items": [
+    {
+      "code": "TOM-BROYE",
+      "description": "Tomates broyées en canne (Crushed Tomatoes) 6/2.84L",
+      "quantity": 1,
+      "unit": "case",
+      "unit_price": 32.50,
+      "total": 32.50,
+      "weight": 17.04,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "TOM-DES",
+      "description": "Tomates en dés en canne (Diced Tomatoes) 6/2.84L",
+      "quantity": 1,
+      "unit": "case",
+      "unit_price": 34.95,
+      "total": 34.95,
+      "weight": 17.04,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "PATE-TOM",
+      "description": "Pâte de tomate (Tomato Paste) 6/156ML",
+      "quantity": 1,
+      "unit": "case",
+      "unit_price": 12.95,
+      "total": 12.95,
+      "weight": 0.936,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "VIN-ROUGE",
+      "description": "Vin rouge cuisine (Cooking Red Wine) 4L",
+      "quantity": 1,
+      "unit": "jug",
+      "unit_price": 18.95,
+      "total": 18.95,
+      "weight": 4.0,
+      "weight_unit": "kg"
+    }
+  ],
+  "totals": {
+    "subtotal": 99.35,
+    "tps": 4.97,
+    "tvq": 9.91,
+    "total": 114.23
+  }
+}

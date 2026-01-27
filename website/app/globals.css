@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables for dynamic theming */
+:root {
+  --color-primary: #2C5530;
+  --color-accent: #D4AF37;
+}
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+Pro:wght@400;600&display=swap');
+
+/* Base styles */
+body {
+  font-family: 'Source Sans Pro', sans-serif;
+  background-color: #F5F1EB;
+  color: #333;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Marche Template Specific Styles */
+.marche-header {
+  background: linear-gradient(180deg, var(--color-primary) 0%, rgba(44, 85, 48, 0.95) 100%);
+}
+
+.marche-hero {
+  position: relative;
+  min-height: 300px;
+  background-size: cover;
+  background-position: center;
+}
+
+.marche-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(44, 85, 48, 0.3) 0%,
+    rgba(44, 85, 48, 0.7) 100%
+  );
+}
+
+.marche-category-title {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
+}
+
+.marche-category-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: var(--color-accent);
+}
+
+/* Menu Item Card */
+.menu-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.menu-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.menu-card-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.menu-card-placeholder {
+  width: 100%;
+  height: 180px;
+  background: linear-gradient(135deg, #e8e4dc 0%, #d4cfc4 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 48px;
+}
+
+/* Tag Chips */
+.tag-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(44, 85, 48, 0.1);
+  color: var(--color-primary);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Today's Menu Badge */
+.today-badge {
+  background: var(--color-accent);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Footer */
+.marche-footer {
+  background: var(--color-primary);
+  color: white;
+}
+
+.marche-footer a {
+  color: rgba(255, 255, 255, 0.8);
+  transition: color 0.2s;
+}
+
+.marche-footer a:hover {
+  color: var(--color-accent);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .marche-hero {
+    min-height: 200px;
+  }
+
+  .menu-card-image,
+  .menu-card-placeholder {
+    height: 140px;
+  }
+}
+
+/* Click to call button */
+.call-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--color-primary);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 30px;
+  box-shadow: 0 4px 12px rgba(44, 85, 48, 0.3);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.call-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(44, 85, 48, 0.4);
+}
+
+@media (min-width: 768px) {
+  .call-button {
+    display: none;
+  }
+}

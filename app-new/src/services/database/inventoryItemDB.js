@@ -19,37 +19,31 @@ import { classifyUnit } from '../../utils/unitConversion.js';
  * @property {string} upc - Universal Product Code (barcode)
  * @property {number} vendorId - Reference to vendors table (FK)
  * @property {string} vendorName - Vendor display name (denormalized)
- * @property {string} vendorProductCode - Vendor's product code
  * @property {string} category - Item category (Meat, Seafood, Dairy, Produce, Dry Goods, etc.)
  * @property {string} subcategory - Item subcategory
- * @property {string} unit - Base unit of measure (kg, L, ea, etc.) or full package description (e.g., "Caisse 5lb")
  * @property {'tool' | 'weight' | 'volume' | 'count' | 'unknown'} unitType - Classified unit type for linking enforcement
  * @property {string} toolUnit - If unitType is 'tool', the tool unit name (e.g., "canne", "botte", "caisse")
  * @property {string} toolAbbrev - Abbreviation for tool unit (e.g., "cn", "bt", "cs")
  * @property {number} weightPerUnit - Weight in grams per unit (for tool units with known weight)
- * @property {number} packageSize - Package/case size
- * @property {string} packageUnit - Package unit (case, box, bag, etc.)
- * @property {number} unitsPerPackage - Number of base units per package
  * @property {number} purchaseQty - Purchase quantity (e.g., 5 for "5lb case")
  * @property {string} purchaseUnit - Purchase unit (e.g., "lb" for "5lb case")
  * @property {number} currentPrice - Current price per package
- * @property {number} pricePerUnit - Calculated price per base unit
+ * @property {number} pricePerG - Price per gram (for weight-based items)
+ * @property {number} previousPricePerG - Previous pricePerG before last invoice update (for variation display)
+ * @property {number} pricePerML - Price per milliliter (for volume-based items)
+ * @property {number} previousPricePerML - Previous pricePerML before last invoice update (for variation display)
+ * @property {number} pricePerUnit - Price per unit/each (for count/packaging items)
+ * @property {number} previousPricePerUnit - Previous pricePerUnit before last invoice update (for variation display)
  * @property {number} lastPrice - Previous price (for comparison)
- * @property {number} avgPrice - Average price (calculated)
- * @property {number} minPrice - Minimum price seen
- * @property {number} maxPrice - Maximum price seen
+ * @property {number} minPrice - Minimum price seen (computed from priceHistory)
+ * @property {number} maxPrice - Maximum price seen (computed from priceHistory)
  * @property {string} currency - Currency code (e.g., "CAD", "USD")
  * @property {number} taxRate - Tax rate percentage (0-100)
  * @property {boolean} isTaxable - Whether item is taxable
  * @property {string} lastPurchaseDate - Last purchase date (ISO)
  * @property {number} lastInvoiceId - Reference to last invoice (FK)
- * @property {number} purchaseCount - Number of times purchased
- * @property {number} totalQuantityPurchased - Total quantity ever purchased
- * @property {number} totalSpent - Total amount spent on this item
- * @property {number} linkedIngredientId - Link to legacy ingredients table (for migration)
  * @property {string[]} aliases - Alternative names for fuzzy matching
  * @property {string[]} tags - Tags for filtering/grouping
- * @property {number} parLevel - Par level for inventory
  * @property {number} reorderPoint - Reorder point quantity
  * @property {number} reorderQuantity - Default reorder quantity
  * @property {string} storageLocation - Storage location in kitchen
@@ -68,7 +62,6 @@ import { classifyUnit } from '../../utils/unitConversion.js';
  * @property {'nested_units' | 'rolls' | 'simple' | 'unknown'} packagingType - Type of packaging notation
  * @property {number} packCount - Outer pack count (e.g., 10 in "10/100")
  * @property {number} unitsPerPack - Units per inner pack (e.g., 100 in "10/100")
- * @property {number} totalUnitsPerCase - Calculated total units per case (e.g., 1000)
  * @property {number} rollsPerCase - For roll products (e.g., 6 in "6/RL")
  * @property {number} lengthPerRoll - Length per roll for linear products
  * @property {string} lengthUnit - Unit for length (ft, m, in)
@@ -79,6 +72,14 @@ import { classifyUnit } from '../../utils/unitConversion.js';
  * @property {string} productWidthUnit - Width unit (in, cm)
  * @property {string} productDimensions - Dimension string (e.g., "35X50", "8X8")
  * @property {string} productSpecs - Additional specs (e.g., "3COMP", "2PLY", "HVY")
+ *
+ * // Boxing Format Tracking (always updated from latest invoice)
+ * @property {string} lastBoxingFormat - Boxing format from most recent invoice (e.g., "1/500")
+ *
+ * // Unit Size Tracking (for "6x500ML" style formats)
+ * @property {number} unitSize - Size per individual unit (e.g., 500 for 500ml bottles)
+ * @property {string} unitSizeUnit - Unit for unitSize (e.g., "ml", "g", "L", "lb")
+ * @property {number} unitsPerCase - Number of individual units per case (e.g., 6 for 6x500ML)
  *
  * @typedef {Object} RecipeTool
  * @property {string} id - Unique identifier (nanoid)
@@ -359,17 +360,12 @@ export const inventoryItemDB = {
       // Vendor relationship
       vendorId: item.vendorId || null,
       vendorName: item.vendorName?.trim() || '',
-      vendorProductCode: item.vendorProductCode?.trim() || '',
 
       // Classification
       category: item.category?.trim() || 'Other',
       subcategory: item.subcategory?.trim() || '',
 
       // Units & packaging
-      unit: item.unit?.trim() || 'ea',
-      packageSize: typeof item.packageSize === 'number' ? item.packageSize : 1,
-      packageUnit: item.packageUnit?.trim() || '',
-      unitsPerPackage: typeof item.unitsPerPackage === 'number' ? item.unitsPerPackage : 1,
       // Parsed purchase quantity/unit (e.g., "Caisse 5lb" -> purchaseQty: 5, purchaseUnit: "lb")
       purchaseQty: typeof item.purchaseQty === 'number' ? item.purchaseQty : null,
       purchaseUnit: item.purchaseUnit?.trim() || null,
@@ -382,12 +378,17 @@ export const inventoryItemDB = {
 
       // Pricing
       currentPrice: typeof item.currentPrice === 'number' ? item.currentPrice : 0,
-      pricePerUnit: typeof item.pricePerUnit === 'number' ? item.pricePerUnit : 0,
-      // Normalized price for recipe cost calculations (from invoice import)
+      // Normalized prices for recipe cost calculations (from invoice import)
       pricePerG: typeof item.pricePerG === 'number' ? item.pricePerG : null,
+      previousPricePerG: typeof item.previousPricePerG === 'number' ? item.previousPricePerG : null,
       pricePerML: typeof item.pricePerML === 'number' ? item.pricePerML : null,
+      previousPricePerML: typeof item.previousPricePerML === 'number' ? item.previousPricePerML : null,
+      pricePerUnit: typeof item.pricePerUnit === 'number' ? item.pricePerUnit : null,
+      previousPricePerUnit: typeof item.previousPricePerUnit === 'number' ? item.previousPricePerUnit : null,
+      // Pricing type: 'weight' ($/lb, $/kg) or 'unit' ($/case, $/each)
+      // Used for recipe costing and inventory deduction logic
+      pricingType: item.pricingType || null,
       lastPrice: typeof item.lastPrice === 'number' ? item.lastPrice : 0,
-      avgPrice: typeof item.avgPrice === 'number' ? item.avgPrice : 0,
       minPrice: typeof item.minPrice === 'number' ? item.minPrice : 0,
       maxPrice: typeof item.maxPrice === 'number' ? item.maxPrice : 0,
       currency: item.currency?.trim() || null,
@@ -397,12 +398,6 @@ export const inventoryItemDB = {
       // Purchase history
       lastPurchaseDate: item.lastPurchaseDate || null,
       lastInvoiceId: item.lastInvoiceId || null,
-      purchaseCount: typeof item.purchaseCount === 'number' ? item.purchaseCount : 0,
-      totalQuantityPurchased: typeof item.totalQuantityPurchased === 'number' ? item.totalQuantityPurchased : 0,
-      totalSpent: typeof item.totalSpent === 'number' ? item.totalSpent : 0,
-
-      // Legacy link
-      linkedIngredientId: item.linkedIngredientId || null,
 
       // Matching & tagging
       aliases: Array.isArray(item.aliases) ? item.aliases : [],
@@ -414,16 +409,10 @@ export const inventoryItemDB = {
       stockQuantityUnit: item.stockQuantityUnit?.trim() || 'pc',
       parQuantity: typeof item.parQuantity === 'number' ? item.parQuantity : 0,
       // Weight tracking (e.g., 175 lbs, 50 kg)
+      // Note: stockWeightUnit = null means item is count-based (not weight-based)
       stockWeight: typeof item.stockWeight === 'number' ? item.stockWeight : 0,
-      stockWeightUnit: item.stockWeightUnit?.trim() || 'lb',
+      stockWeightUnit: item.stockWeightUnit === null ? null : (item.stockWeightUnit?.trim() || 'lb'),
       parWeight: typeof item.parWeight === 'number' ? item.parWeight : 0,
-      // Legacy field (kept for backwards compatibility, computed from qty or weight)
-      currentStock: typeof item.currentStock === 'number' ? item.currentStock :
-                    (typeof item.stockQuantity === 'number' ? item.stockQuantity :
-                    (typeof item.stockWeight === 'number' ? item.stockWeight : 0)),
-      parLevel: typeof item.parLevel === 'number' ? item.parLevel :
-                (typeof item.parQuantity === 'number' ? item.parQuantity :
-                (typeof item.parWeight === 'number' ? item.parWeight : 0)),
       reorderPoint: typeof item.reorderPoint === 'number' ? item.reorderPoint : 0,
       reorderQuantity: typeof item.reorderQuantity === 'number' ? item.reorderQuantity : 0,
       storageLocation: item.storageLocation?.trim() || '',
@@ -443,7 +432,6 @@ export const inventoryItemDB = {
       packagingType: item.packagingType || null,
       packCount: typeof item.packCount === 'number' ? item.packCount : null,
       unitsPerPack: typeof item.unitsPerPack === 'number' ? item.unitsPerPack : null,
-      totalUnitsPerCase: typeof item.totalUnitsPerCase === 'number' ? item.totalUnitsPerCase : null,
       rollsPerCase: typeof item.rollsPerCase === 'number' ? item.rollsPerCase : null,
       lengthPerRoll: typeof item.lengthPerRoll === 'number' ? item.lengthPerRoll : null,
       lengthUnit: item.lengthUnit?.trim() || null,
@@ -455,28 +443,34 @@ export const inventoryItemDB = {
       productDimensions: item.productDimensions?.trim() || null,
       productSpecs: item.productSpecs?.trim() || null,
 
+      // Boxing format tracking (updated from latest invoice)
+      lastBoxingFormat: item.lastBoxingFormat?.trim() || item.packagingFormat?.trim() || null,
+
+      // Unit size tracking (for "6x500ML" style formats)
+      unitSize: typeof item.unitSize === 'number' ? item.unitSize : null,
+      unitSizeUnit: item.unitSizeUnit?.trim() || null,
+      unitsPerCase: typeof item.unitsPerCase === 'number' ? item.unitsPerCase : null,
+
       // Timestamps
       createdAt: now,
       updatedAt: now,
       createdBy: item.createdBy || null
     };
 
-    // Calculate pricePerUnit if not provided
-    if (data.pricePerUnit === 0 && data.currentPrice > 0 && data.unitsPerPackage > 0) {
-      data.pricePerUnit = data.currentPrice / data.unitsPerPackage;
+    // Calculate pricePerUnit if not provided (use unitsPerCase for packaging items)
+    if (data.pricePerUnit === 0 && data.currentPrice > 0 && data.unitsPerCase > 0) {
+      data.pricePerUnit = data.currentPrice / data.unitsPerCase;
     }
 
     // Auto-classify unit type if not already set
-    if (!data.unitType) {
-      const classification = classifyUnit(data.unit);
+    if (!data.unitType && data.purchaseUnit) {
+      const classification = classifyUnit(data.purchaseUnit);
       data.unitType = classification.unitType;
       data.toolUnit = classification.toolUnit || null;
       data.toolAbbrev = classification.toolAbbrev || null;
-      data.weightPerUnit = classification.weightG || null;
-
-      // If classification found a base unit, set it
-      if (classification.baseUnit && !data.purchaseUnit) {
-        data.purchaseUnit = classification.baseUnit;
+      // Only set weightPerUnit from classification if not already set by handler
+      if (data.weightPerUnit == null) {
+        data.weightPerUnit = classification.weightG || null;
       }
     }
 
@@ -684,39 +678,29 @@ export const inventoryItemDB = {
     const oldPrice = item.currentPrice || 0;
     const now = purchaseDate || new Date().toISOString();
 
-    // Calculate new statistics
-    const purchaseCount = (item.purchaseCount || 0) + 1;
-    const totalQuantityPurchased = (item.totalQuantityPurchased || 0) + quantity;
-    const totalSpent = (item.totalSpent || 0) + (newPrice * quantity);
-    const avgPrice = totalSpent / totalQuantityPurchased;
-
     // Track min/max prices
     const minPrice = item.minPrice > 0 ? Math.min(item.minPrice, newPrice) : newPrice;
     const maxPrice = Math.max(item.maxPrice || 0, newPrice);
 
-    // Calculate price per unit
-    const pricePerUnit = item.unitsPerPackage > 0 ? newPrice / item.unitsPerPackage : newPrice;
+    // Calculate price per unit (use unitsPerCase for packaging items)
+    const pricePerUnit = item.unitsPerCase > 0 ? newPrice / item.unitsPerCase : newPrice;
 
     const updates = {
       lastPrice: oldPrice,
       currentPrice: newPrice,
       pricePerUnit,
-      avgPrice: Math.round(avgPrice * 100) / 100,
       minPrice,
       maxPrice,
       lastPurchaseDate: now,
-      lastInvoiceId: invoiceId,
-      purchaseCount,
-      totalQuantityPurchased,
-      totalSpent: Math.round(totalSpent * 100) / 100
+      lastInvoiceId: invoiceId
     };
 
     await this.update(id, updates);
 
     // Record price history if price changed
-    if (oldPrice !== newPrice && item.linkedIngredientId) {
+    if (oldPrice !== newPrice) {
       await priceHistoryDB.add({
-        inventoryItemId: item.linkedIngredientId,
+        inventoryItemId: id,
         price: newPrice,
         previousPrice: oldPrice,
         invoiceId,
@@ -790,16 +774,6 @@ export const inventoryItemDB = {
     sync.deleteInventoryItemFromCloud?.(id);
 
     return true;
-  },
-
-  /**
-   * Link inventory item to legacy ingredient
-   * @param {number} inventoryItemId - Inventory item ID
-   * @param {number} ingredientId - Legacy ingredient ID
-   * @returns {Promise<boolean>}
-   */
-  async linkToIngredient(inventoryItemId, ingredientId) {
-    return await this.update(inventoryItemId, { linkedIngredientId: ingredientId });
   },
 
   // ============================================
@@ -952,7 +926,7 @@ export const inventoryItemDB = {
       .filter(item =>
         item.isActive &&
         item.reorderPoint > 0 &&
-        (item.parLevel || 0) <= item.reorderPoint
+        (item.stockQuantity || 0) <= item.reorderPoint
       )
       .toArray();
   },
@@ -1029,10 +1003,7 @@ export const inventoryItemDB = {
             ...item,
             vendorId,
             lastInvoiceId: invoiceId,
-            lastPurchaseDate: purchaseDate,
-            purchaseCount: 1,
-            totalQuantityPurchased: item.quantity || 1,
-            totalSpent: (item.currentPrice || item.price || 0) * (item.quantity || 1)
+            lastPurchaseDate: purchaseDate
           });
           results.created++;
         }

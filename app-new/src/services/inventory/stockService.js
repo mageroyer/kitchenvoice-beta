@@ -19,8 +19,10 @@ import db from '../database/indexedDB';
 // Constants
 // ============================================
 
+import { getEffectiveStock, getEffectivePar } from '../database/inventoryHelpers.js';
+
 /**
- * Default stock thresholds (percentage of parLevel or fullStock)
+ * Default stock thresholds (percentage of par level)
  */
 export const DEFAULT_THRESHOLDS = {
   CRITICAL: 10,   // Below 10% triggers critical alert
@@ -75,8 +77,10 @@ export async function adjustStock(itemId, delta, reason, referenceType = REFEREN
     throw new Error('Inventory item not found');
   }
 
-  // Calculate new stock
-  const currentStock = item.currentStock || 0;
+  // Get effective stock using dual tracking system
+  const effectiveStock = getEffectiveStock(item);
+  const effectivePar = getEffectivePar(item);
+  const currentStock = effectiveStock.value;
   const newStock = currentStock + delta;
 
   // Validate non-negative result
@@ -87,11 +91,14 @@ export async function adjustStock(itemId, delta, reason, referenceType = REFEREN
     );
   }
 
-  // Update item stock
-  await inventoryItemDB.update(itemId, {
-    currentStock: newStock,
-    updatedAt: new Date().toISOString()
-  });
+  // Update appropriate stock field based on item type
+  const updateData = { updatedAt: new Date().toISOString() };
+  if (effectiveStock.type === 'weight') {
+    updateData.stockWeight = newStock;
+  } else {
+    updateData.stockQuantity = newStock;
+  }
+  await inventoryItemDB.update(itemId, updateData);
 
   // Create stock transaction
   const transactionType = delta >= 0 ? TRANSACTION_TYPE.ADJUSTMENT : TRANSACTION_TYPE.ADJUSTMENT;
@@ -101,7 +108,7 @@ export async function adjustStock(itemId, delta, reason, referenceType = REFEREN
     quantityChange: delta,
     stockBefore: currentStock,
     stockAfter: newStock,
-    unit: item.unit,
+    unit: effectiveStock.unit,
     referenceType,
     referenceId,
     reason: reason.trim(),
@@ -111,7 +118,7 @@ export async function adjustStock(itemId, delta, reason, referenceType = REFEREN
   });
 
   // Check thresholds and determine alert status
-  const percentage = getStockPercentageSync(newStock, item.parLevel || item.fullStock);
+  const percentage = getStockPercentageSync(newStock, effectivePar.value);
   const status = getStockStatusSync(percentage, item);
   const alert = status === STOCK_STATUS.CRITICAL || status === STOCK_STATUS.LOW;
 
@@ -162,13 +169,15 @@ export async function setStock(itemId, newValue, reason, options = {}) {
     throw new Error('Inventory item not found');
   }
 
-  // Calculate delta
-  const currentStock = item.currentStock || 0;
+  // Get effective stock using dual tracking system
+  const effectiveStock = getEffectiveStock(item);
+  const effectivePar = getEffectivePar(item);
+  const currentStock = effectiveStock.value;
   const delta = newValue - currentStock;
 
   // Skip if no change
   if (delta === 0) {
-    const percentage = getStockPercentageSync(newValue, item.parLevel || item.fullStock);
+    const percentage = getStockPercentageSync(newValue, effectivePar.value);
     return {
       itemId,
       previousStock: currentStock,
@@ -181,11 +190,14 @@ export async function setStock(itemId, newValue, reason, options = {}) {
     };
   }
 
-  // Update item stock
-  await inventoryItemDB.update(itemId, {
-    currentStock: newValue,
-    updatedAt: new Date().toISOString()
-  });
+  // Update appropriate stock field based on item type
+  const updateData = { updatedAt: new Date().toISOString() };
+  if (effectiveStock.type === 'weight') {
+    updateData.stockWeight = newValue;
+  } else {
+    updateData.stockQuantity = newValue;
+  }
+  await inventoryItemDB.update(itemId, updateData);
 
   // Create count correction transaction
   await stockTransactionDB.recordCountCorrection(itemId, newValue, currentStock, {
@@ -195,7 +207,7 @@ export async function setStock(itemId, newValue, reason, options = {}) {
   });
 
   // Check thresholds
-  const percentage = getStockPercentageSync(newValue, item.parLevel || item.fullStock);
+  const percentage = getStockPercentageSync(newValue, effectivePar.value);
   const status = getStockStatusSync(percentage, item);
   const alert = status === STOCK_STATUS.CRITICAL || status === STOCK_STATUS.LOW;
 
@@ -248,75 +260,95 @@ export async function addStockFromInvoice(itemId, quantity, invoiceId, options =
   // Determine if item is weight-based or count-based
   const isWeightBased = item.stockWeightUnit && /^(lb|lbs|kg|g|oz)$/i.test(item.stockWeightUnit);
 
-  // Calculate new stock values
-  const currentStock = item.currentStock || 0;
+  const now = options.purchaseDate || new Date().toISOString();
+  const unitCost = options.unitCost || item.currentPrice || 0;
+  const totalCost = quantity * unitCost;
+
+  // For new items, handler already set stock - just record transaction
+  // skipStockUpdate=true means only record the transaction, don't add to stock
+  if (options.skipStockUpdate) {
+
+    // Build update object - purchase history only (stats computed from invoiceLineItems)
+    const updateData = {
+      lastPurchaseDate: now,
+      lastInvoiceId: invoiceId,
+      currentPrice: unitCost,
+      updatedAt: now
+    };
+
+    // Store pricingType if provided (first time sets it, subsequent updates preserve it)
+    if (options.pricingType && !item.pricingType) {
+      updateData.pricingType = options.pricingType;
+    }
+
+    await inventoryItemDB.update(itemId, updateData);
+
+    // Create purchase transaction for audit trail
+    const effectiveStock = getEffectiveStock(item);
+    await stockTransactionDB.recordPurchase(itemId, quantity, {
+      invoiceId,
+      invoiceLineId: options.invoiceLineId,
+      unitCost,
+      currentStock: effectiveStock.value,
+      createdBy: options.createdBy
+    });
+
+    return {
+      itemId,
+      quantity,
+      invoiceId,
+      newStock: effectiveStock.value,
+      newStockQuantity: item.stockQuantity || 0,
+      newStockWeight: item.stockWeight || 0,
+      isWeightBased,
+      skippedStockUpdate: true
+    };
+  }
+
+  // Calculate new stock values (for existing items being restocked)
   const currentStockQuantity = item.stockQuantity || 0;
   const currentStockWeight = item.stockWeight || 0;
 
   // For dual tracking:
   // - stockQuantity: unit count (e.g., 2 sacs)
   // - stockWeight: total weight (e.g., 100lb)
-  // - currentStock: legacy field, use weight for weight-based items, quantity otherwise
   const unitQuantity = options.unitQuantity || (isWeightBased ? 0 : quantity);
   const totalWeight = options.totalWeight || (isWeightBased ? quantity : 0);
 
   const newStockQuantity = currentStockQuantity + unitQuantity;
   const newStockWeight = currentStockWeight + totalWeight;
-  // Legacy currentStock: use the primary tracking method for this item
-  const newStock = isWeightBased ? newStockWeight : (newStockQuantity || currentStock + quantity);
-  const newFullStock = newStock;
-
-  console.log(`[StockService] Adding stock: qty=${unitQuantity}, weight=${totalWeight}, isWeightBased=${isWeightBased}`);
-  console.log(`[StockService] New values: stockQuantity=${newStockQuantity}, stockWeight=${newStockWeight}, currentStock=${newStock}`);
-
-  const now = options.purchaseDate || new Date().toISOString();
-  const unitCost = options.unitCost || item.currentPrice || 0;
-  const totalCost = quantity * unitCost;
-
-  // Update purchase statistics
-  const purchaseCount = (item.purchaseCount || 0) + 1;
-  const totalQuantityPurchased = (item.totalQuantityPurchased || 0) + quantity;
-  const totalSpent = (item.totalSpent || 0) + totalCost;
 
   // Update item with dual stock tracking
   await inventoryItemDB.update(itemId, {
     // Dual stock tracking
     stockQuantity: newStockQuantity,
     stockWeight: newStockWeight,
-    // Legacy fields
-    currentStock: newStock,
-    fullStock: newFullStock,
-    parLevel: item.parLevel || newFullStock,
     // Purchase info
     lastPurchaseDate: now,
     lastInvoiceId: invoiceId,
     currentPrice: unitCost,
-    purchaseCount,
-    totalQuantityPurchased,
-    totalSpent: Math.round(totalSpent * 100) / 100,
     updatedAt: now
   });
 
   // Create purchase transaction
+  const previousStock = isWeightBased ? currentStockWeight : currentStockQuantity;
   await stockTransactionDB.recordPurchase(itemId, quantity, {
     invoiceId,
     invoiceLineId: options.invoiceLineId,
     unitCost,
-    currentStock,
+    currentStock: previousStock,
     createdBy: options.createdBy
   });
 
   return {
     itemId,
-    previousStock: currentStock,
-    newStock,
-    newFullStock,
+    previousStock,
+    newStock: isWeightBased ? newStockWeight : newStockQuantity,
     newStockQuantity,
     newStockWeight,
     quantity,
     unitCost,
     totalCost: Math.round(totalCost * 100) / 100,
-    purchaseCount,
     invoiceId
   };
 }
@@ -349,41 +381,32 @@ export async function deductStockFromTask(itemId, quantity, taskId, options = {}
     throw new Error('Inventory item not found');
   }
 
-  const currentStock = item.currentStock || 0;
+  // Get effective stock using dual tracking system
+  const effectiveStock = getEffectiveStock(item);
+  const effectivePar = getEffectivePar(item);
+  const currentStock = effectiveStock.value;
   const newStock = currentStock - quantity;
 
   // Validate sufficient stock (unless allowNegative)
   if (newStock < 0 && !options.allowNegative) {
     throw new Error(
       `Insufficient stock for ${item.name}. ` +
-      `Available: ${currentStock} ${item.unit || 'units'}, ` +
-      `Requested: ${quantity} ${item.unit || 'units'}.`
+      `Available: ${currentStock} ${effectiveStock.unit}, ` +
+      `Requested: ${quantity} ${effectiveStock.unit}.`
     );
   }
 
-  // Update usage statistics
-  const usageCount = (item.usageCount || 0) + 1;
-  const totalQuantityUsed = (item.totalQuantityUsed || 0) + quantity;
-
-  // Check if this is a weight-based item (has pricePerG or weight pattern in unit)
-  const isWeightBased = item.pricePerG > 0 ||
-                         item.unitType === 'weight' ||
-                         (item.unit && /\d+\s*(lb|lbs|kg|g|oz)/i.test(item.unit));
-
-  // Build update object
+  // Build update object based on stock type
   const updateData = {
-    currentStock: Math.max(0, newStock), // Never store negative
     lastUsageDate: new Date().toISOString(),
-    usageCount,
-    totalQuantityUsed,
     updatedAt: new Date().toISOString()
   };
 
-  // For weight-based items, also update stockWeight to keep dual tracking in sync
-  if (isWeightBased && item.stockWeight > 0) {
-    const newStockWeight = Math.max(0, (item.stockWeight || 0) - quantity);
-    updateData.stockWeight = newStockWeight;
-    console.log(`📦 Weight-based deduction: stockWeight ${item.stockWeight} → ${newStockWeight}`);
+  // Update appropriate stock field
+  if (effectiveStock.type === 'weight') {
+    updateData.stockWeight = Math.max(0, newStock);
+  } else {
+    updateData.stockQuantity = Math.max(0, newStock);
   }
 
   // Update item
@@ -400,7 +423,7 @@ export async function deductStockFromTask(itemId, quantity, taskId, options = {}
 
   // Check thresholds
   const actualNewStock = Math.max(0, newStock);
-  const percentage = getStockPercentageSync(actualNewStock, item.parLevel || item.fullStock);
+  const percentage = getStockPercentageSync(actualNewStock, effectivePar.value);
   const status = getStockStatusSync(percentage, item);
   const alert = status === STOCK_STATUS.CRITICAL || status === STOCK_STATUS.LOW;
 
@@ -436,10 +459,10 @@ export async function getStockPercentage(itemId) {
     throw new Error('Inventory item not found');
   }
 
-  const currentStock = item.currentStock || 0;
-  const baseStock = item.parLevel || item.fullStock || 0;
+  const effectiveStock = getEffectiveStock(item);
+  const effectivePar = getEffectivePar(item);
 
-  return getStockPercentageSync(currentStock, baseStock);
+  return getStockPercentageSync(effectiveStock.value, effectivePar.value);
 }
 
 /**
@@ -471,10 +494,9 @@ export async function getStockStatus(itemId) {
     throw new Error('Inventory item not found');
   }
 
-  const percentage = getStockPercentageSync(
-    item.currentStock || 0,
-    item.parLevel || item.fullStock || 0
-  );
+  const effectiveStock = getEffectiveStock(item);
+  const effectivePar = getEffectivePar(item);
+  const percentage = getStockPercentageSync(effectiveStock.value, effectivePar.value);
 
   return getStockStatusSync(percentage, item);
 }
@@ -514,28 +536,34 @@ export async function getStockInfo(itemId) {
     throw new Error('Inventory item not found');
   }
 
-  const currentStock = item.currentStock || 0;
-  const baseStock = item.parLevel || item.fullStock || 0;
-  const percentage = getStockPercentageSync(currentStock, baseStock);
+  const effectiveStock = getEffectiveStock(item);
+  const effectivePar = getEffectivePar(item);
+  const currentStock = effectiveStock.value;
+  const parLevel = effectivePar.value;
+  const percentage = getStockPercentageSync(currentStock, parLevel);
   const status = getStockStatusSync(percentage, item);
 
-  const needsReorder = baseStock > 0 &&
-    currentStock <= (item.reorderPoint || baseStock * 0.25);
+  const needsReorder = parLevel > 0 &&
+    currentStock <= (item.reorderPoint || parLevel * 0.25);
 
   const suggestedReorderQty = needsReorder
-    ? (item.reorderQuantity || Math.max(0, baseStock - currentStock))
+    ? (item.reorderQuantity || Math.max(0, parLevel - currentStock))
     : 0;
 
   return {
     itemId,
     itemName: item.name,
     currentStock,
-    fullStock: item.fullStock || 0,
-    parLevel: item.parLevel || 0,
+    stockQuantity: item.stockQuantity || 0,
+    stockWeight: item.stockWeight || 0,
+    parLevel,
+    parQuantity: item.parQuantity || 0,
+    parWeight: item.parWeight || 0,
     reorderPoint: item.reorderPoint || 0,
     percentage,
     status,
-    unit: item.unit,
+    unit: effectiveStock.unit,
+    stockType: effectiveStock.type,
     needsReorder,
     suggestedReorderQty,
     inventoryValue: Math.round(currentStock * (item.currentPrice || 0) * 100) / 100,
@@ -602,11 +630,12 @@ export async function bulkAdjustStock(adjustments, options = {}) {
       continue;
     }
 
-    const newStock = (item.currentStock || 0) + adj.delta;
+    const effectiveStock = getEffectiveStock(item);
+    const newStock = effectiveStock.value + adj.delta;
     if (newStock < 0) {
       results.failed.push({
         adjustment: adj,
-        error: `Insufficient stock. Current: ${item.currentStock}, Delta: ${adj.delta}`
+        error: `Insufficient stock. Current: ${effectiveStock.value}, Delta: ${adj.delta}`
       });
       continue;
     }
@@ -764,15 +793,20 @@ export async function recordWaste(itemId, quantity, reason, options = {}) {
     throw new Error('Inventory item not found');
   }
 
-  const currentStock = item.currentStock || 0;
+  const effectiveStock = getEffectiveStock(item);
+  const effectivePar = getEffectivePar(item);
+  const currentStock = effectiveStock.value;
   const newStock = Math.max(0, currentStock - quantity);
   const actualWasted = currentStock - newStock;
 
-  // Update item
-  await inventoryItemDB.update(itemId, {
-    currentStock: newStock,
-    updatedAt: new Date().toISOString()
-  });
+  // Update appropriate stock field
+  const updateData = { updatedAt: new Date().toISOString() };
+  if (effectiveStock.type === 'weight') {
+    updateData.stockWeight = newStock;
+  } else {
+    updateData.stockQuantity = newStock;
+  }
+  await inventoryItemDB.update(itemId, updateData);
 
   // Create waste transaction
   await stockTransactionDB.recordWaste(itemId, actualWasted, reason, {
@@ -782,7 +816,7 @@ export async function recordWaste(itemId, quantity, reason, options = {}) {
   });
 
   // Check thresholds
-  const percentage = getStockPercentageSync(newStock, item.parLevel || item.fullStock);
+  const percentage = getStockPercentageSync(newStock, effectivePar.value);
   const status = getStockStatusSync(percentage, item);
 
   return {
@@ -823,11 +857,11 @@ export async function recordTransfer(itemId, quantity, fromLocation, toLocation,
     throw new Error('Inventory item not found');
   }
 
-  const currentStock = item.currentStock || 0;
+  const effectiveStock = getEffectiveStock(item);
 
   // Create transfer transaction (stock level unchanged at item level)
   await stockTransactionDB.recordTransfer(itemId, quantity, fromLocation, toLocation, {
-    currentStock,
+    currentStock: effectiveStock.value,
     notes: options.notes,
     createdBy: options.createdBy
   });
@@ -838,7 +872,7 @@ export async function recordTransfer(itemId, quantity, fromLocation, toLocation,
     quantity,
     fromLocation,
     toLocation,
-    currentStock
+    currentStock: effectiveStock.value
   };
 }
 
@@ -858,10 +892,9 @@ export async function getStockAlerts({ criticalOnly = false } = {}) {
   const alerts = [];
 
   for (const item of items) {
-    const percentage = getStockPercentageSync(
-      item.currentStock || 0,
-      item.parLevel || item.fullStock || 0
-    );
+    const effectiveStock = getEffectiveStock(item);
+    const effectivePar = getEffectivePar(item);
+    const percentage = getStockPercentageSync(effectiveStock.value, effectivePar.value);
     const status = getStockStatusSync(percentage, item);
 
     if (status === STOCK_STATUS.CRITICAL ||
@@ -871,11 +904,11 @@ export async function getStockAlerts({ criticalOnly = false } = {}) {
         itemName: item.name,
         vendorId: item.vendorId,
         vendorName: item.vendorName,
-        currentStock: item.currentStock || 0,
-        parLevel: item.parLevel || 0,
+        currentStock: effectiveStock.value,
+        parLevel: effectivePar.value,
         percentage,
         status,
-        unit: item.unit,
+        unit: effectiveStock.unit,
         category: item.category
       });
     }
@@ -899,10 +932,9 @@ export async function checkStockAlert(itemId) {
     return null;
   }
 
-  const percentage = getStockPercentageSync(
-    item.currentStock || 0,
-    item.parLevel || item.fullStock || 0
-  );
+  const effectiveStock = getEffectiveStock(item);
+  const effectivePar = getEffectivePar(item);
+  const percentage = getStockPercentageSync(effectiveStock.value, effectivePar.value);
   const status = getStockStatusSync(percentage, item);
 
   if (status === STOCK_STATUS.CRITICAL || status === STOCK_STATUS.LOW) {

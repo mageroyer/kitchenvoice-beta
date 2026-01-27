@@ -12,12 +12,15 @@ import {
   getInventorySummary,
   STOCK_THRESHOLDS,
   getInHouseItems,
+  clearAllInHouseStock,
+  deleteItem,
 } from '../../services/inventory/inventoryItemService';
 import {
   getAllVendors,
   getInternalVendor,
 } from '../../services/inventory/vendorService';
 import { departmentDB } from '../../services/database/indexedDB';
+import { getEffectiveStock, getEffectivePar } from '../../services/database/inventoryHelpers';
 import {
   previewAutoOrders,
   generateOrdersFromLowStock,
@@ -28,6 +31,9 @@ import {
   generateLowStockReportPDF,
   downloadPDF,
 } from '../../services/exports/pdfExportService';
+import {
+  recalculateAllInHousePrices,
+} from '../../services/inventory/inHousePriceService';
 
 // Components
 import Spinner from '../common/Spinner';
@@ -47,6 +53,146 @@ const VIEW_MODES = {
   BY_VENDOR: 'byVendor',
   BY_CATEGORY: 'byCategory',
   IN_HOUSE: 'inHouse',
+};
+
+/**
+ * Format normalized price for display ($/L, $/kg, $/lb, or $/ea)
+ */
+const formatNormalizedPrice = (item) => {
+  // Direct $/kg pricing (preferred for weight items)
+  if (item.pricePerKg != null && item.pricePerKg > 0) {
+    return `$${item.pricePerKg.toFixed(2)}/kg`;
+  }
+  // Direct $/lb pricing
+  if (item.pricePerLb != null && item.pricePerLb > 0) {
+    return `$${item.pricePerLb.toFixed(2)}/lb`;
+  }
+  // Direct $/L pricing (preferred for volume items)
+  if (item.pricePerL != null && item.pricePerL > 0) {
+    return `$${item.pricePerL.toFixed(2)}/L`;
+  }
+  // Weight-based pricing stored as pricePerG (convert to $/kg)
+  if (item.pricePerG != null && item.pricePerG > 0) {
+    return `$${(item.pricePerG * 1000).toFixed(2)}/kg`;
+  }
+  // Volume-based pricing stored as pricePerML (convert to $/L)
+  if (item.pricePerML != null && item.pricePerML > 0) {
+    return `$${(item.pricePerML * 1000).toFixed(2)}/L`;
+  }
+  // Unit-based pricing (price per each)
+  if (item.pricePerUnit != null && item.pricePerUnit > 0) {
+    return `$${item.pricePerUnit.toFixed(2)}/ea`;
+  }
+  return null;
+};
+
+/**
+ * Format unit size for display (e.g., "6 × 500ml")
+ */
+const formatUnitSize = (item) => {
+  if (item.unitSize != null && item.unitSizeUnit && item.unitsPerCase) {
+    return `${item.unitsPerCase} × ${item.unitSize}${item.unitSizeUnit}`;
+  }
+  return null;
+};
+
+/**
+ * Parse packaging format to extract units per case
+ * Formats: "1/250" → 250, "6x500ML" → 6, "12CT" → 12
+ * @param {string} format - The packaging format string
+ * @returns {number|null} Units per case or null if cannot parse
+ */
+const parseUnitsPerCase = (format) => {
+  if (!format) return null;
+
+  // Format "1/250" means 1 case of 250 units
+  const slashMatch = format.match(/^(\d+)\/(\d+)/);
+  if (slashMatch) {
+    return parseInt(slashMatch[2], 10);
+  }
+
+  // Format "6x500ML" or "6/500ML" - first number is units per case
+  const multiMatch = format.match(/^(\d+)[x×\/]/i);
+  if (multiMatch) {
+    return parseInt(multiMatch[1], 10);
+  }
+
+  // Format "12CT" or "24CT" - count format
+  const ctMatch = format.match(/^(\d+)\s*CT/i);
+  if (ctMatch) {
+    return parseInt(ctMatch[1], 10);
+  }
+
+  return null;
+};
+
+/**
+ * Calculate case quantity from total stock and packaging format
+ * @param {number} totalStock - Total stock in base units
+ * @param {Object} item - Inventory item with packaging info
+ * @returns {number} Number of cases
+ */
+const calculateCaseQty = (totalStock, item) => {
+  // First try structured field
+  if (item.unitsPerCase && item.unitsPerCase > 0) {
+    return Math.round((totalStock / item.unitsPerCase) * 100) / 100;
+  }
+
+  // Then try parsing format string
+  const format = item.packagingFormat || item.lastBoxingFormat;
+  const unitsPerCase = parseUnitsPerCase(format);
+  if (unitsPerCase && unitsPerCase > 0) {
+    return Math.round((totalStock / unitsPerCase) * 100) / 100;
+  }
+
+  // Fallback: assume 1:1
+  return totalStock;
+};
+
+/**
+ * Format stock number with appropriate decimal places
+ * Fixes floating-point precision issues (e.g., 0.5000000000001 → 0.5)
+ */
+const formatStock = (value) => {
+  if (value == null || isNaN(value)) return '0';
+  const rounded = Math.round(value * 100) / 100;
+  return rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(2).replace(/\.?0+$/, '');
+};
+
+/**
+ * Format stock weight/volume with user-friendly units
+ * Converts ml → L (when >= 1000) and g → kg (when >= 1000)
+ * @param {number} value - The stock value in base units (ml or g)
+ * @param {string} unit - The unit (ml, g, etc.)
+ * @returns {Object} { value: string, unit: string }
+ */
+const formatStockWithUnit = (value, unit) => {
+  if (value == null || isNaN(value)) return { value: '0', unit: unit || 'pc' };
+
+  const unitLower = (unit || '').toLowerCase();
+
+  // Convert ml to L when >= 1000
+  if (unitLower === 'ml' && value >= 1000) {
+    const liters = value / 1000;
+    return {
+      value: formatStock(liters),
+      unit: 'L'
+    };
+  }
+
+  // Convert g to kg when >= 1000
+  if (unitLower === 'g' && value >= 1000) {
+    const kg = value / 1000;
+    return {
+      value: formatStock(kg),
+      unit: 'kg'
+    };
+  }
+
+  return {
+    value: formatStock(value),
+    unit: unit || 'pc'
+  };
 };
 
 /**
@@ -111,7 +257,9 @@ function InventoryDashboard({
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [detailItem, setDetailItem] = useState(null); // Item to show in detail modal
   const [generatingOrders, setGeneratingOrders] = useState(false);
+  const [recalculatingPrices, setRecalculatingPrices] = useState(false);
   const [orderPreview, setOrderPreview] = useState(null);
+  const [alert, setAlert] = useState(null);
 
   // ============================================
   // Data Loading
@@ -180,8 +328,8 @@ function InventoryDashboard({
       // Apply OK filter (above threshold)
       if (filters.status === STOCK_FILTERS.OK) {
         filteredItems = filteredItems.filter(item => {
-          const percent = item.parLevel > 0
-            ? (item.currentStock / item.parLevel) * 100
+          const percent = (item.parQuantity || item.parLevel) > 0
+            ? ((item.stockQuantity || item.currentStock || 0) / (item.parQuantity || item.parLevel)) * 100
             : 100;
           return percent > STOCK_THRESHOLDS.LOW;
         });
@@ -347,6 +495,101 @@ function InventoryDashboard({
   }, [loadData]);
 
   /**
+   * Recalculate prices for all in-house items from their source recipes
+   */
+  const handleRecalculateInHousePrices = useCallback(async () => {
+    if (!window.confirm('Recalculate prices for all in-house items from their source recipes?\n\nThis will update price/kg or price/L based on current ingredient costs.')) {
+      return;
+    }
+
+    setRecalculatingPrices(true);
+    setError(null);
+
+    try {
+      const result = await recalculateAllInHousePrices();
+
+      console.log('[InventoryDashboard] Recalculate result:', result);
+
+      if (result.success.length > 0) {
+        const successMsg = result.success.map(r =>
+          `${r.itemName}: $${r.pricePerKg || r.pricePerL}/${r.isVolume ? 'L' : 'kg'}`
+        ).join('\n');
+        setAlert({
+          type: 'success',
+          message: `Updated ${result.success.length} item(s):\n${successMsg}`
+        });
+      }
+
+      if (result.failed.length > 0) {
+        console.warn('Failed to update some items:', result.failed);
+        const failedMsg = result.failed.map(r => `${r.itemName}: ${r.error}`).join('\n');
+        setError(`Failed to update ${result.failed.length} item(s):\n${failedMsg}`);
+      }
+
+      if (result.success.length === 0 && result.failed.length === 0) {
+        setAlert({ type: 'info', message: 'No in-house items found to update' });
+      }
+
+      // Refresh to show new prices
+      await loadData();
+    } catch (err) {
+      console.error('Failed to recalculate prices:', err);
+      setError('Failed to recalculate prices. Please try again.');
+    } finally {
+      setRecalculatingPrices(false);
+    }
+  }, [loadData]);
+
+  /**
+   * Handle clear all in-house inventory stock
+   */
+  const handleClearInHouse = useCallback(async () => {
+    if (!window.confirm('Clear all in-house production stock to zero?\n\nThis resets stock levels for all items produced in-house (from tasks).')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await clearAllInHouseStock();
+      if (result.clearedCount > 0) {
+        setAlert({ type: 'success', message: `Cleared ${result.clearedCount} in-house item(s)` });
+      } else {
+        setAlert({ type: 'info', message: 'No in-house items with stock to clear' });
+      }
+      await loadData();
+    } catch (error) {
+      console.error('Error clearing in-house stock:', error);
+      setAlert({ type: 'error', message: 'Failed to clear in-house stock' });
+    } finally {
+      setLoading(false);
+    }
+  }, [loadData]);
+
+  /**
+   * Handle delete single in-house item
+   */
+  const handleDeleteItem = useCallback(async (e, item) => {
+    e.stopPropagation(); // Prevent row selection
+
+    if (!window.confirm(`Delete "${item.name}" from inventory?\n\nThis will permanently remove this item.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await deleteItem(item.id, { hardDelete: true });
+      setAlert({ type: 'success', message: `Deleted "${item.name}"` });
+      setSelectedItemId(null);
+      await loadData();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      setAlert({ type: 'error', message: 'Failed to delete item' });
+    } finally {
+      setLoading(false);
+    }
+  }, [loadData]);
+
+  /**
    * Handle export to PDF
    */
   const handleExportPDF = useCallback(async () => {
@@ -356,7 +599,7 @@ function InventoryDashboard({
       try {
         businessInfo = await getBusinessInfo();
       } catch (e) {
-        console.log('Business info not available:', e.message);
+        // Business info not available - continue without it
       }
 
       // Build filter description
@@ -495,6 +738,16 @@ function InventoryDashboard({
 
   return (
     <div className={containerClasses}>
+      {/* Alert */}
+      {alert && (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          onClose={() => setAlert(null)}
+          autoClose={3000}
+        />
+      )}
+
       {/* Header */}
       <header className={styles.header}>
         <h1 className={styles.title}>Inventory Dashboard</h1>
@@ -513,6 +766,14 @@ function InventoryDashboard({
             disabled={loading}
           >
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleRecalculateInHousePrices}
+            disabled={loading || recalculatingPrices}
+            title="Recalculate prices for in-house items from recipe costs"
+          >
+            {recalculatingPrices ? 'Calculating...' : 'Update In-House Prices'}
           </Button>
           <Button
             variant="primary"
@@ -660,6 +921,17 @@ function InventoryDashboard({
         >
           In-House
         </button>
+        {viewMode === VIEW_MODES.IN_HOUSE && (
+          <button
+            type="button"
+            className={styles.clearInHouseBtn}
+            onClick={handleClearInHouse}
+            disabled={loading}
+            title="Clear all in-house stock to zero"
+          >
+            Clear All
+          </button>
+        )}
       </div>
 
       {/* Items List */}
@@ -729,33 +1001,94 @@ function InventoryDashboard({
                     {/* Name */}
                     <span className={styles.rowName}>{item.name}</span>
 
-                    {/* Qty / Weight */}
+                    {/* Qty / Weight - Type-aware rendering */}
+                    {/* Use stockQuantity/stockWeight (new schema) with fallback to currentStock (legacy) */}
                     <span className={styles.rowStock}>
-                      {(item.stockQuantity > 0 || item.stockWeight > 0) ? (
+                      {/* Packaging items: show boxes × unitsPerCase = total pieces */}
+                      {(item.itemType === 'packaging' || item.packagingFormat || item.lastBoxingFormat) ? (() => {
+                        const boxes = item.stockQuantity ?? item.currentStock ?? 0;
+                        // Only use item.unitsPerCase if > 1, otherwise parse from format string
+                        const parsedUnits = parseUnitsPerCase(item.packagingFormat || item.lastBoxingFormat);
+                        const unitsPerCase = (item.unitsPerCase > 1 ? item.unitsPerCase : null) || parsedUnits || 1;
+                        const totalPieces = boxes * unitsPerCase;
+                        const formatDisplay = item.packagingFormat || item.lastBoxingFormat || `${unitsPerCase}CT`;
+                        return (
+                          <>
+                            {formatStock(boxes)} × {formatDisplay} = {formatStock(totalPieces)} {item.baseUnit || 'pc'}
+                            {formatNormalizedPrice(item) && (
+                              <span className={styles.normalizedPrice}> | {formatNormalizedPrice(item)}</span>
+                            )}
+                          </>
+                        );
+                      })() : item.weightPerPortion > 0 && item.stockQuantity > 0 && item.stockWeight > 0 ? (
+                        /* In-house production items: show qty × unit weight = total weight | price/kg */
+                        item.stockQuantity === 1 ? (
+                          /* Single batch: just show "1 pc | 20 L | $XX/kg" */
+                          <>
+                            1 {item.stockQuantityUnit || 'pc'} | {formatStock(item.stockWeight)} {item.stockWeightUnit || 'kg'}
+                            {formatNormalizedPrice(item) && (
+                              <span className={styles.normalizedPrice}> | {formatNormalizedPrice(item)}</span>
+                            )}
+                          </>
+                        ) : (
+                          /* Multiple portions: show "24 pc × 0.5 kg = 12 kg | $XX/kg" */
+                          <>
+                            {formatStock(item.stockQuantity)} {item.stockQuantityUnit || 'pc'}
+                            {' × '}
+                            {formatStock(item.weightPerPortion)} {item.stockWeightUnit || 'kg'}
+                            {' = '}
+                            {formatStock(item.stockWeight)} {item.stockWeightUnit || 'kg'}
+                            {formatNormalizedPrice(item) && (
+                              <span className={styles.normalizedPrice}> | {formatNormalizedPrice(item)}</span>
+                            )}
+                          </>
+                        )
+                      ) : (item.stockQuantity > 0 || item.stockWeight > 0 || item.currentStock > 0) ? (
                         <>
-                          {item.stockQuantity > 0 && (
-                            <>{item.stockQuantity} {item.stockQuantityUnit || 'pc'}</>
+                          {(item.stockQuantity > 0 || item.currentStock > 0) && (
+                            <>
+                              {formatStock(item.stockQuantity ?? item.currentStock)} {item.stockQuantityUnit || item.unit || 'pc'}
+                              {formatUnitSize(item) && (
+                                <span className={styles.formatHint}> ({formatUnitSize(item)})</span>
+                              )}
+                            </>
                           )}
-                          {item.stockQuantity > 0 && item.stockWeight > 0 && ' | '}
-                          {item.stockWeight > 0 && (
-                            <>{item.stockWeight} {item.stockWeightUnit || 'lb'}</>
+                          {(item.stockQuantity > 0 || item.currentStock > 0) && item.stockWeight > 0 && ' | '}
+                          {item.stockWeight > 0 && (() => {
+                            const formatted = formatStockWithUnit(item.stockWeight, item.stockWeightUnit);
+                            return <>{formatted.value} {formatted.unit}</>;
+                          })()}
+                          {formatNormalizedPrice(item) && (
+                            <span className={styles.normalizedPrice}> | {formatNormalizedPrice(item)}</span>
                           )}
                         </>
                       ) : (
-                        <>{item.currentStock || 0} {item.unit || 'units'}</>
+                        <>{formatStock(item.stockQuantity ?? item.currentStock ?? 0)} {item.unit || 'units'}</>
                       )}
                     </span>
 
-                    {/* Progress Bar */}
+                    {/* Progress Bar - Use effective stock based on item type */}
                     <div className={styles.rowProgress}>
                       <StockProgressBar
-                        current={item.currentStock || 0}
-                        full={item.parLevel || item.fullStock || 0}
-                        unit={item.unit || 'units'}
+                        current={getEffectiveStock(item).value}
+                        full={getEffectivePar(item).value}
+                        unit={getEffectiveStock(item).unit}
                         size="compact"
                         showLabel={false}
                       />
                     </div>
+
+                    {/* Delete button - only in In-House view */}
+                    {viewMode === VIEW_MODES.IN_HOUSE && (
+                      <button
+                        type="button"
+                        className={styles.rowDeleteBtn}
+                        onClick={(e) => handleDeleteItem(e, item)}
+                        title="Delete item"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

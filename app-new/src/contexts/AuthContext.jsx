@@ -5,7 +5,6 @@ import {
   browserLocalPersistence
 } from 'firebase/auth';
 import { auth } from '../services/database/firebase';
-import { disableDemoMode } from '../services/demo/demoService';
 import { createLogger } from '../utils/logger';
 
 // Create scoped logger
@@ -50,9 +49,6 @@ export function AuthProvider({ children }) {
     // Subscribe to auth state changes
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // Exit demo mode when a real user signs in
-        disableDemoMode();
-
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,

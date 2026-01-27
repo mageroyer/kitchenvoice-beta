@@ -18,6 +18,7 @@ function UsersTab({
   onAddUser,
   onEditAccount,
   userListRefresh,
+  tasks = null,
 }) {
   return (
     <div className={styles.usersTab}>
@@ -67,6 +68,7 @@ function UsersTab({
         currentDepartment=""
         onEditUser={onEditUser}
         refreshTrigger={userListRefresh}
+        tasks={tasks}
       />
 
       {/* Access Levels Info */}

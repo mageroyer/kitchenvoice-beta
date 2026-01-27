@@ -6,16 +6,20 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AccessProvider, useAccess } from './contexts/AccessContext';
 import MenuBar from './components/layout/MenuBar';
 import PinModal from './components/common/PinModal';
-import BetaBanner from './components/common/BetaBanner';
+// import BetaBanner from './components/common/BetaBanner'; // Removed for v2.0 release
 import FeedbackButton from './components/common/FeedbackButton';
-import GuidedTour from './components/common/GuidedTour';
 import Timer from './components/common/Timer';
-import { isDemoMode } from './services/demo/demoService';
+import DocsModal from './components/common/DocsModal';
 
 // Custom hooks for app state management
 import { useCloudSync } from './hooks/useCloudSync';
 import { useAppState } from './hooks/useAppState';
-import { useInventoryAlerts } from './hooks/useInventoryAlerts';
+
+// Task cleanup scheduler
+import { scheduleDailyTaskCleanup } from './services/tasks/tasksService';
+
+// PDF export service
+import { generateUserGuidePDF, generateSecurityOverviewPDF, generateTermsOfServicePDF, downloadPDF } from './services/exports/pdfExportService';
 
 // Routes component
 import AppRoutes from './AppRoutes';
@@ -72,7 +76,7 @@ if (import.meta.env.DEV) {
         await signOut(auth);
         console.log('  ✓ Signed out from Firebase');
       } catch (e) {
-        console.log('  ⚠️ No user to sign out');
+        console.warn('  ⚠️ No user to sign out');
       }
 
       // Delete ALL IndexedDB databases
@@ -112,8 +116,107 @@ if (import.meta.env.DEV) {
     }
   };
 
+  // Inspect cloud data - see what's in Firestore
+  window.inspectCloudData = async () => {
+    console.log('🔍 Inspecting Firestore cloud data...');
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+
+      const auth = getAuth();
+      const db = getFirestore();
+
+      if (!auth.currentUser) {
+        console.error('❌ Not logged in. Please login first.');
+        return;
+      }
+
+      const syncId = `user_${auth.currentUser.uid}`;
+      console.log(`📂 Sync ID: ${syncId}`);
+
+      const collections = ['recipes', 'departments', 'categories', 'vendors', 'inventoryItems', 'invoices'];
+
+      for (const colName of collections) {
+        const colRef = collection(db, 'cookbooks', syncId, colName);
+        const snapshot = await getDocs(colRef);
+        console.log(`\n📁 ${colName}: ${snapshot.size} documents`);
+
+        if (snapshot.size > 0 && snapshot.size <= 20) {
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            console.log(`  - ${data.name || data.localId || doc.id}`);
+          });
+        } else if (snapshot.size > 20) {
+          console.log(`  (Too many to list - showing first 5)`);
+          let count = 0;
+          snapshot.forEach(doc => {
+            if (count < 5) {
+              const data = doc.data();
+              console.log(`  - ${data.name || data.localId || doc.id}`);
+            }
+            count++;
+          });
+        }
+      }
+
+      console.log('\n✅ Inspection complete');
+      console.log('💡 To clear cloud data, run: clearCloudData()');
+    } catch (error) {
+      console.error('❌ Error inspecting cloud data:', error);
+    }
+  };
+
+  // Clear all cloud data for current user
+  window.clearCloudData = async (confirmed = false) => {
+    if (!confirmed) {
+      console.warn('⚠️ WARNING: This will DELETE all your cloud data!');
+      console.log('💡 Type clearCloudData(true) to confirm deletion.');
+      return;
+    }
+
+    console.log('🔥 Clearing ALL Firestore data for current user...');
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const { getFirestore, collection, getDocs, deleteDoc, doc } = await import('firebase/firestore');
+
+      const auth = getAuth();
+      const db = getFirestore();
+
+      if (!auth.currentUser) {
+        console.error('❌ Not logged in. Please login first.');
+        return;
+      }
+
+      const syncId = `user_${auth.currentUser.uid}`;
+      const collections = ['recipes', 'departments', 'categories', 'vendors', 'inventoryItems', 'invoices', 'invoiceLineItems', 'stockTransactions', 'purchaseOrders', 'purchaseOrderLines', 'priceHistory'];
+
+      let totalDeleted = 0;
+
+      for (const colName of collections) {
+        const colRef = collection(db, 'cookbooks', syncId, colName);
+        const snapshot = await getDocs(colRef);
+
+        for (const docSnap of snapshot.docs) {
+          await deleteDoc(doc(db, 'cookbooks', syncId, colName, docSnap.id));
+          totalDeleted++;
+        }
+
+        if (snapshot.size > 0) {
+          console.log(`  ✓ Deleted ${snapshot.size} ${colName}`);
+        }
+      }
+
+      console.log(`\n✅ Cleared ${totalDeleted} documents from Firestore`);
+      console.log('💡 Now run fullReset() to clear local data and start fresh');
+    } catch (error) {
+      console.error('❌ Error clearing cloud data:', error);
+    }
+  };
+
   console.log('💡 DEV: Type clearAppCache() to clear data (keeps login)');
   console.log('💡 DEV: Type fullReset() to clear EVERYTHING (logout + fresh start)');
+  console.log('💡 DEV: Type inspectCloudData() to see what is in Firestore');
+  console.log('💡 DEV: Type clearCloudData(true) to DELETE all cloud data');
 }
 // ============================================
 // Expose inventoryItemDB globally for console access
@@ -280,7 +383,6 @@ function HomePage({ micFlag = false }) {
             showSend
             voiceActive={voiceActive}
             onVoiceClick={() => {
-              console.log('Voice clicked! Stopping voice input');
               setVoiceActive(false);
             }}
             onSendClick={() => {
@@ -345,7 +447,6 @@ function HomePage({ micFlag = false }) {
           <SearchBar
             value={searchQuery}
             onChange={(value) => {
-              console.log('Search query (debounced):', value);
               setSearchQuery(value);
             }}
             placeholder="Search recipes (type or use voice)..."
@@ -353,7 +454,6 @@ function HomePage({ micFlag = false }) {
             showVoice
             voiceActive={searchVoiceActive}
             onVoiceClick={() => {
-              console.log('Search voice clicked! Stopping voice search');
               setSearchVoiceActive(false);
             }}
           />
@@ -682,7 +782,7 @@ function HomePage({ micFlag = false }) {
             initialMinutes={5}
             autoStart
             compact
-            onComplete={() => console.log('Compact timer done!')}
+            onComplete={() => {}}
           />
         </div>
       </section>
@@ -728,9 +828,9 @@ function HomePage({ micFlag = false }) {
               department: 'Cold Kitchen',
               imageUrl: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=400',
             }}
-            onClick={(recipe) => console.log('Clicked:', recipe.name)}
-            onEdit={(recipe) => console.log('Edit:', recipe.name)}
-            onDelete={(recipe) => console.log('Delete:', recipe.name)}
+            onClick={(recipe) => {}}
+            onEdit={(recipe) => {}}
+            onDelete={(recipe) => {}}
           />
 
           <RecipeCard
@@ -751,7 +851,7 @@ function HomePage({ micFlag = false }) {
               method: 'Cook pasta. Fry pancetta with garlic. Mix eggs and cheese. Combine everything while hot. The heat from the pasta will cook the eggs to create a creamy sauce. Season with black pepper.',
               department: 'Hot Kitchen',
             }}
-            onClick={(recipe) => console.log('Clicked:', recipe.name)}
+            onClick={(recipe) => {}}
           />
         </div>
       </section>
@@ -766,7 +866,6 @@ function HomePage({ micFlag = false }) {
           <IngredientList
             ingredients={ingredients}
             onChange={(newIngredients) => {
-              console.log('Ingredients updated:', newIngredients);
               setIngredients(newIngredients);
             }}
             editable
@@ -798,7 +897,6 @@ function HomePage({ micFlag = false }) {
           <MethodSteps
             steps={methodSteps}
             onChange={(newSteps) => {
-              console.log('Method steps updated:', newSteps);
               setMethodSteps(newSteps);
             }}
             editable
@@ -839,7 +937,6 @@ function HomePage({ micFlag = false }) {
             <PlatingInstructions
               instructions={platingInstructions}
               onChange={(newInstructions) => {
-                console.log('Plating instructions updated:', newInstructions);
                 setPlatingInstructions(newInstructions); // Will be null if all instructions deleted
               }}
               editable
@@ -883,7 +980,6 @@ function HomePage({ micFlag = false }) {
             <Notes
               notes={notes}
               onChange={(newNotes) => {
-                console.log('Notes updated:', newNotes);
                 setNotes(newNotes); // Will be null if all notes deleted
               }}
               editable
@@ -1084,14 +1180,14 @@ function AppContent() {
     micFlag,
     keypadFlag,
     showTimer,
-    runTour,
+    isTimerRunning,
     handleMicToggle,
     handleKeypadToggle,
     handleTimerToggle,
     handleTimerClose,
-    handleTourComplete
+    handleTimerShow,
+    handleTimerRunningChange
   } = useAppState();
-  const { criticalStockCount, lowStockCount } = useInventoryAlerts(isAuthenticated, authLoading, isOwner);
 
   // Remaining local state
   const [departments, setDepartments] = useState([]);
@@ -1103,30 +1199,22 @@ function AppContent() {
   const [pinError, setPinError] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
 
+  // Docs Modal state
+  const [showDocsModal, setShowDocsModal] = useState(false);
+
   // isUnlocked is derived from access context (has edit privileges)
   const isUnlocked = isOwner || isEditor;
 
   // Get access level string
   const accessLevel = isOwner ? 'owner' : isEditor ? 'editor' : 'viewer';
 
-  // Load departments when authenticated OR in demo mode
+  // Load departments when authenticated
   useEffect(() => {
-    const inDemo = isDemoMode();
-
-    // Skip if not authenticated and not in demo mode
-    if ((!isAuthenticated && !inDemo) || authLoading) return;
+    // Skip if not authenticated
+    if (!isAuthenticated || authLoading) return;
 
     const loadDepartments = async () => {
-      // In demo mode, use demo departments
-      if (inDemo) {
-        const { DEMO_DEPARTMENTS } = await import('./services/demo/demoData');
-        const deptNames = DEMO_DEPARTMENTS.map(d => d.name);
-        setDepartments(deptNames);
-        console.log('📋 Demo departments loaded:', deptNames);
-        return;
-      }
-
-      // Real mode: load from database
+      // Load from database
       try {
         const { departmentDB } = await import('./services/database/indexedDB');
         const depts = await departmentDB.getAll();
@@ -1150,22 +1238,31 @@ function AppContent() {
     return () => window.removeEventListener('dataSync', handleDataSync);
   }, [isAuthenticated, authLoading]);
 
-  // Check if in demo mode
-  const inDemoMode = isDemoMode();
+  // Schedule daily task cleanup at midnight when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) return;
+
+    // Start the daily cleanup scheduler
+    const stopCleanup = scheduleDailyTaskCleanup();
+
+    // Cleanup on unmount or auth change
+    return () => stopCleanup();
+  }, [isAuthenticated, authLoading]);
 
   // Check if on landing page (don't show MenuBar)
   const isLandingPage = location.pathname === '/';
 
   // Automatically detect current page type for MenuBar
   const isRecipeListPage = location.pathname === '/recipes' || location.pathname === ROUTES.RECIPES;
-
+  const isRecipeEditorPage = location.pathname.match(/\/recipes\/(\d+)(\/edit)?$/);
   const isTeamTasksPage = location.pathname === ROUTES.DEPARTMENT_TASKS || location.pathname === '/team-tasks';
 
   // page determines which nav buttons to show/hide:
   // 'browser' = recipe list page (hide Recipes button)
   // 'tasks' = team tasks page (hide Tasks button)
-  // 'detail' or 'other' = show both buttons
-  const page = isRecipeListPage ? 'browser' : (isTeamTasksPage ? 'tasks' : 'other');
+  // 'detail' = recipe editor page (show delete option in menu)
+  // 'other' = show both buttons
+  const page = isRecipeListPage ? 'browser' : (isRecipeEditorPage ? 'detail' : (isTeamTasksPage ? 'tasks' : 'other'));
 
   // MenuBar event handlers
   const handleDepartmentChange = (dept) => {
@@ -1265,9 +1362,8 @@ function AppContent() {
     navigate(ROUTES.HEARTBEAT);
   };
 
-  const handleInventoryClick = () => {
-    // Navigate to Control Panel with Inventory tab selected
-    navigate(`${ROUTES.CONTROL_PANEL}?tab=inventory&subtab=dashboard`);
+  const handleWebsiteClick = () => {
+    navigate('/website-settings');
   };
 
   const handleLockToggle = () => {
@@ -1294,7 +1390,6 @@ function AppContent() {
       const result = await authenticateWithPin(pin);
       if (result.success) {
         setShowPinModal(false);
-        console.log(`✅ Authenticated as ${result.privilege.name} (${result.privilege.accessLevel})`);
       } else {
         setPinError(result.error || 'Invalid PIN');
       }
@@ -1322,13 +1417,46 @@ function AppContent() {
     }
   };
 
+  const handleDocsClick = () => {
+    setShowDocsModal(true);
+  };
+
+  const handleDocDownload = async (docId) => {
+    try {
+      // Try to load business info for personalization
+      let businessInfo = null;
+      try {
+        const { getBusinessInfo } = await import('./services/database/businessService');
+        businessInfo = await getBusinessInfo();
+      } catch (e) {
+        // Business info not available - continue without it
+      }
+
+      if (docId === 'user-guide') {
+        const doc = generateUserGuidePDF(businessInfo);
+        downloadPDF(doc, 'KitchenCommand_User_Guide.pdf');
+      } else if (docId === 'security-overview') {
+        const doc = generateSecurityOverviewPDF();
+        downloadPDF(doc, 'KitchenCommand_Security_Overview.pdf');
+      } else if (docId === 'terms-of-service') {
+        const doc = generateTermsOfServicePDF();
+        downloadPDF(doc, 'KitchenCommand_Terms_of_Service.pdf');
+      } else if (docId === 'patch-report') {
+        // TODO: Implement patch report PDF generation
+        alert('Patch Report coming soon!');
+      }
+
+      setShowDocsModal(false);
+    } catch (error) {
+      console.error('Error generating document:', error);
+      alert('Failed to generate document. Please try again.');
+    }
+  };
+
   return (
       <div className="app">
-        {/* Beta Banner - Shows on all pages */}
-        <BetaBanner />
-
-        {/* MenuBar Component - Show when authenticated OR in demo mode, and not on auth pages */}
-        {!isLandingPage && (isAuthenticated || inDemoMode) && (
+        {/* MenuBar Component - Show when authenticated and not on landing page */}
+        {!isLandingPage && isAuthenticated && (
           <MenuBar
             appName="SmartCookBook"
             currentDepartment={currentDepartment}
@@ -1340,11 +1468,10 @@ function AppContent() {
             userName={userName}
             accessLevel={accessLevel}
             showTimer={showTimer}
+            isTimerRunning={isTimerRunning}
             page={page}
             currentRecipe={currentRecipe || { id: 1 }}
             syncStatus={syncStatus}
-            criticalStockCount={criticalStockCount}
-            lowStockCount={lowStockCount}
             onDepartmentChange={handleDepartmentChange}
             onBackClick={handleBackClick}
             onMicToggle={handleMicToggle}
@@ -1359,20 +1486,23 @@ function AppContent() {
             onControlPanelClick={handleControlPanelClick}
             onHeartbeatClick={handleHeartbeatClick}
             onTeamTasksClick={() => navigate(ROUTES.DEPARTMENT_TASKS)}
-            onInventoryClick={handleInventoryClick}
             onLockToggle={handleLockToggle}
             onLogout={handleLogout}
+            onDocsClick={handleDocsClick}
+            onWebsiteClick={handleWebsiteClick}
           />
         )}
 
-        {/* Timer Component */}
-        {showTimer && (isAuthenticated || inDemoMode) && (
+        {/* Timer Component - always mounted when authenticated to preserve state */}
+        {isAuthenticated && (
           <Timer
+            visible={showTimer}
             onClose={handleTimerClose}
             onComplete={() => {
-              // Play sound is handled in Timer component
-              console.log('Timer complete!');
+              // Show timer modal when alarm triggers
+              handleTimerShow();
             }}
+            onRunningChange={handleTimerRunningChange}
           />
         )}
 
@@ -1384,6 +1514,13 @@ function AppContent() {
           title="Enter PIN to Unlock"
           error={pinError}
           loading={pinLoading}
+        />
+
+        {/* Docs Modal */}
+        <DocsModal
+          isOpen={showDocsModal}
+          onClose={() => setShowDocsModal(false)}
+          onDownload={handleDocDownload}
         />
 
         {/* Routes Component */}
@@ -1398,16 +1535,6 @@ function AppContent() {
 
         {/* Feedback Button - Shows on all pages */}
         <FeedbackButton />
-
-        {/* Guided Tour - Shows in demo mode */}
-        {inDemoMode && (
-          <GuidedTour
-            tourName="main"
-            run={runTour}
-            onComplete={handleTourComplete}
-            onSkip={handleTourComplete}
-          />
-        )}
       </div>
   );
 }

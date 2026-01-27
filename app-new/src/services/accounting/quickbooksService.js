@@ -255,13 +255,40 @@ export async function getAccounts(environment = null) {
 export async function createBill(invoice, vendorId, accountId = null, environment = null) {
   try {
     const env = environment || getQBEnvironment();
+
+    // Transform invoice to format expected by Cloud Function
+    // Frontend uses: lineItems, vendorName, description
+    // Backend expects: items, supplierName, name
+    const lineItems = invoice.lineItems || invoice.items || [];
+    const transformedInvoice = {
+      invoiceNumber: invoice.invoiceNumber,
+      date: invoice.date || invoice.invoiceDate,
+      dueDate: invoice.dueDate,
+      supplierName: invoice.vendorName || invoice.supplierName,
+      totalAmount: invoice.totalAmount || invoice.totals?.total,
+      // Transform line items to expected format
+      items: lineItems.map(item => ({
+        name: item.description || item.name || 'Item',
+        description: item.rawDescription || item.description || '',
+        quantity: item.quantity || 1,
+        unitPrice: item.unitPrice || item.unit_price || 0,
+        totalPrice: item.totalPrice || item.total || (item.quantity * item.unitPrice) || 0,
+        sku: item.sku || item.code || null,
+      })),
+    };
+
+    // Validate we have items
+    if (transformedInvoice.items.length === 0) {
+      throw new Error('No line items to create bill. Make sure invoice has accounting-eligible lines.');
+    }
+
     const response = await fetch(`${FUNCTIONS_BASE}/quickbooksBills`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        invoice,
+        invoice: transformedInvoice,
         vendorId,
         accountId,
         environment: env
@@ -286,7 +313,7 @@ export async function createBill(invoice, vendorId, accountId = null, environmen
  * Filters out non-accounting lines (deposits, zero-qty items) and
  * recalculates totals for accurate expense tracking.
  *
- * @param {Object} invoice - Invoice with lineItems tagged by invoiceMerger
+ * @param {Object} invoice - Invoice with lineItems tagged by handler.processLines()
  * @returns {Object} Invoice ready for QuickBooks with:
  *   - filteredLineItems: Only lines where forAccounting=true
  *   - effectiveSubtotal: Sum of product + fee + credit lines
@@ -374,16 +401,6 @@ export async function syncInvoiceToQuickBooks(invoice, existingVendors = null, o
     ? invoice
     : prepareInvoiceForQuickBooks(invoice);
 
-  // Log filtering results
-  if (!options.skipFiltering && preparedInvoice.filteringSummary) {
-    const fs = preparedInvoice.filteringSummary;
-    console.log(`[QB] Invoice filtered for QuickBooks:`, {
-      lines: `${fs.accountingLineCount}/${fs.originalLineCount} (${fs.excludedLineCount + fs.depositLineCount} excluded)`,
-      subtotal: `$${fs.effectiveSubtotal} (was $${fs.originalSubtotal})`,
-      deposits: fs.depositTotal > 0 ? `$${fs.depositTotal} (tracked separately)` : 'none',
-    });
-  }
-
   try {
     // Step 1: Get vendors if not provided
     const vendors = existingVendors || await getVendors();
@@ -399,7 +416,6 @@ export async function syncInvoiceToQuickBooks(invoice, existingVendors = null, o
 
     // Step 4: Create vendor if not found (track for potential rollback info)
     if (!vendor) {
-      console.log(`[QB] Creating new vendor: ${invoiceVendorName}`);
       vendor = await createVendor(invoiceVendorName);
       createdVendorId = vendor.id;
       createdVendorName = vendor.name;

@@ -105,8 +105,6 @@ export async function saveBusinessInfo(userId, businessData) {
 
     // Invalidate cache after saving
     invalidateBusinessCache(userId);
-
-    console.log('✅ Business info saved');
   } catch (error) {
     console.error('Error saving business info:', error);
     throw error;
@@ -132,7 +130,6 @@ export async function isSetupComplete(userId) {
     // Fallback: if business name exists, consider setup complete
     // This handles cases where data was created without the flag
     if (businessInfo?.name && businessInfo.name.trim().length > 0) {
-      console.log('📋 Business exists without setupComplete flag, treating as complete');
       return true;
     }
 
@@ -158,8 +155,6 @@ export async function markSetupComplete(userId) {
 
     // Invalidate cache after marking complete
     invalidateBusinessCache(userId);
-
-    console.log('✅ Setup marked as complete');
   } catch (error) {
     console.error('Error marking setup complete:', error);
     throw error;

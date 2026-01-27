@@ -73,7 +73,24 @@ db.version(1).stores({
 
   // Purchase orders
   purchaseOrders: '++id, orderNumber, vendorId, status, createdAt, expectedDeliveryDate, updatedAt',
-  purchaseOrderLines: '++id, purchaseOrderId, inventoryItemId, [purchaseOrderId+lineNumber], createdAt'
+  purchaseOrderLines: '++id, purchaseOrderId, inventoryItemId, [purchaseOrderId+lineNumber], createdAt',
+
+  // Expense Categories: Non-inventory expense classification for accounting
+  // Used for utilities, services, rent, etc. - NOT operational departments
+  expenseCategories: '++id, name, isDefault, isActive, qbAccountId, createdAt, updatedAt',
+
+  // Expense Records: Non-inventory invoice tracking for accounting
+  // Linked to expenseCategories instead of inventoryItems
+  expenseRecords: '++id, invoiceId, vendorId, expenseCategoryId, [vendorId+invoiceDate], [expenseCategoryId+invoiceDate], invoiceDate, amount, qbSynced, createdAt, updatedAt'
+});
+
+// Version 2: Add deletedItems table for tracking intentional deletions (prevents phantom resurrection)
+db.version(2).stores({
+  // Deleted Items Tracker: Prevents cloud sync from resurrecting deleted items
+  // entityType: 'recipe', 'department', 'category', 'vendor', 'inventoryItem', etc.
+  // entityId: The local ID of the deleted item
+  // deletedAt: When it was deleted (for potential cleanup of old tombstones)
+  deletedItems: '++id, [entityType+entityId], entityType, deletedAt'
 });
 
 /**
@@ -99,36 +116,51 @@ const DEFAULT_CATEGORIES_BY_DEPT = {
 };
 
 /**
- * Seed database with default departments and categories on first run
- * Called automatically when database is opened for the first time.
+ * Default expense categories for accounting (non-inventory expenses)
+ * @type {Array<{name: string, description: string, isDefault: boolean}>}
+ */
+const DEFAULT_EXPENSE_CATEGORIES = [
+  { name: 'Utilities - Electricity', description: 'Electric bills (Hydro-Québec, etc.)', isDefault: true },
+  { name: 'Utilities - Gas', description: 'Natural gas bills (Énergir, etc.)', isDefault: true },
+  { name: 'Utilities - Water', description: 'Water and sewer bills', isDefault: true },
+  { name: 'Rent', description: 'Building/space rental payments', isDefault: true },
+  { name: 'Maintenance & Repairs', description: 'Equipment repairs, HVAC service, etc.', isDefault: true },
+  { name: 'Cleaning Services', description: 'Professional cleaning, waste removal', isDefault: true },
+  { name: 'Insurance', description: 'Business insurance premiums', isDefault: true },
+  { name: 'Professional Services', description: 'Accounting, legal, consulting fees', isDefault: true },
+  { name: 'Office Supplies', description: 'Non-inventory office materials', isDefault: true },
+  { name: 'Marketing', description: 'Advertising, promotions, signage', isDefault: true },
+];
+
+/**
+ * Seed database with default expense categories on first run.
+ *
+ * NOTE: Departments and recipe categories are NO LONGER auto-seeded.
+ * They should come from:
+ *   1. Cloud sync (existing users)
+ *   2. BusinessSetupWizard (new users)
+ * This prevents duplicate issues when local seeds conflict with cloud data.
  *
  * @returns {Promise<void>}
  */
 const seedDatabase = async () => {
-  const deptCount = await db.departments.count();
-  if (deptCount === 0) {
-    console.log('🌱 Seeding database with default departments and categories...');
-
-    // Add departments
-    for (const dept of DEFAULT_DEPARTMENTS) {
-      const deptId = await db.departments.add({
-        ...dept,
-        createdAt: new Date().toISOString()
-      });
-
-      // Add categories for this department
-      const categories = DEFAULT_CATEGORIES_BY_DEPT[dept.name] || [];
-      for (const catName of categories) {
-        await db.categories.add({
-          name: catName,
-          departmentId: deptId,
-          isDefault: true,
-          createdAt: new Date().toISOString()
+  try {
+    // Only seed expense categories (for accounting features)
+    // Departments/categories are managed by cloud sync or user setup
+    const expenseCatCount = await db.expenseCategories.count();
+    if (expenseCatCount === 0) {
+      for (const expCat of DEFAULT_EXPENSE_CATEGORIES) {
+        await db.expenseCategories.add({
+          ...expCat,
+          isActive: true,
+          qbAccountId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         });
       }
     }
-
-    console.log('✅ Database seeded successfully');
+  } catch (error) {
+    console.error('❌ Failed to seed database:', error);
   }
 };
 
@@ -160,7 +192,6 @@ const getCloudSync = async () => {
  * Used when a new user registers to ensure clean slate
  */
 const clearAllLocalData = async () => {
-  console.log('🧹 Clearing all local data for fresh user setup...');
   try {
     await db.recipes.clear();
     await db.departments.clear();
@@ -176,7 +207,9 @@ const clearAllLocalData = async () => {
     await db.stockTransactions.clear();
     await db.purchaseOrders.clear();
     await db.purchaseOrderLines.clear();
-    console.log('✅ All local data cleared');
+    await db.expenseCategories.clear();
+    await db.expenseRecords.clear();
+    await db.deletedItems.clear();
     return true;
   } catch (error) {
     console.error('[Database] Error clearing local data:', error);
@@ -185,5 +218,5 @@ const clearAllLocalData = async () => {
 };
 
 // Export database instance and utilities
-export { db, getCloudSync, clearAllLocalData, DEFAULT_DEPARTMENTS, DEFAULT_CATEGORIES_BY_DEPT };
+export { db, getCloudSync, clearAllLocalData, DEFAULT_DEPARTMENTS, DEFAULT_CATEGORIES_BY_DEPT, DEFAULT_EXPENSE_CATEGORIES };
 export default db;

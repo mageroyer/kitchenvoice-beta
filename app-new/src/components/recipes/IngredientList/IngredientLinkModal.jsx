@@ -19,6 +19,7 @@ import Spinner from '../../common/Spinner';
 import AddRecipeToolModal from '../AddRecipeToolModal';
 
 import { inventoryItemDB } from '../../../services/database/indexedDB';
+import { expandSearchTerms } from '../../../services/ai/claudeTranslate';
 // Unit compatibility imports removed - price calculation uses pricePerG directly
 import { ValidationIssue } from '../../../utils/ingredientValidation';
 import { generateToolSuggestions, getInvoiceUnitSuggestions, detectMeasurementType, findBestToolForQuantity } from '../../../services/inventory/toolSuggestions';
@@ -165,7 +166,8 @@ function IngredientLinkModal({
     setError('');
 
     try {
-      const allIngredients = await inventoryItemDB.getAll();
+      // Only show ACTIVE items (exclude soft-deleted items)
+      const allIngredients = await inventoryItemDB.getActive();
 
       if (allIngredients.length === 0) {
         setError('Aucun item dans inventaire. Importez des factures.');
@@ -173,12 +175,31 @@ function IngredientLinkModal({
         return;
       }
 
-      // Simple local keyword search
-      const searchTerms = ingredientName.toLowerCase().split(' ').filter(w => w.length > 2);
+      // Bilingual search: expand search terms with French/English translations
+      let searchTerms;
+      try {
+        // Get translations for the ingredient name (e.g., "patate" -> ["patate", "potato"])
+        searchTerms = await expandSearchTerms(ingredientName);
+      } catch (translationErr) {
+        // Fallback to simple search if translation fails
+        console.warn('Translation failed, using simple search:', translationErr.message);
+        searchTerms = ingredientName.toLowerCase().split(' ').filter(w => w.length > 2);
+      }
 
+      // Filter inventory items matching any search term
       const matchingIngredients = allIngredients.filter(item => {
         const itemName = (item.name || '').toLowerCase();
-        return searchTerms.some(term => itemName.includes(term));
+        const itemAliases = (item.aliases || []).map(a => a.toLowerCase());
+
+        // Check if any search term matches the item name or aliases
+        return searchTerms.some(term => {
+          if (term.length < 2) return false;
+          // Match in name
+          if (itemName.includes(term)) return true;
+          // Match in aliases
+          if (itemAliases.some(alias => alias.includes(term))) return true;
+          return false;
+        });
       });
 
       setMatches(matchingIngredients);
@@ -410,7 +431,20 @@ function IngredientLinkModal({
           {selectedItem?.unit && (
             <span className={styles.selectedItemUnit}>({selectedItem.unit})</span>
           )}
-          {selectedItem?.currentPrice > 0 && (
+          {/* Display price based on pricing type */}
+          {selectedItem?.pricePerG > 0 ? (
+            <span className={styles.selectedItemPrice}>
+              — ${(selectedItem.pricePerG * 1000).toFixed(2)}/kg
+            </span>
+          ) : selectedItem?.pricePerML > 0 ? (
+            <span className={styles.selectedItemPrice}>
+              — ${(selectedItem.pricePerML * 1000).toFixed(2)}/L
+            </span>
+          ) : selectedItem?.pricePerUnit > 0 ? (
+            <span className={styles.selectedItemPrice}>
+              — ${selectedItem.pricePerUnit.toFixed(2)}/ea
+            </span>
+          ) : selectedItem?.currentPrice > 0 && (
             <span className={styles.selectedItemPrice}>
               — ${selectedItem.currentPrice.toFixed(2)}
             </span>
@@ -607,6 +641,24 @@ function IngredientLinkModal({
                       const isCurrent = currentLinkedId === match.id;
                       const hasTools = (match.recipeTools?.length > 0) || match.unitType === 'tool';
 
+                      // Determine price display based on pricing type
+                      let priceDisplay = null;
+                      if (match.pricePerG > 0) {
+                        // Weight-based pricing - show per kg
+                        const pricePerKg = match.pricePerG * 1000;
+                        priceDisplay = `$${pricePerKg.toFixed(2)}/kg`;
+                      } else if (match.pricePerML > 0) {
+                        // Volume-based pricing - show per L
+                        const pricePerL = match.pricePerML * 1000;
+                        priceDisplay = `$${pricePerL.toFixed(2)}/L`;
+                      } else if (match.pricePerUnit > 0) {
+                        // Unit-based pricing
+                        priceDisplay = `$${match.pricePerUnit.toFixed(2)}/ea`;
+                      } else if (match.currentPrice > 0) {
+                        // Fallback to currentPrice with unit
+                        priceDisplay = `$${match.currentPrice.toFixed(2)}/${itemUnit || 'ea'}`;
+                      }
+
                       return (
                         <li
                           key={match.id}
@@ -618,9 +670,9 @@ function IngredientLinkModal({
                             {match.vendorName && (
                               <span className={styles.matchVendor}>— {match.vendorName}</span>
                             )}
-                            {match.currentPrice != null && (
+                            {priceDisplay && (
                               <span className={styles.matchPrice}>
-                                — ${match.currentPrice.toFixed(2)}/{itemUnit || 'ea'}
+                                — {priceDisplay}
                               </span>
                             )}
                             {hasTools && (

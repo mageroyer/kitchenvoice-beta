@@ -70,8 +70,6 @@ export async function syncRecipeToScale(recipe) {
     throw new Error('Recipe does not have PLU configured');
   }
 
-  console.log('📤 Syncing recipe to scale:', recipe.name, 'PLU:', recipe.plu);
-
   // TODO: Implement actual scale sync
   // For now, just update the sync status in database
   const now = new Date().toISOString();
@@ -85,8 +83,6 @@ export async function syncRecipeToScale(recipe) {
       lastScaleSync: now,
       scaleSyncStatus: SCALE_SYNC_STATUS.SYNCED,
     });
-
-    console.log('✅ Recipe synced to scale:', recipe.name);
 
     return {
       success: true,
@@ -110,13 +106,9 @@ export async function syncRecipeToScale(recipe) {
  * @returns {Promise<Object>} Bulk sync result
  */
 export async function syncAllRecipesToScale() {
-  console.log('📤 Starting bulk scale sync...');
-
   // Get all recipes with PLU configured
   const allRecipes = await recipeDB.getAll();
   const scaleRecipes = allRecipes.filter(r => r.plu && r.syncToScale);
-
-  console.log(`Found ${scaleRecipes.length} recipes to sync`);
 
   const results = {
     total: scaleRecipes.length,
@@ -138,8 +130,6 @@ export async function syncAllRecipesToScale() {
       });
     }
   }
-
-  console.log(`✅ Bulk sync complete: ${results.synced}/${results.total} synced`);
 
   return results;
 }

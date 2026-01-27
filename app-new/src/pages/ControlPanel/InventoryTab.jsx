@@ -64,8 +64,8 @@ function InventoryTab({
         {/* Dashboard Sub-tab - Shows Inventory Items List */}
         {inventorySubTab === 'dashboard' && (
           <InventoryDashboard
-            onItemSelect={(item) => console.log('Selected item:', item)}
-            onGenerateOrders={(orders) => console.log('Generated orders:', orders)}
+            onItemSelect={() => {}}
+            onGenerateOrders={() => {}}
           />
         )}
 

@@ -299,7 +299,6 @@ vi.mock('../../services/database/indexedDB', () => ({
 // Import services after mocking
 import { createVendor } from '../../services/inventory/vendorService';
 import { createItem, getItem } from '../../services/inventory/inventoryItemService';
-import { createInvoice, getInvoice, updateInvoice } from '../../services/inventory/invoiceService';
 import {
   createLine,
   matchLineToItem,

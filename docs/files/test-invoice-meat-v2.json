@@ -1,0 +1,51 @@
+{
+  "invoice_header": {
+    "company": "C&C Packing Inc.",
+    "invoice_number": "TEST-MEAT-002",
+    "date": "2025-12-30",
+    "address": "123 Meat Lane, Montreal, QC",
+    "phone": "514-555-1234"
+  },
+  "customer": {
+    "name": "Aux saveurs des Sévelin",
+    "address": "456 Restaurant St, Montreal, QC"
+  },
+  "line_items": [
+    {
+      "code": "PALERON-CUBE",
+      "description": "Palerons en cubes (Beef Chuck Cubes) 2/5KG",
+      "quantity": 1,
+      "unit": "case",
+      "unit_price": 199.00,
+      "total": 199.00,
+      "weight": 9.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "BACON-LARD",
+      "description": "Bacon cru en lardons (Raw Bacon Lardons) 1/2KG",
+      "quantity": 2,
+      "unit": "pkg",
+      "unit_price": 17.25,
+      "total": 34.50,
+      "weight": 0.6,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "BOEUF-HACHE",
+      "description": "Viande hachée medium (Ground Beef Medium) 2/5KG",
+      "quantity": 1,
+      "unit": "case",
+      "unit_price": 152.00,
+      "total": 152.00,
+      "weight": 10.0,
+      "weight_unit": "kg"
+    }
+  ],
+  "totals": {
+    "subtotal": 385.50,
+    "tps": 19.28,
+    "tvq": 38.47,
+    "total": 443.25
+  }
+}

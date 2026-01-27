@@ -142,7 +142,6 @@ export class BulkIngredientVoice {
   processCurrentLine() {
     if (this.currentLine.trim()) {
       this.lines.push(this.currentLine.trim());
-      console.log('📝 Line captured:', this.currentLine.trim());
 
       // Update UI
       this.onTranscriptUpdate({
@@ -197,7 +196,6 @@ export class BulkIngredientVoice {
 
     try {
       this.recognition.start();
-      console.log('🎤 Bulk ingredient dictation started');
     } catch (error) {
       console.error('Error starting recognition:', error);
       this.onError(error.message);
@@ -223,8 +221,6 @@ export class BulkIngredientVoice {
         console.error('Error stopping recognition:', error);
       }
     }
-
-    console.log('⏹️ Bulk dictation stopped. Lines captured:', this.lines.length);
 
     // Return full transcript
     const result = {
@@ -291,8 +287,6 @@ export class BulkIngredientVoice {
     this.fullTranscript = '';
     this.currentLine = '';
     this.lines = [];
-
-    console.log('🧹 BulkIngredientVoice cleaned up');
   }
 
   /**
@@ -306,8 +300,6 @@ export class BulkIngredientVoice {
     this.onTranscriptUpdate = null;
     this.onComplete = null;
     this.onError = null;
-
-    console.log('🧹 BulkIngredientVoice destroyed');
   }
 }
 

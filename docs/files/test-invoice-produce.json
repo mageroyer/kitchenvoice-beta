@@ -1,0 +1,90 @@
+{
+  "invoice_header": {
+    "company": "Birri & Fils Produce",
+    "invoice_number": "TEST-PROD-001",
+    "date": "2025-12-29",
+    "address": "789 Market Blvd, Montreal, QC",
+    "phone": "514-555-5678"
+  },
+  "customer": {
+    "name": "Aux saveurs des Sévelin"
+  },
+  "line_items": [
+    {
+      "code": "OIG-CUBE",
+      "description": "Oignons en cubes (Diced Onions) 1/2KG",
+      "quantity": 2,
+      "unit": "bag",
+      "unit_price": 8.95,
+      "total": 17.90,
+      "weight": 2.0,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "OIG-JAUNE",
+      "description": "Oignons jaunes (Yellow Onions) 50LB",
+      "quantity": 1,
+      "unit": "bag",
+      "unit_price": 32.00,
+      "total": 32.00,
+      "weight": 22.68,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "CAROT-MED",
+      "description": "Carottes moyennes (Medium Carrots) 25LB",
+      "quantity": 1,
+      "unit": "bag",
+      "unit_price": 18.50,
+      "total": 18.50,
+      "weight": 11.34,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "AIL-FRAIS",
+      "description": "Ail frais (Fresh Garlic) 1LB",
+      "quantity": 2,
+      "unit": "lb",
+      "unit_price": 4.25,
+      "total": 8.50,
+      "weight": 0.907,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "CHAMP-TRANCH",
+      "description": "Champignons tranchés (Sliced Mushrooms) 5LB",
+      "quantity": 1,
+      "unit": "box",
+      "unit_price": 14.95,
+      "total": 14.95,
+      "weight": 2.27,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "EPIN-SAC",
+      "description": "Épinards frais (Fresh Spinach) 2.5LB",
+      "quantity": 1,
+      "unit": "bag",
+      "unit_price": 12.50,
+      "total": 12.50,
+      "weight": 1.13,
+      "weight_unit": "kg"
+    },
+    {
+      "code": "OLIVE-NOIR",
+      "description": "Olives noires tranchées (Sliced Black Olives) 2/1.5KG",
+      "quantity": 1,
+      "unit": "case",
+      "unit_price": 24.00,
+      "total": 24.00,
+      "weight": 3.0,
+      "weight_unit": "kg"
+    }
+  ],
+  "totals": {
+    "subtotal": 128.35,
+    "tps": 6.42,
+    "tvq": 12.80,
+    "total": 147.57
+  }
+}

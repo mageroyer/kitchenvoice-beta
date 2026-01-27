@@ -79,8 +79,6 @@ class GoogleCloudSpeechService {
       this.mediaRecorder.start();
       this.isRecording = true;
 
-      console.log('🎤 Google Cloud Speech recording started');
-
     } catch (error) {
       console.error('Error starting recording:', error);
       this.cleanup();
@@ -94,7 +92,6 @@ class GoogleCloudSpeechService {
   stop() {
     if (this.mediaRecorder && this.isRecording) {
       this.mediaRecorder.stop();
-      console.log('⏹️ Recording stopped, processing audio...');
     }
   }
 
@@ -106,8 +103,6 @@ class GoogleCloudSpeechService {
     let base64Audio = null;
 
     try {
-      console.log(`📤 Sending ${(audioBlob.size / 1024).toFixed(2)}KB audio to backend...`);
-
       // Convert blob to base64
       base64Audio = await this.blobToBase64(audioBlob);
 
@@ -133,7 +128,6 @@ class GoogleCloudSpeechService {
       const result = await response.json();
 
       if (result.success && result.transcript) {
-        console.log(`✅ Transcription: "${result.transcript}" (confidence: ${(result.confidence * 100).toFixed(1)}%)`);
         if (this.onTranscript) this.onTranscript(result.transcript, result.confidence);
       } else {
         throw new Error(result.error || 'Failed to transcribe audio');
@@ -176,14 +170,12 @@ class GoogleCloudSpeechService {
     if (this.stream) {
       this.stream.getTracks().forEach(track => {
         track.stop();
-        console.log('🧹 Audio track stopped');
       });
       this.stream = null;
     }
 
     // Clear audio chunks array to release blob references
     if (this.audioChunks.length > 0) {
-      console.log(`🧹 Clearing ${this.audioChunks.length} audio chunks`);
       this.audioChunks.length = 0; // Clear array without creating new reference
     }
 
@@ -204,7 +196,6 @@ class GoogleCloudSpeechService {
     this.onTranscript = null;
     this.onError = null;
     this.onEnd = null;
-    console.log('🧹 GoogleCloudSpeechService destroyed');
   }
 }
 

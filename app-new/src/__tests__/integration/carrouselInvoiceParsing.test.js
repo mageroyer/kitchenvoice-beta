@@ -16,7 +16,6 @@ import {
   extractProductDimensions,
   generateContainerFormatHints
 } from '../../utils/packagingParser';
-import parsingProfileManager from '../../services/invoice/parsingProfileManager';
 
 /**
  * Simulated parsed line items from the Carrousel invoice PDF
@@ -218,42 +217,6 @@ describe('Carrousel Invoice Parsing', () => {
       });
 
       expect(result.productDimensions.specs).toContain('2PLY');
-    });
-  });
-
-  describe('Vendor Profile Integration', () => {
-    it('should generate proper prompt hints for container distributor', () => {
-      const profile = {
-        quirks: {
-          isContainerDistributor: true,
-          hasNestedUnits: true,
-          hasRollProducts: true,
-          hasContainerCapacity: true
-        },
-        columns: {
-          containerFormat: { index: 3 }
-        }
-      };
-
-      const hints = parsingProfileManager.generatePromptHints(profile);
-
-      expect(hints).toContain('CONTAINER/PACKAGING FORMAT');
-      expect(hints).toContain('10/100');
-      expect(hints).toContain('6/RL');
-      expect(hints).toContain('CAPACITY');
-    });
-
-    it('should generate hints even without column mapping if quirk is set', () => {
-      const profile = {
-        quirks: {
-          isContainerDistributor: true
-        },
-        columns: {}
-      };
-
-      const hints = parsingProfileManager.generatePromptHints(profile);
-
-      expect(hints).toContain('CONTAINER/PACKAGING FORMAT');
     });
   });
 

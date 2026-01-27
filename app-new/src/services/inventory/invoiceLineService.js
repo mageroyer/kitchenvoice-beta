@@ -17,60 +17,7 @@ import {
 } from '../database/indexedDB';
 import { searchItems, createItem as createInventoryItem, normalizeName } from './inventoryItemService';
 import { addStockFromInvoice } from './stockService';
-import { extractWeightFromName } from '../../utils/format';
-import { detectToolUnit, getUnitFactorForPrice } from '../../utils/unitConversion';
-import {
-  parsePackagingInfo,
-  parseContainerFormat,
-  extractContainerCapacity,
-  extractProductDimensions,
-  isContainerProduct,
-  isLinearProduct
-} from '../../utils/packagingParser';
-
-// ============================================
-// Unit Parsing Helper
-// ============================================
-
-/**
- * Parse a unit string to extract purchase quantity and unit
- * Uses shared detectToolUnit for tool units, falls back to direct parsing
- */
-function parseUnitString(unitStr) {
-  if (!unitStr || typeof unitStr !== 'string') {
-    return { purchaseQty: null, purchaseUnit: null, baseGrams: null };
-  }
-
-  // First try tool unit detection (handles "caisse 5lb", etc.)
-  const toolResult = detectToolUnit(unitStr);
-  if (toolResult.isTool && toolResult.hasWeight) {
-    return {
-      purchaseQty: null, // Tool units don't have qty in same way
-      purchaseUnit: toolResult.toolAbbrev,
-      baseGrams: toolResult.weightG
-    };
-  }
-
-  // Direct pattern match for simple units like "5kg", "10lb", "500ml"
-  const normalized = unitStr.toLowerCase().trim();
-  const match = normalized.match(/(\d+[.,]?\d*)\s*(lb|lbs|kg|g|oz|ml|l|cl)/i);
-
-  if (match) {
-    const qty = parseFloat(match[1].replace(',', '.'));
-    const unit = match[2].toLowerCase();
-    const unitInfo = getUnitFactorForPrice(unit);
-
-    if (unitInfo) {
-      return {
-        purchaseQty: qty,
-        purchaseUnit: unit === 'lbs' ? 'lb' : unit,
-        baseGrams: qty * unitInfo.factor
-      };
-    }
-  }
-
-  return { purchaseQty: null, purchaseUnit: null, baseGrams: null };
-}
+import { getHandler, getHandlerForCategory } from '../invoice/handlers';
 
 // ============================================
 // Constants
@@ -341,9 +288,9 @@ export async function getLinesByInvoice(invoiceId, { includeItemInfo = true } = 
             id: item.id,
             name: item.name,
             sku: item.sku,
-            unit: item.unit,
+            stockQuantity: item.stockQuantity,
+            stockWeight: item.stockWeight,
             currentPrice: item.currentPrice,
-            currentStock: item.currentStock,
             vendorName: item.vendorName
           }
         };
@@ -547,10 +494,15 @@ export async function unmatchLine(lineId) {
  * Creates a new inventory item using the line's data and
  * automatically matches the line to the new item.
  *
+ * Uses invoice type handlers to ensure correct calculations:
+ * - Food supply: calculates pricePerG, weight tracking
+ * - Packaging: calculates containerUnitsStock, NO pricePerG
+ * - Generic: basic item creation
+ *
  * @param {number} lineId - Line item ID
  * @param {Object} [additionalData] - Additional item data
  * @param {string} [additionalData.category] - Item category
- * @param {number} [additionalData.parLevel] - Par level
+ * @param {number} [additionalData.parQuantity] - Par quantity level
  * @param {number} [additionalData.reorderPoint] - Reorder point
  * @param {string} [additionalData.createdBy] - User ID
  * @returns {Promise<{ item: Object, line: Object }>}
@@ -575,165 +527,88 @@ export async function createItemFromLine(lineId, additionalData = {}) {
   }
 
   // Get vendor info
-  let vendorId = invoice.vendorId;
-  let vendorName = invoice.vendorName;
-
+  const vendorId = invoice.vendorId;
   if (!vendorId) {
     throw new Error('Invoice does not have a vendor assigned');
   }
 
-  // Get vendor if name not on invoice
-  if (!vendorName && vendorId) {
-    const vendor = await vendorDB.getById(vendorId);
-    if (vendor) {
-      vendorName = vendor.name;
-    }
+  // Get full vendor object (includes parsingProfile with invoiceType)
+  const vendor = await vendorDB.getById(vendorId);
+  if (!vendor) {
+    throw new Error('Vendor not found');
   }
 
-  // Parse unit string to extract purchase quantity/unit
-  const rawUnit = line.unit || line.rawUnit || 'ea';
-  const parsedUnit = parseUnitString(rawUnit);
+  // Get the appropriate handler based on vendor's invoice type
+  const handler = getHandlerForVendor(vendor);
+  const invoiceType = handler.type;
 
-  // Try to extract weight from item name (e.g., "HUILE 500ML" → 500ml)
-  const itemName = line.description || line.rawDescription || '';
-  const extractedWeight = extractWeightFromName(itemName);
+  // Build line item object for handler
+  const lineItem = {
+    description: line.description || line.rawDescription || '',
+    name: line.description || line.rawDescription || '',
+    rawDescription: line.rawDescription,
+    itemCode: line.sku || line.rawSku || '',
+    quantity: line.quantity || 1,
+    unit: line.unit || line.rawUnit || 'ea',
+    unitPrice: line.unitPrice || 0,
+    total: line.totalPrice || (line.unitPrice * line.quantity),
+    totalPrice: line.totalPrice || (line.unitPrice * line.quantity),
+    // Boxing format from wizard column mapping: boxingFormat > format > packagingFormat
+    boxingFormat: line.boxingFormat || null,
+    format: line.boxingFormat || line.format || line.packagingFormat || null,
+    weight: line.weight,
+    weightUnit: line.weightUnit,
+    category: additionalData.category || line.category || null,
+  };
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // CONTAINER/PACKAGING FORMAT PARSING
-  // For packaging distributors like Carrousel Emballage
-  // ═══════════════════════════════════════════════════════════════════════
-  const rawFormat = line.format || line.packagingFormat || null;
-  const packagingInfo = parsePackagingInfo({
-    description: itemName,
-    format: rawFormat,
-    quantity: line.quantity || 1
+  // Call handler's createInventoryItem - handles type-specific calculations
+  const handlerResult = handler.createInventoryItem(lineItem, vendor, {
+    invoiceId: line.invoiceId,
+    invoiceDate: invoice.invoiceDate
   });
 
-  // Extract container capacity (for containers/lids - NOT product weight)
-  const containerCapacityInfo = extractContainerCapacity(itemName);
-
-  // Extract product dimensions (35X50, 8X8, etc.)
-  const dimensionInfo = extractProductDimensions(itemName);
-
-  // Log packaging parsing results
-  if (rawFormat) {
-    console.log(`[InvoiceLineService] Packaging format "${rawFormat}" parsed:`, {
-      type: packagingInfo.packaging.packagingType,
-      packCount: packagingInfo.packaging.packCount,
-      unitsPerPack: packagingInfo.packaging.unitsPerPack,
-      totalUnitsPerCase: packagingInfo.packaging.totalUnitsPerCase,
-      rollsPerCase: packagingInfo.packaging.rollsPerCase,
-      calculatedTotalUnits: packagingInfo.calculatedTotalUnits
-    });
-  }
-
-  if (containerCapacityInfo) {
-    console.log(`[InvoiceLineService] Container capacity detected (NOT product weight):`, containerCapacityInfo);
-  }
-
-  // Calculate pricePerG or pricePerML if we have weight info
-  let pricePerG = null;
-  let pricePerML = null;
-  const unitPrice = line.unitPrice || 0;
-
-  if (extractedWeight && unitPrice > 0) {
-    // Calculate normalized price per gram/ml
-    if (extractedWeight.isVolume) {
-      pricePerML = unitPrice / extractedWeight.valueInGrams; // valueInGrams is actually ml for volumes
-      pricePerML = Math.round(pricePerML * 1000000) / 1000000; // 6 decimal precision
-    } else {
-      pricePerG = unitPrice / extractedWeight.valueInGrams;
-      pricePerG = Math.round(pricePerG * 1000000) / 1000000;
-    }
-    console.log(`[InvoiceLineService] Auto-extracted weight from "${itemName}": ${extractedWeight.original} → pricePerG: ${pricePerG}, pricePerML: ${pricePerML}`);
-  } else if (parsedUnit.baseGrams && unitPrice > 0) {
-    // Fall back to parsed unit if no weight in name
-    pricePerG = unitPrice / parsedUnit.baseGrams;
-    pricePerG = Math.round(pricePerG * 1000000) / 1000000;
-    console.log(`[InvoiceLineService] Calculated from unit "${rawUnit}": pricePerG: ${pricePerG}`);
-  }
-
-  // Create inventory item data
+  // Merge handler result with additional data
   const itemData = {
-    name: itemName,
-    sku: line.sku || line.rawSku || '',
-    unit: rawUnit, // Keep original unit for display
-    vendorId,
-    vendorName,
-    currentPrice: unitPrice,
-    category: additionalData.category || line.category || 'Other',
-    parLevel: additionalData.parLevel,
-    reorderPoint: additionalData.reorderPoint,
+    ...handlerResult.item,
+    // Override with any additional data provided
+    ...(additionalData.category && { category: additionalData.category }),
+    ...(additionalData.parQuantity !== undefined && { parQuantity: additionalData.parQuantity }),
+    ...(additionalData.reorderPoint !== undefined && { reorderPoint: additionalData.reorderPoint }),
     createdBy: additionalData.createdBy,
-    // Add normalized price fields
-    ...(pricePerG !== null && { pricePerG }),
-    ...(pricePerML !== null && { pricePerML }),
-    // Add structured purchase fields if parsed successfully
-    ...(parsedUnit.purchaseQty && {
-      purchaseQty: parsedUnit.purchaseQty,
-      purchaseUnit: parsedUnit.purchaseUnit,
-      packageSize: parsedUnit.purchaseQty,
-      packageUnit: parsedUnit.purchaseUnit,
-    }),
-    // Store extracted weight info
-    ...(extractedWeight && {
-      weightPerUnit: extractedWeight.value,
-      weightPerUnitUnit: extractedWeight.unit,
-    }),
-    // ═══════════════════════════════════════════════════════════════════
-    // Container/Packaging Fields
-    // ═══════════════════════════════════════════════════════════════════
-    ...(rawFormat && {
-      packagingFormat: rawFormat,
-      packagingType: packagingInfo.packaging.packagingType,
-      packCount: packagingInfo.packaging.packCount,
-      unitsPerPack: packagingInfo.packaging.unitsPerPack,
-      totalUnitsPerCase: packagingInfo.packaging.totalUnitsPerCase,
-      ...(packagingInfo.packaging.rollsPerCase && {
-        rollsPerCase: packagingInfo.packaging.rollsPerCase,
-        lengthPerRoll: packagingInfo.packaging.lengthPerRoll,
-        lengthUnit: packagingInfo.packaging.lengthUnit,
-      }),
-    }),
-    // Container capacity (IMPORTANT: this is NOT product weight)
-    ...(containerCapacityInfo && {
-      containerCapacity: containerCapacityInfo.capacity,
-      containerCapacityUnit: containerCapacityInfo.unit,
-      containerType: containerCapacityInfo.containerType,
-    }),
-    // Product dimensions and specs
-    ...(dimensionInfo.dimensions && {
-      productDimensions: dimensionInfo.dimensions,
-    }),
-    ...(dimensionInfo.width && {
-      productWidth: dimensionInfo.width,
-      productWidthUnit: dimensionInfo.widthUnit,
-    }),
-    ...(dimensionInfo.specs && {
-      productSpecs: dimensionInfo.specs,
-    }),
   };
 
   // Create the inventory item
   const item = await createInventoryItem(itemData, { createInitialTransaction: false });
 
-  // Update line with match to new item and extracted weight info
-  await invoiceLineDB.update(lineId, {
+  // Build line update based on invoice type
+  const lineUpdate = {
     inventoryItemId: item.id,
     matchStatus: MATCH_STATUS.NEW_ITEM,
     matchedBy: additionalData.createdBy || 'user',
     matchedAt: new Date().toISOString(),
-    matchNotes: 'Created new inventory item',
-    // Store extracted weight and calculated prices on line item too (source of truth)
-    ...(extractedWeight && {
-      weightPerUnit: extractedWeight.value,
-      weightPerUnitUnit: extractedWeight.unit,
-      weight: extractedWeight.valueInGrams,
-      weightUnit: extractedWeight.isVolume ? 'ml' : 'g',
-    }),
-    ...(pricePerG !== null && { pricePerG }),
-    ...(pricePerML !== null && { pricePerML }),
-  });
+    matchNotes: `Created new inventory item (${handler.label})`,
+  };
+
+  // Add type-specific fields to line update
+  if (handlerResult.item.pricePerG != null) {
+    lineUpdate.pricePerG = handlerResult.item.pricePerG;
+  }
+  if (handlerResult.item.pricePerML != null) {
+    lineUpdate.pricePerML = handlerResult.item.pricePerML;
+  }
+  if (handlerResult.item.receivedWeight != null) {
+    lineUpdate.weight = handlerResult.item.receivedWeight;
+    lineUpdate.weightUnit = handlerResult.item.weightUnit;
+  }
+  if (handlerResult.item.containerUnitsStock != null) {
+    lineUpdate.containerUnitsStock = handlerResult.item.containerUnitsStock;
+  }
+  if (handlerResult.item.totalUnitsPerCase != null) {
+    lineUpdate.totalUnitsPerCase = handlerResult.item.totalUnitsPerCase;
+  }
+
+  // Update line with match info
+  await invoiceLineDB.update(lineId, lineUpdate);
 
   // Get updated line
   const updatedLine = await invoiceLineDB.getById(lineId);
@@ -743,6 +618,11 @@ export async function createItemFromLine(lineId, additionalData = {}) {
 
 /**
  * Apply a line item to inventory (add stock)
+ *
+ * Uses invoice type handlers to ensure correct calculations:
+ * - Food supply: weight-based stock tracking, pricePerG updates
+ * - Packaging: containerUnitsStock tracking, NO weight calculations
+ * - Generic: quantity-based stock tracking
  *
  * @param {number} lineId - Line item ID
  * @param {Object} [options] - Options
@@ -757,22 +637,6 @@ export async function applyLineToInventory(lineId, { appliedBy = null } = {}) {
     throw new Error('Invoice line item not found');
   }
 
-  // DEBUG: Log entire line object to see what fields exist
-  console.log(`[InvoiceLineService] ═══════════════════════════════════════════`);
-  console.log(`[InvoiceLineService] LINE DATA FROM DB:`, JSON.stringify({
-    id: line.id,
-    description: line.description,
-    quantity: line.quantity,
-    weight: line.weight,
-    weightPerUnit: line.weightPerUnit,
-    totalWeight: line.totalWeight,
-    packCount: line.packCount,
-    packWeight: line.packWeight,
-    unitPrice: line.unitPrice,
-    totalPrice: line.totalPrice
-  }, null, 2));
-  console.log(`[InvoiceLineService] ═══════════════════════════════════════════`);
-
   // Validate line is matched
   if (!line.inventoryItemId) {
     throw new Error('Line item must be matched to an inventory item before applying');
@@ -784,103 +648,102 @@ export async function applyLineToInventory(lineId, { appliedBy = null } = {}) {
   }
 
   // Get matched item
-  const item = await inventoryItemDB.getById(line.inventoryItemId);
-  if (!item) {
+  const existingItem = await inventoryItemDB.getById(line.inventoryItemId);
+  if (!existingItem) {
     throw new Error('Matched inventory item not found');
   }
 
-  const previousStock = item.currentStock || 0;
+  // Get invoice for vendor info
+  const invoice = await invoiceDB.getById(line.invoiceId);
+  if (!invoice) {
+    throw new Error('Invoice not found');
+  }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // Calculate stock quantity based on item type and line data
-  //
-  // For pack formats like "Sac 50lb" with quantity 2:
-  //   - line.quantity = 2 (bags)
-  //   - line.totalWeight or line.weight = 100 (total weight)
-  //   - OR line.weightPerUnit = 50 (per unit weight)
-  //
-  // For container formats like "10/100" with quantity 1:
-  //   - line.quantity = 1 (cases)
-  //   - line.totalUnitsPerCase = 1000 (10 packs × 100 units)
-  //   - Total stock = 1 × 1000 = 1000 units
-  //
-  // Use the TOTAL value (weight, units, or count) for stock, not just the quantity.
-  // ═══════════════════════════════════════════════════════════════════════
+  // Get vendor (includes parsingProfile with invoiceType)
+  const vendor = await vendorDB.getById(invoice.vendorId);
+  if (!vendor) {
+    throw new Error('Vendor not found');
+  }
+
+  // Get the appropriate handler based on vendor's invoice type
+  const handler = getHandlerForVendor(vendor);
+
+  // Build line item object for handler
+  const lineItem = {
+    description: line.description || line.rawDescription || '',
+    name: line.description || line.rawDescription || '',
+    rawDescription: line.rawDescription,
+    itemCode: line.sku || line.rawSku || '',
+    quantity: line.quantity || 1,
+    unit: line.unit || line.rawUnit || 'ea',
+    unitPrice: line.unitPrice || 0,
+    total: line.totalPrice || (line.unitPrice * line.quantity),
+    totalPrice: line.totalPrice || (line.unitPrice * line.quantity),
+    // Boxing format from wizard column mapping: boxingFormat > format > packagingFormat
+    boxingFormat: line.boxingFormat || null,
+    format: line.boxingFormat || line.format || line.packagingFormat || null,
+    weight: line.weight,
+    weightUnit: line.weightUnit,
+    totalWeight: line.totalWeight,
+    weightPerUnit: line.weightPerUnit,
+    packCount: line.packCount,
+    packWeight: line.packWeight,
+    category: line.category,
+  };
+
+  // Call handler's updateInventoryItem - handles type-specific calculations
+  const handlerResult = handler.updateInventoryItem(existingItem, lineItem, vendor, {
+    invoiceId: line.invoiceId,
+    invoiceDate: invoice.invoiceDate
+  });
+
+  // Update price history for audit trail
+  const priceQty = line.weight || line.quantity || 1;
+  await inventoryItemDB.updatePriceFromInvoice(
+    line.inventoryItemId,
+    line.unitPrice || 0,
+    { quantity: priceQty, invoiceId: line.invoiceId, purchaseDate: invoice.invoiceDate }
+  );
+
+  // Determine stock values based on handler updates
+  const previousStockQty = existingItem.stockQuantity || 0;
+  const previousStockWeight = existingItem.stockWeight || 0;
+  const rawFormat = line.format || line.packagingFormat || existingItem.packagingFormat || null;
+
+  // Extract stock tracking values from handler result
   let stockQuantity = line.quantity;
   let stockWeight = null;
-  let stockUnits = null;  // For container format (total pieces/units)
-  let stockLength = null; // For roll products (total linear feet/meters)
+  let stockUnits = null;
+  let stockLength = null;
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // CONTAINER FORMAT HANDLING (10/100, 6/RL, 1/500 notation)
-  // ═══════════════════════════════════════════════════════════════════════
-  const rawFormat = line.format || line.packagingFormat || item.packagingFormat || null;
-
-  if (rawFormat) {
-    // Parse the format to get packaging info
-    const packagingInfo = parsePackagingInfo({
-      description: line.description || item.name || '',
-      format: rawFormat,
-      quantity: line.quantity || 1
-    });
-
-    // For nested units (10/100) or simple (1/500): calculate total units
-    if (packagingInfo.packaging.packagingType === 'nested_units' ||
-        packagingInfo.packaging.packagingType === 'simple') {
-      stockUnits = packagingInfo.calculatedTotalUnits;
-      console.log(`[InvoiceLineService] Container format "${rawFormat}": ${line.quantity} case(s) × ${packagingInfo.packaging.totalUnitsPerCase} units/case = ${stockUnits} total units`);
-    }
-
-    // For rolls (6/RL): calculate total length if available
-    if (packagingInfo.packaging.packagingType === 'rolls') {
-      stockQuantity = line.quantity * packagingInfo.packaging.rollsPerCase;
-      if (packagingInfo.calculatedTotalLength) {
-        stockLength = packagingInfo.calculatedTotalLength;
-        console.log(`[InvoiceLineService] Roll format "${rawFormat}": ${line.quantity} case(s) × ${packagingInfo.packaging.rollsPerCase} rolls × ${packagingInfo.packaging.lengthPerRoll}${packagingInfo.packaging.lengthUnit || 'ft'} = ${stockLength} total length`);
-      } else {
-        console.log(`[InvoiceLineService] Roll format "${rawFormat}": ${line.quantity} case(s) × ${packagingInfo.packaging.rollsPerCase} rolls = ${stockQuantity} total rolls`);
-      }
-    }
-  }
-
-  // Priority 1: Use container format units if available
-  if (stockUnits != null && stockUnits > 0) {
+  // For packaging: use stockQuantity (base units)
+  if (handlerResult.updates.stockQuantity != null && handler.type === 'packagingDistributor') {
+    // The handler calculates the NEW total, we need the delta
+    stockUnits = handlerResult.updates.stockQuantity - previousStockQty;
     stockQuantity = stockUnits;
-    console.log(`[InvoiceLineService] Using container format units: ${stockQuantity}`);
   }
-  // Priority 2: Use totalWeight if available (calculated from pack format)
-  else if (line.totalWeight != null && line.totalWeight > 0) {
-    stockWeight = line.totalWeight;
-    console.log(`[InvoiceLineService] Using totalWeight: ${stockWeight}`);
+  // For food supply: use weight if available
+  else if (handlerResult.updates.stockWeight != null || handlerResult.updates.receivedWeight != null) {
+    stockWeight = handlerResult.updates.receivedWeight ||
+                  (handlerResult.updates.stockWeight - (existingItem.stockWeight || 0));
   }
-  // Priority 3: Use weight field if available
-  else if (line.weight != null && line.weight > 0) {
-    stockWeight = line.weight;
-    console.log(`[InvoiceLineService] Using weight: ${stockWeight}`);
-  }
-  // Priority 4: Calculate from quantity × weightPerUnit
-  else if (line.weightPerUnit != null && line.weightPerUnit > 0 && line.quantity > 0) {
-    stockWeight = line.quantity * line.weightPerUnit;
-    console.log(`[InvoiceLineService] Calculated weight: ${line.quantity} × ${line.weightPerUnit} = ${stockWeight}`);
-  }
-  // Priority 5: Calculate from quantity × packCount × packWeight (4/5LB format)
-  else if (line.packCount != null && line.packWeight != null && line.quantity > 0) {
-    stockWeight = line.quantity * line.packCount * line.packWeight;
-    console.log(`[InvoiceLineService] Pack weight: ${line.quantity} × ${line.packCount} × ${line.packWeight} = ${stockWeight}`);
+  // For rolls: track length
+  else if (handlerResult.updates.rollsPerCase != null) {
+    stockQuantity = line.quantity * (handlerResult.updates.rollsPerCase || 1);
+    if (handlerResult.updates.totalLength) {
+      const existingLength = existingItem.totalLength || 0;
+      stockLength = handlerResult.updates.totalLength - existingLength;
+    }
   }
 
-  // Use weight for stock if item is weight-based, otherwise use quantity (or units from container format)
-  const isWeightBased = item.unit?.toLowerCase()?.match(/^(lb|lbs|kg|g|oz)$/i) ||
-                        item.stockWeightUnit?.toLowerCase()?.match(/^(lb|lbs|kg|g|oz)$/i);
-  const finalStockQty = (isWeightBased && stockWeight != null) ? stockWeight : stockQuantity;
+  // Determine final stock quantity
+  const isWeightBased = existingItem.pricingType === 'weight' ||
+                        existingItem.stockWeightUnit?.toLowerCase()?.match(/^(lb|lbs|kg|g|oz)$/i);
+  const finalStockQty = stockUnits != null ? stockUnits :
+                        (isWeightBased && stockWeight != null) ? stockWeight :
+                        stockQuantity;
 
-  console.log(`[InvoiceLineService] Applying to inventory: item=${item.name}, qty=${stockQuantity}, weight=${stockWeight}, final=${finalStockQty}, unit=${item.unit}, isWeightBased=${!!isWeightBased}`);
-
-  // Add stock from invoice with dual tracking
-  // - unitQuantity: number of units (e.g., 2 sacs)
-  // - totalWeight: total weight (e.g., 100lb for 2×50lb sacs)
-  // - containerUnits: total units from container format (e.g., 1000 gloves)
-  // - totalLength: total linear length for roll products
+  // Add stock from invoice
   const transaction = await addStockFromInvoice(
     line.inventoryItemId,
     finalStockQty,
@@ -890,25 +753,68 @@ export async function applyLineToInventory(lineId, { appliedBy = null } = {}) {
       unitCost: line.unitPrice,
       createdBy: appliedBy,
       // Dual stock tracking
-      unitQuantity: line.quantity,       // Case/order count (e.g., 1 case)
-      totalWeight: stockWeight,          // Total weight (e.g., 100lb)
+      unitQuantity: line.quantity,
+      totalWeight: stockWeight,
       // Container format tracking
-      containerUnits: stockUnits,        // Total units from container format (e.g., 1000 gloves)
-      containerFormat: rawFormat,        // Format string (e.g., "10/100")
-      totalLength: stockLength           // Total linear length for roll products
+      containerUnits: stockUnits,
+      boxingFormat: rawFormat,
+      totalLength: stockLength
     }
   );
 
+  // Apply handler updates to inventory item (price, format info, etc.)
+  // Filter out stock fields that are managed by addStockFromInvoice
+  const itemUpdates = { ...handlerResult.updates };
+  delete itemUpdates.stockQuantity; // Managed by addStockFromInvoice
+  delete itemUpdates.stockWeight;   // Managed by addStockFromInvoice
+
+  // Track previous prices for price variation display in recipes
+  if (itemUpdates.pricePerG != null && existingItem.pricePerG != null) {
+    itemUpdates.previousPricePerG = existingItem.pricePerG;
+  }
+  if (itemUpdates.pricePerKg != null && existingItem.pricePerKg != null) {
+    itemUpdates.previousPricePerKg = existingItem.pricePerKg;
+  }
+  if (itemUpdates.pricePerLb != null && existingItem.pricePerLb != null) {
+    itemUpdates.previousPricePerLb = existingItem.pricePerLb;
+  }
+  if (itemUpdates.pricePerML != null && existingItem.pricePerML != null) {
+    itemUpdates.previousPricePerML = existingItem.pricePerML;
+  }
+  if (itemUpdates.pricePerL != null && existingItem.pricePerL != null) {
+    itemUpdates.previousPricePerL = existingItem.pricePerL;
+  }
+  if (itemUpdates.pricePerUnit != null && existingItem.pricePerUnit != null) {
+    itemUpdates.previousPricePerUnit = existingItem.pricePerUnit;
+  }
+
+  if (Object.keys(itemUpdates).length > 0) {
+    await inventoryItemDB.update(line.inventoryItemId, itemUpdates);
+  }
+
   // Update line with application info
-  await invoiceLineDB.update(lineId, {
+  const lineUpdate = {
     addedToInventory: true,
     addedToInventoryAt: new Date().toISOString(),
     addedToInventoryBy: appliedBy,
     previousStock,
     newStock: transaction.newStock,
-    previousPrice: item.currentPrice,
+    previousPrice: existingItem.currentPrice,
     newPrice: line.unitPrice
-  });
+  };
+
+  // Add type-specific fields from handler
+  if (handlerResult.updates.pricePerG != null) {
+    lineUpdate.pricePerG = handlerResult.updates.pricePerG;
+  }
+  if (handlerResult.updates.containerUnitsStock != null) {
+    lineUpdate.containerUnitsStock = handlerResult.updates.containerUnitsStock;
+  }
+  if (handlerResult.updates.totalUnitsPerCase != null) {
+    lineUpdate.totalUnitsPerCase = handlerResult.updates.totalUnitsPerCase;
+  }
+
+  await invoiceLineDB.update(lineId, lineUpdate);
 
   // If line was auto-matched, confirm it
   if (line.matchStatus === MATCH_STATUS.AUTO_MATCHED) {
@@ -1010,6 +916,13 @@ export async function bulkApplyLinesToInventory(invoiceId, { appliedBy = null, s
     }
   }
 
+  // Dispatch event to notify recipe views that inventory was updated
+  if (applied.length > 0) {
+    window.dispatchEvent(new CustomEvent('inventory-updated', {
+      detail: { applied, invoiceId }
+    }));
+  }
+
   return { applied, skipped, errors };
 }
 
@@ -1071,6 +984,222 @@ export async function getLinesSummary(invoiceId) {
 }
 
 // ============================================
+// Batch Inventory Processing
+// ============================================
+
+/**
+ * Process line items into inventory - creates or updates inventory items.
+ * Uses handlers for type-specific logic (weight extraction, pricePerG, etc.)
+ *
+ * This function is called after invoice lines are saved to DB.
+ * It handles both new items (create) and existing items (update).
+ *
+ * Each line's AI-assigned category determines its handler (food → foodSupplyHandler,
+ * packaging → packagingHandler, etc.). Uncategorized lines use genericHandler.
+ *
+ * @param {Object} options - Processing options
+ * @param {Array} options.lineItems - Line items to process (with handler-calculated fields)
+ * @param {Array} options.lineItemIds - Corresponding DB line item IDs
+ * @param {Object} options.vendor - { id, name }
+ * @param {string} options.invoiceId - Invoice ID
+ * @param {string} options.invoiceDate - Invoice date
+ * @returns {Promise<{ created: number, updated: number, errors: string[] }>}
+ */
+export async function processLinesToInventory({
+  lineItems,
+  lineItemIds,
+  vendor,
+  invoiceId,
+  invoiceDate
+}) {
+  const now = new Date().toISOString();
+
+  // Fallback for uncategorized lines (rare - AI categorizes most lines)
+  const fallbackHandler = getHandler('generic');
+
+  // Helper to get handler for a line item based on category
+  const getLineHandler = (item) => {
+    if (item.category) {
+      return getHandlerForCategory(item.category);
+    }
+    return fallbackHandler;
+  };
+
+  let created = 0;
+  let updated = 0;
+  const errors = [];
+
+  for (let i = 0; i < lineItems.length; i++) {
+    const item = lineItems[i];
+    const lineItemId = lineItemIds[i];
+    const itemName = item.name || item.description;
+
+    if (!itemName) {
+      errors.push(`Line ${i + 1}: Missing item name`);
+      continue;
+    }
+
+    try {
+      // Check if inventory item exists (by vendor + name)
+      let existingItem = null;
+      if (vendor.id) {
+        existingItem = await inventoryItemDB.getByVendorAndName(vendor.id, itemName);
+      }
+
+      if (existingItem) {
+        // UPDATE existing item using handler (per-line category routing)
+        const lineHandler = getLineHandler(item);
+        const { updates, warnings, previousValues } = lineHandler.updateInventoryItem(
+          existingItem,
+          item,
+          vendor,
+          { invoiceId, invoiceDate }
+        );
+
+        // Update price history
+        const priceQty = item.weightInGrams || item.weight || item.quantity || 1;
+        await inventoryItemDB.updatePriceFromInvoice(
+          existingItem.id,
+          item.unitPrice || 0,
+          { quantity: priceQty, invoiceId, purchaseDate: invoiceDate }
+        );
+
+        // Calculate stock delta for transaction
+        const stockDelta = (updates.stockQuantity || 0) - (previousValues?.stockQuantity || existingItem.stockQuantity || 0);
+        const weightDelta = updates.receivedWeight ||
+                           ((updates.stockWeight || 0) - (existingItem.stockWeight || 0));
+
+        // Create stock transaction for audit trail
+        if (stockDelta !== 0 || weightDelta !== 0) {
+          await addStockFromInvoice(
+            existingItem.id,
+            stockDelta || item.quantity || 1,
+            invoiceId,
+            {
+              invoiceLineId: lineItemId,
+              unitCost: item.unitPrice || 0,
+              createdBy: 'system',
+              unitQuantity: item.quantity,
+              totalWeight: weightDelta || null,
+              boxingFormat: item.format || null
+            }
+          );
+        }
+
+        // Apply updates (excluding stock fields managed by addStockFromInvoice)
+        const itemUpdates = { ...updates };
+        delete itemUpdates.stockQuantity;
+        delete itemUpdates.stockWeight;
+
+        // Track previous prices for price variation display in recipes
+        if (itemUpdates.pricePerG != null && existingItem.pricePerG != null) {
+          itemUpdates.previousPricePerG = existingItem.pricePerG;
+        }
+        if (itemUpdates.pricePerKg != null && existingItem.pricePerKg != null) {
+          itemUpdates.previousPricePerKg = existingItem.pricePerKg;
+        }
+        if (itemUpdates.pricePerLb != null && existingItem.pricePerLb != null) {
+          itemUpdates.previousPricePerLb = existingItem.pricePerLb;
+        }
+        if (itemUpdates.pricePerML != null && existingItem.pricePerML != null) {
+          itemUpdates.previousPricePerML = existingItem.pricePerML;
+        }
+        if (itemUpdates.pricePerL != null && existingItem.pricePerL != null) {
+          itemUpdates.previousPricePerL = existingItem.pricePerL;
+        }
+        if (itemUpdates.pricePerUnit != null && existingItem.pricePerUnit != null) {
+          itemUpdates.previousPricePerUnit = existingItem.pricePerUnit;
+        }
+
+        await inventoryItemDB.update(existingItem.id, itemUpdates);
+
+        // Update line item with inventory link
+        if (lineItemId) {
+          await invoiceLineDB.update(lineItemId, {
+            inventoryItemId: existingItem.id,
+            matchStatus: MATCH_STATUS.AUTO_MATCHED,
+            matchConfidence: 100,
+            matchedBy: 'system',
+            matchedAt: now,
+            addedToInventory: true,
+            addedToInventoryAt: now,
+            addedToInventoryBy: 'system',
+            previousPrice: previousValues?.price,
+            newPrice: item.unitPrice || 0,
+            previousStockQuantity: previousValues?.stockQuantity || existingItem.stockQuantity,
+            newStockQuantity: updates.stockQuantity
+          });
+        }
+
+        updated++;
+      } else {
+        // CREATE new item using handler (per-line category routing)
+        const lineHandler = getLineHandler(item);
+        const { item: newItemData, warnings } = lineHandler.createInventoryItem(
+          item,
+          vendor,
+          { invoiceId, invoiceDate }
+        );
+
+        const newItemId = await inventoryItemDB.create(newItemData);
+
+        // Record initial stock transaction for audit trail
+        // skipStockUpdate=true because handler already set stock values in newItemData
+        const initialStock = newItemData.stockQuantity || newItemData.stockWeight || item.quantity || 1;
+        await addStockFromInvoice(
+          newItemId,
+          initialStock,
+          invoiceId,
+          {
+            invoiceLineId: lineItemId,
+            unitCost: item.unitPrice || 0,
+            createdBy: 'system',
+            skipStockUpdate: true,  // Handler already set stock - just record transaction
+            notes: 'Initial stock from invoice',
+            // Option B fix: pass invoice values for accurate purchase statistics
+            totalPrice: item.totalPrice,           // Invoice line total (validated)
+            unitQuantity: item.quantity,           // Order units (cases/pieces)
+            pricingType: item.pricingType || null  // 'weight' or 'unit'
+          }
+        );
+
+        // Update line item with new inventory link
+        if (lineItemId) {
+          await invoiceLineDB.update(lineItemId, {
+            inventoryItemId: newItemId,
+            matchStatus: MATCH_STATUS.NEW_ITEM,
+            matchConfidence: 100,
+            matchedBy: 'system',
+            matchedAt: now,
+            addedToInventory: true,
+            addedToInventoryAt: now,
+            addedToInventoryBy: 'system',
+            previousPrice: null,
+            newPrice: item.unitPrice || 0,
+            previousStockQuantity: null,
+            newStockQuantity: newItemData.stockQuantity || newItemData.stockWeight
+          });
+        }
+
+        created++;
+      }
+    } catch (err) {
+      console.error(`[InvoiceLineService] Error processing ${itemName}:`, err);
+      errors.push(`${itemName}: ${err.message}`);
+    }
+  }
+
+  // Dispatch event to notify recipe views that inventory was updated
+  if (created > 0 || updated > 0) {
+    window.dispatchEvent(new CustomEvent('inventory-updated', {
+      detail: { created, updated, invoiceId }
+    }));
+  }
+
+  return { created, updated, errors };
+}
+
+// ============================================
 // Default Export
 // ============================================
 
@@ -1101,5 +1230,8 @@ export default {
 
   // Batch Operations
   autoMatchInvoiceLines,
-  getLinesSummary
+  getLinesSummary,
+
+  // Batch Inventory Processing
+  processLinesToInventory
 };

@@ -32,6 +32,7 @@ import IngredientRow from './IngredientRow';
 import AddIngredientForm from './AddIngredientForm';
 import IngredientLinkModal from './IngredientLinkModal';
 import ValidationSummary from './ValidationSummary';
+import RecipeCostSummary from './RecipeCostSummary';
 import FixPriceModal from '../FixPriceModal';
 
 import { parseIngredientField } from '../../../utils/frenchMeasurementParser';
@@ -47,8 +48,13 @@ function IngredientList({
   onChange = () => {},
   editable = true,
   micFlag = false,
+  basePortion = 1,
   scalingFactor = 1,
   isOwner = false,
+  packages = [],
+  linkedPackageItems = {},
+  onCostChange = null,
+  methodPackagingCost = 0, // Packaging cost from MethodSteps
 }) {
   // Ensure ingredients is always an array
   const ingredients = Array.isArray(ingredientsProp) ? ingredientsProp : [];
@@ -83,6 +89,7 @@ function IngredientList({
   }, []);
 
   // Fetch linked inventory items for validation
+  // Also refreshes on visibility change (tab focus) and custom 'inventory-updated' event
   useEffect(() => {
     const fetchLinkedItems = async () => {
       // Get all linked ingredient IDs
@@ -115,6 +122,26 @@ function IngredientList({
     };
 
     fetchLinkedItems();
+
+    // Refresh when tab becomes visible (returning from invoice page)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLinkedItems();
+      }
+    };
+
+    // Refresh when inventory is updated (custom event from invoice save)
+    const handleInventoryUpdated = () => {
+      fetchLinkedItems();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('inventory-updated', handleInventoryUpdated);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('inventory-updated', handleInventoryUpdated);
+    };
   }, [ingredients]);
 
   // Determine effective ingredient mode:
@@ -405,7 +432,6 @@ function IngredientList({
             linkedInventoryItems={linkedInventoryItems}
             onShowIssues={() => {
               // Could scroll to first issue or show a modal
-              console.log('Show validation issues');
             }}
           />
           {editable && (
@@ -548,6 +574,20 @@ function IngredientList({
           <span className={styles.emptyIcon}>📝</span>
           <p className={styles.emptyText}>No ingredients yet. Add your first ingredient below!</p>
         </div>
+      )}
+
+      {/* Recipe Cost Summary - shows total cost with variation arrow */}
+      {isOwner && (ingredients.length > 0 || packages.length > 0) && (
+        <RecipeCostSummary
+          ingredients={ingredients}
+          linkedInventoryItems={linkedInventoryItems}
+          basePortion={basePortion}
+          scalingFactor={scalingFactor}
+          packages={packages}
+          linkedPackageItems={linkedPackageItems}
+          methodPackagingCost={methodPackagingCost}
+          onCostChange={onCostChange}
+        />
       )}
 
       {/* Add New Ingredient */}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import styles from '../../styles/components/menubar.module.css';
 
@@ -23,8 +24,6 @@ import styles from '../../styles/components/menubar.module.css';
  * @param {'browser'|'detail'|'tasks'} [props.page='browser'] - Current page identifier
  * @param {Object} [props.currentRecipe=null] - Current recipe object (for detail page)
  * @param {'idle'|'syncing'|'synced'|'error'} [props.syncStatus='idle'] - Cloud sync status
- * @param {number} [props.criticalStockCount=0] - Count of items with critical stock level
- * @param {number} [props.lowStockCount=0] - Count of items with low stock level
  * @param {Function} [props.onDepartmentChange] - Handler for department selection
  * @param {Function} [props.onBackClick] - Handler for back/recipes button
  * @param {Function} [props.onMicToggle] - Handler for voice toggle (receives new state)
@@ -39,7 +38,6 @@ import styles from '../../styles/components/menubar.module.css';
  * @param {Function} [props.onControlPanelClick] - Handler for control panel menu item
  * @param {Function} [props.onHeartbeatClick] - Handler for heartbeat dashboard menu item
  * @param {Function} [props.onTeamTasksClick] - Handler for team tasks button
- * @param {Function} [props.onInventoryClick] - Handler for inventory badge click (navigates to inventory)
  * @param {Function} [props.onLockToggle] - Handler for lock/unlock menu item
  * @param {Function} [props.onLogout] - Handler for logout menu item
  * @returns {JSX.Element} Rendered menu bar
@@ -93,9 +91,9 @@ function MenuBar({
   page = 'browser',
   currentRecipe = null,
   syncStatus = 'idle',
-  // Inventory stock alert props
-  criticalStockCount = 0,
-  lowStockCount = 0,
+  // Timer props
+  showTimer = false,
+  isTimerRunning = false,
   onDepartmentChange = () => {},
   onBackClick = () => {},
   onMicToggle = () => {},
@@ -110,10 +108,12 @@ function MenuBar({
   onControlPanelClick = () => {},
   onHeartbeatClick = () => {},
   onTeamTasksClick = () => {},
-  onInventoryClick = () => {},
   onLockToggle = () => {},
   onLogout = () => {},
+  onDocsClick = () => {},
+  onWebsiteClick = () => {},
 }) {
+  const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showDeptDropdown, setShowDeptDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -193,20 +193,22 @@ function MenuBar({
   return (
     <div className={styles.menuBar}>
       <div className={styles.appNameSection}>
-        <div className={styles.appName}>
-          {appName}
-          <span
-            className={`${styles.syncIndicator} ${syncStatus === 'syncing' ? styles.syncing : ''}`}
-            title={getSyncTitle()}
-          >
-            {getSyncIcon()}
-          </span>
-        </div>
-        <div className={styles.userInfo}>
-          <span className={styles.userName}>{userName}</span>
-          <span className={`${styles.accessBadge} ${styles[accessLevel]}`}>
-            {getAccessDisplay()}
-          </span>
+        <div className={styles.appInfo}>
+          <div className={styles.appName}>
+            {appName}
+            <span
+              className={`${styles.syncIndicator} ${syncStatus === 'syncing' ? styles.syncing : ''}`}
+              title={getSyncTitle()}
+            >
+              {getSyncIcon()}
+            </span>
+          </div>
+          <div className={styles.userInfo}>
+            <span className={styles.userName}>{userName}</span>
+            <span className={`${styles.accessBadge} ${styles[accessLevel]}`}>
+              {getAccessDisplay()}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -243,46 +245,23 @@ function MenuBar({
       {/* Recipes button - always rendered, hidden on recipe list page */}
       <button
         className={`${styles.menuButton} ${page === 'browser' ? styles.hidden : ''}`}
-        onClick={() => {
-          console.log('Recipes button clicked, page:', page);
-          onBackClick();
-        }}
+        onClick={onBackClick}
         title="Back to recipe list"
         disabled={page === 'browser'}
       >
-        📖 Recipes
+        📖
       </button>
 
       {/* Team Tasks button - always rendered, hidden on team tasks page */}
       <button
         className={`${styles.menuButton} ${page === 'tasks' ? styles.hidden : ''}`}
-        onClick={() => {
-          console.log('Tasks button clicked, page:', page);
-          onTeamTasksClick();
-        }}
+        onClick={onTeamTasksClick}
         title="Team Tasks"
         disabled={page === 'tasks'}
         data-tour="tasks-button"
       >
-        📋 Tasks
+        📋
       </button>
-
-      {/* Inventory Badge - shows for owners when there are low/critical stock items */}
-      {isOwner && (criticalStockCount > 0 || lowStockCount > 0) && (
-        <button
-          className={`${styles.menuButton} ${styles.inventoryBadge} ${criticalStockCount > 0 ? styles.critical : styles.low}`}
-          onClick={onInventoryClick}
-          title={`Inventory Alerts: ${criticalStockCount} critical, ${lowStockCount} low stock items`}
-          aria-label={`${criticalStockCount + lowStockCount} inventory alerts. ${criticalStockCount} critical, ${lowStockCount} low stock.`}
-          data-tour="inventory-badge"
-        >
-          <span aria-hidden="true">📦</span>
-          <span className={styles.inventoryCount}>
-            {criticalStockCount > 0 ? criticalStockCount : lowStockCount}
-          </span>
-          {criticalStockCount > 0 && <span className={styles.pulse} aria-hidden="true"></span>}
-        </button>
-      )}
 
       {/* New Recipe button - always rendered, hidden when locked */}
       <button
@@ -318,10 +297,10 @@ function MenuBar({
       </button>
 
       <button
-        className={styles.menuButton}
+        className={`${styles.menuButton} ${isTimerRunning && !showTimer ? styles.timerActive : ''}`}
         onClick={onTimerToggle}
         aria-label="Timer"
-        title="Timer"
+        title={isTimerRunning ? "Timer running - click to show" : "Timer"}
       >
         <span aria-hidden="true">⏱️</span>
       </button>
@@ -376,6 +355,27 @@ function MenuBar({
                 <span aria-hidden="true">📸</span> Take Image
               </button>
               <div className={styles.dropdownDivider} role="separator"></div>
+              <button
+                className={styles.dropdownItem}
+                role="menuitem"
+                onClick={() => {
+                  navigate('/invoices');
+                  setShowDropdown(false);
+                }}
+              >
+                <span aria-hidden="true">🧾</span> Invoices
+              </button>
+              <button
+                className={styles.dropdownItem}
+                role="menuitem"
+                onClick={() => {
+                  navigate('/control-panel?tab=inventory');
+                  setShowDropdown(false);
+                }}
+              >
+                <span aria-hidden="true">📦</span> Inventory
+              </button>
+              <div className={styles.dropdownDivider} role="separator"></div>
             </>
           )}
 
@@ -397,6 +397,17 @@ function MenuBar({
 
           {isOwner && (
             <>
+              <button
+                className={styles.dropdownItem}
+                role="menuitem"
+                onClick={() => {
+                  onWebsiteClick();
+                  setShowDropdown(false);
+                }}
+              >
+                <span aria-hidden="true">🌐</span> Website
+              </button>
+
               <button
                 className={styles.dropdownItem}
                 role="menuitem"
@@ -431,6 +442,19 @@ function MenuBar({
               </button>
             </>
           )}
+
+          <div className={styles.dropdownDivider} role="separator"></div>
+
+          <button
+            className={styles.dropdownItem}
+            role="menuitem"
+            onClick={() => {
+              onDocsClick();
+              setShowDropdown(false);
+            }}
+          >
+            <span aria-hidden="true">📚</span> Docs
+          </button>
 
           <div className={styles.dropdownDivider} role="separator"></div>
 
@@ -502,10 +526,6 @@ MenuBar.propTypes = {
   currentRecipe: PropTypes.object,
   /** Sync status indicator */
   syncStatus: PropTypes.oneOf(['idle', 'syncing', 'synced', 'error']),
-  /** Count of items with critical stock level */
-  criticalStockCount: PropTypes.number,
-  /** Count of items with low stock level */
-  lowStockCount: PropTypes.number,
   /** Handler for department change */
   onDepartmentChange: PropTypes.func,
   /** Handler for back button */
@@ -516,6 +536,10 @@ MenuBar.propTypes = {
   onKeypadToggle: PropTypes.func,
   /** Handler for new recipe button */
   onNewRecipe: PropTypes.func,
+  /** Whether timer panel is visible */
+  showTimer: PropTypes.bool,
+  /** Whether timer is actively running */
+  isTimerRunning: PropTypes.bool,
   /** Handler for timer toggle */
   onTimerToggle: PropTypes.func,
   /** Handler for PDF import */
@@ -534,12 +558,14 @@ MenuBar.propTypes = {
   onHeartbeatClick: PropTypes.func,
   /** Handler for team tasks */
   onTeamTasksClick: PropTypes.func,
-  /** Handler for inventory badge click */
-  onInventoryClick: PropTypes.func,
   /** Handler for lock/unlock */
   onLockToggle: PropTypes.func,
   /** Handler for logout */
   onLogout: PropTypes.func,
+  /** Handler for opening docs modal */
+  onDocsClick: PropTypes.func,
+  /** Handler for website settings */
+  onWebsiteClick: PropTypes.func,
 };
 
 export default MenuBar;

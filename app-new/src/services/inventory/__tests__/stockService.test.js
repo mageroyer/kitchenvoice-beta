@@ -95,8 +95,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 10,
-        parLevel: 100,
+        stockQuantity: 10,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -110,7 +110,7 @@ describe('StockService', () => {
       expect(result.previousStock).toBe(10);
       expect(result.delta).toBe(5);
       expect(inventoryItemDB.update).toHaveBeenCalledWith(1, expect.objectContaining({
-        currentStock: 15
+        stockQuantity: 15
       }));
     });
 
@@ -118,8 +118,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 20,
-        parLevel: 100,
+        stockQuantity: 20,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -138,8 +138,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 10,
-        parLevel: 100,
+        stockQuantity: 10,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -156,8 +156,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 5,
-        parLevel: 100,
+        stockQuantity: 5,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -171,9 +171,9 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 10,
-        parLevel: 100,
-        unit: 'kg',
+        stockQuantity: 10,
+        parQuantity: 100,
+        stockQuantityUnit: 'kg',
         currentPrice: 5.00
       };
 
@@ -206,8 +206,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 30,
-        parLevel: 100,
+        stockQuantity: 30,
+        parQuantity: 100,
         criticalThreshold: 10,
         lowStockThreshold: 25,
         unit: 'kg'
@@ -249,8 +249,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Sugar',
-        currentStock: 10,
-        parLevel: 100,
+        stockQuantity: 10,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -269,8 +269,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Sugar',
-        currentStock: 100,
-        parLevel: 100,
+        stockQuantity: 100,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -288,8 +288,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Sugar',
-        currentStock: 50,
-        parLevel: 100,
+        stockQuantity: 50,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -311,8 +311,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Sugar',
-        currentStock: 10,
-        parLevel: 100,
+        stockQuantity: 10,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -340,8 +340,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Sugar',
-        currentStock: 50,
-        parLevel: 100,
+        stockQuantity: 50,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -364,10 +364,10 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 20,
+        stockQuantity: 20,
         stockQuantity: 20, // Dual-tracking: unit count
         fullStock: 100,
-        parLevel: 100,
+        parQuantity: 100,
         unit: 'kg',
         currentPrice: 5.00,
         purchaseCount: 3,
@@ -388,15 +388,13 @@ describe('StockService', () => {
       expect(result.quantity).toBe(30);
     });
 
-    it('should update fullStock to equal new currentStock', async () => {
+    it('should update stockQuantity correctly', async () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 20,
-        stockQuantity: 20, // Dual-tracking: unit count
-        fullStock: 50,
-        parLevel: 100,
-        unit: 'kg'
+        stockQuantity: 20,
+        parQuantity: 100,
+        stockQuantityUnit: 'case'
       };
 
       inventoryItemDB.getById.mockResolvedValue(mockItem);
@@ -405,10 +403,10 @@ describe('StockService', () => {
 
       const result = await addStockFromInvoice(1, 30, 'INV-001');
 
-      // 20 + 30 = 50, newStock becomes new fullStock
-      expect(result.newFullStock).toBe(50);
+      // 20 + 30 = 50
+      expect(result.newStockQuantity).toBe(50);
       expect(inventoryItemDB.update).toHaveBeenCalledWith(1, expect.objectContaining({
-        fullStock: 50
+        stockQuantity: 50
       }));
     });
 
@@ -416,8 +414,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 10,
-        unit: 'kg',
+        stockQuantity: 10,
+        stockQuantityUnit: 'case',
         currentPrice: 5.00
       };
 
@@ -448,12 +446,9 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 10,
+        stockQuantity: 10,
         unit: 'kg',
-        currentPrice: 5.00,
-        purchaseCount: 5,
-        totalQuantityPurchased: 100,
-        totalSpent: 500
+        currentPrice: 5.00
       };
 
       inventoryItemDB.getById.mockResolvedValue(mockItem);
@@ -464,13 +459,12 @@ describe('StockService', () => {
         unitCost: 6.00
       });
 
+      // Note: purchaseCount, totalQuantityPurchased, totalSpent are now computed on-demand
+      // from invoiceLineItems, not stored on the inventory item
       expect(inventoryItemDB.update).toHaveBeenCalledWith(1, expect.objectContaining({
         lastInvoiceId: 'INV-999',
         lastPurchaseDate: expect.any(String),
-        currentPrice: 6.00,
-        purchaseCount: 6,
-        totalQuantityPurchased: 120,
-        totalSpent: 620 // 500 + (20 * 6)
+        currentPrice: 6.00
       }));
     });
 
@@ -497,8 +491,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 50,
-        parLevel: 100,
+        stockQuantity: 50,
+        parQuantity: 100,
         unit: 'kg'
       };
 
@@ -517,7 +511,7 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 10,
+        stockQuantity: 10,
         unit: 'kg'
       };
 
@@ -531,7 +525,7 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 50,
+        stockQuantity: 50,
         unit: 'kg'
       };
 
@@ -562,8 +556,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 30,
-        parLevel: 100,
+        stockQuantity: 30,
+        parQuantity: 100,
         criticalThreshold: 10,
         lowStockThreshold: 25,
         unit: 'kg'
@@ -586,10 +580,8 @@ describe('StockService', () => {
       const mockItem = {
         id: 1,
         name: 'Flour',
-        currentStock: 50,
-        unit: 'kg',
-        usageCount: 10,
-        totalQuantityUsed: 200
+        stockQuantity: 50,
+        unit: 'kg'
       };
 
       inventoryItemDB.getById.mockResolvedValue(mockItem);
@@ -598,10 +590,10 @@ describe('StockService', () => {
 
       await deductStockFromTask(1, 15, 'TASK-001');
 
+      // Note: usageCount and totalQuantityUsed are now computed on-demand
+      // from stockTransactions, not stored on the inventory item
       expect(inventoryItemDB.update).toHaveBeenCalledWith(1, expect.objectContaining({
-        currentStock: 35,
-        usageCount: 11,
-        totalQuantityUsed: 215,
+        stockQuantity: 35,
         lastUsageDate: expect.any(String)
       }));
     });
@@ -613,8 +605,8 @@ describe('StockService', () => {
 
   describe('bulkAdjustStock', () => {
     it('should succeed when all adjustments are valid', async () => {
-      const mockItem1 = { id: 1, name: 'Flour', currentStock: 50, parLevel: 100, unit: 'kg' };
-      const mockItem2 = { id: 2, name: 'Sugar', currentStock: 30, parLevel: 100, unit: 'kg' };
+      const mockItem1 = { id: 1, name: 'Flour', stockQuantity: 50, parQuantity: 100, unit: 'kg' };
+      const mockItem2 = { id: 2, name: 'Sugar', stockQuantity: 30, parQuantity: 100, unit: 'kg' };
 
       inventoryItemDB.getById
         .mockResolvedValueOnce(mockItem1)
@@ -637,8 +629,8 @@ describe('StockService', () => {
     });
 
     it('should rollback all when one fails (default behavior)', async () => {
-      const mockItem1 = { id: 1, name: 'Flour', currentStock: 50, parLevel: 100, unit: 'kg' };
-      const mockItem2 = { id: 2, name: 'Sugar', currentStock: 5, parLevel: 100, unit: 'kg' };
+      const mockItem1 = { id: 1, name: 'Flour', stockQuantity: 50, parQuantity: 100, unit: 'kg' };
+      const mockItem2 = { id: 2, name: 'Sugar', stockQuantity: 5, parQuantity: 100, unit: 'kg' };
 
       inventoryItemDB.getById
         .mockResolvedValueOnce(mockItem1)
@@ -662,7 +654,7 @@ describe('StockService', () => {
     });
 
     it('should validate all adjustments before processing', async () => {
-      const mockItem = { id: 1, name: 'Flour', currentStock: 50, unit: 'kg' };
+      const mockItem = { id: 1, name: 'Flour', stockQuantity: 50, unit: 'kg' };
       inventoryItemDB.getById
         .mockResolvedValueOnce(null) // Item not found
         .mockResolvedValueOnce(mockItem);
@@ -679,8 +671,8 @@ describe('StockService', () => {
     });
 
     it('should collect alerts from all adjustments', async () => {
-      const mockItem1 = { id: 1, name: 'Flour', currentStock: 20, parLevel: 100, lowStockThreshold: 25, unit: 'kg' };
-      const mockItem2 = { id: 2, name: 'Sugar', currentStock: 10, parLevel: 100, criticalThreshold: 10, unit: 'kg' };
+      const mockItem1 = { id: 1, name: 'Flour', stockQuantity: 20, parQuantity: 100, lowStockThreshold: 25, unit: 'kg' };
+      const mockItem2 = { id: 2, name: 'Sugar', stockQuantity: 10, parQuantity: 100, criticalThreshold: 10, unit: 'kg' };
 
       inventoryItemDB.getById
         .mockResolvedValueOnce(mockItem1)
@@ -710,8 +702,8 @@ describe('StockService', () => {
     it('should calculate percentage correctly', async () => {
       const mockItem = {
         id: 1,
-        currentStock: 25,
-        parLevel: 100
+        stockQuantity: 25,
+        parQuantity: 100
       };
 
       inventoryItemDB.getById.mockResolvedValue(mockItem);
@@ -721,11 +713,11 @@ describe('StockService', () => {
       expect(percentage).toBe(25);
     });
 
-    it('should use fullStock when parLevel is 0', async () => {
+    it('should use fullStock when parQuantity is 0', async () => {
       const mockItem = {
         id: 1,
-        currentStock: 50,
-        parLevel: 0,
+        stockQuantity: 50,
+        parQuantity: 0,
         fullStock: 100
       };
 
@@ -739,8 +731,8 @@ describe('StockService', () => {
     it('should return 100 when stock > 0 but no base level', async () => {
       const mockItem = {
         id: 1,
-        currentStock: 25,
-        parLevel: 0,
+        stockQuantity: 25,
+        parQuantity: 0,
         fullStock: 0
       };
 
@@ -763,8 +755,8 @@ describe('StockService', () => {
     it('should return critical for low percentage', async () => {
       const mockItem = {
         id: 1,
-        currentStock: 5,
-        parLevel: 100,
+        stockQuantity: 5,
+        parQuantity: 100,
         criticalThreshold: 10
       };
 
@@ -778,8 +770,8 @@ describe('StockService', () => {
     it('should return low for medium-low percentage', async () => {
       const mockItem = {
         id: 1,
-        currentStock: 15,
-        parLevel: 100,
+        stockQuantity: 15,
+        parQuantity: 100,
         criticalThreshold: 10,
         lowStockThreshold: 25
       };
@@ -794,8 +786,8 @@ describe('StockService', () => {
     it('should return ok for high percentage', async () => {
       const mockItem = {
         id: 1,
-        currentStock: 75,
-        parLevel: 100
+        stockQuantity: 75,
+        parQuantity: 100
       };
 
       inventoryItemDB.getById.mockResolvedValue(mockItem);
@@ -808,8 +800,8 @@ describe('StockService', () => {
     it('should respect item-specific thresholds', async () => {
       const mockItem = {
         id: 1,
-        currentStock: 20,
-        parLevel: 100,
+        stockQuantity: 20,
+        parQuantity: 100,
         criticalThreshold: 25, // Custom: 25% is critical
         lowStockThreshold: 50
       };
@@ -830,9 +822,9 @@ describe('StockService', () => {
   describe('getStockAlerts', () => {
     it('should return all low and critical items', async () => {
       const mockItems = [
-        { id: 1, name: 'Critical Item', currentStock: 5, parLevel: 100, criticalThreshold: 10, lowStockThreshold: 25 },
-        { id: 2, name: 'Low Item', currentStock: 20, parLevel: 100, criticalThreshold: 10, lowStockThreshold: 25 },
-        { id: 3, name: 'OK Item', currentStock: 80, parLevel: 100, criticalThreshold: 10, lowStockThreshold: 25 }
+        { id: 1, name: 'Critical Item', stockQuantity: 5, parQuantity: 100, criticalThreshold: 10, lowStockThreshold: 25 },
+        { id: 2, name: 'Low Item', stockQuantity: 20, parQuantity: 100, criticalThreshold: 10, lowStockThreshold: 25 },
+        { id: 3, name: 'OK Item', stockQuantity: 80, parQuantity: 100, criticalThreshold: 10, lowStockThreshold: 25 }
       ];
 
       inventoryItemDB.getActive.mockResolvedValue(mockItems);
@@ -847,8 +839,8 @@ describe('StockService', () => {
 
     it('should filter to critical only when requested', async () => {
       const mockItems = [
-        { id: 1, name: 'Critical', currentStock: 5, parLevel: 100, criticalThreshold: 10 },
-        { id: 2, name: 'Low', currentStock: 20, parLevel: 100, criticalThreshold: 10, lowStockThreshold: 25 }
+        { id: 1, name: 'Critical', stockQuantity: 5, parQuantity: 100, criticalThreshold: 10 },
+        { id: 2, name: 'Low', stockQuantity: 20, parQuantity: 100, criticalThreshold: 10, lowStockThreshold: 25 }
       ];
 
       inventoryItemDB.getActive.mockResolvedValue(mockItems);
@@ -861,9 +853,9 @@ describe('StockService', () => {
 
     it('should sort by percentage ascending (most critical first)', async () => {
       const mockItems = [
-        { id: 1, name: 'Medium Low', currentStock: 20, parLevel: 100, lowStockThreshold: 25 },
-        { id: 2, name: 'Very Critical', currentStock: 2, parLevel: 100, criticalThreshold: 10 },
-        { id: 3, name: 'Barely Low', currentStock: 24, parLevel: 100, lowStockThreshold: 25 }
+        { id: 1, name: 'Medium Low', stockQuantity: 20, parQuantity: 100, lowStockThreshold: 25 },
+        { id: 2, name: 'Very Critical', stockQuantity: 2, parQuantity: 100, criticalThreshold: 10 },
+        { id: 3, name: 'Barely Low', stockQuantity: 24, parQuantity: 100, lowStockThreshold: 25 }
       ];
 
       inventoryItemDB.getActive.mockResolvedValue(mockItems);

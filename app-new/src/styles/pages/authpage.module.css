@@ -26,6 +26,13 @@
   margin-bottom: var(--spacing-xl);
 }
 
+.authLogo {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  margin-bottom: var(--spacing-md);
+}
+
 .authTitle {
   font-size: 28px;
   font-weight: 700;
@@ -182,6 +189,43 @@
 .loadingContainer p {
   color: var(--color-gray);
   margin: 0;
+}
+
+/* Terms & Privacy Checkbox */
+.termsCheckbox {
+  margin-top: var(--spacing-sm);
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.checkboxText {
+  color: var(--color-gray-dark);
+}
+
+.checkboxText a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.checkboxText a:hover {
+  text-decoration: underline;
 }
 
 /* Responsive */

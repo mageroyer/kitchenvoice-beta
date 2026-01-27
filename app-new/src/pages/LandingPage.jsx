@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
 import { FeatureSlider } from '../components/common/FeatureSlider';
 import { sliderDB } from '../services/database/indexedDB';
-import { enableDemoMode, initializeDemoData } from '../services/demo/demoService';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -12,47 +11,47 @@ import styles from '../styles/pages/landingpage.module.css';
 /**
  * LandingPage Component
  *
- * Marketing landing page for SmartCookBook.
+ * Marketing landing page for KitchenCommand.
  * Shown to unauthenticated users at the root path.
  */
 // Default slides showcasing SmartCookBook features
 const DEFAULT_FEATURE_SLIDES = [
   {
     id: 1,
-    icon: '🎤',
-    title: 'Voice-First Input',
+    icon: '📖',
+    title: 'AI Recipe Import',
     bubble: {
-      text: 'Dictate recipes hands-free while cooking!',
+      text: 'Drop a PDF or photo - get a perfect recipe in seconds!',
       position: 'bottom-right',
       style: 'primary'
     }
   },
   {
     id: 2,
-    icon: '🤖',
-    title: 'AI Recipe Import',
+    icon: '🎤',
+    title: 'Voice Input',
     bubble: {
-      text: 'Snap a photo or upload a PDF - AI extracts everything!',
+      text: 'Dictate recipes hands-free while you cook!',
       position: 'bottom-left',
       style: 'secondary'
     }
   },
   {
     id: 3,
-    icon: '⏱️',
-    title: 'Smart Timers',
+    icon: '💰',
+    title: 'Live Cost Tracking',
     bubble: {
-      text: 'Multiple timers running at once - never burn anything!',
+      text: 'Know your exact cost per portion - updates automatically!',
       position: 'top-right',
       style: 'warning'
     }
   },
   {
     id: 4,
-    icon: '☁️',
-    title: 'Cloud Sync',
+    icon: '📄',
+    title: 'Smart Invoices',
     bubble: {
-      text: 'Access your recipes from any device, anywhere!',
+      text: 'Upload invoices - AI extracts items & updates inventory!',
       position: 'bottom-right',
       style: 'success'
     }
@@ -60,9 +59,9 @@ const DEFAULT_FEATURE_SLIDES = [
   {
     id: 5,
     icon: '⚖️',
-    title: 'Instant Scaling',
+    title: 'Batch Scaling',
     bubble: {
-      text: 'Scale from 4 to 400 portions in one click!',
+      text: 'Scale any recipe from 1 to 1,000 portions instantly!',
       position: 'center',
       style: 'primary'
     }
@@ -78,7 +77,6 @@ function LandingPage() {
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
   const [waitlistSuccess, setWaitlistSuccess] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
 
   // Ref for timer cleanup
   const waitlistTimerRef = useRef(null);
@@ -103,8 +101,8 @@ function LandingPage() {
             setSlides(config.slides);
           }
         }
-      } catch (error) {
-        console.log('Using default slider config:', error.message);
+      } catch {
+        // Use default slider config on error
       }
     };
     loadSliderConfig();
@@ -119,21 +117,6 @@ function LandingPage() {
   const handleLogin = () => {
     setMobileMenuOpen(false);
     navigate(ROUTES.LOGIN);
-  };
-
-  // Launch demo mode
-  const handleTryDemo = async () => {
-    setDemoLoading(true);
-    try {
-      enableDemoMode();
-      await initializeDemoData();
-      navigate(ROUTES.RECIPES);
-    } catch (error) {
-      console.error('Error starting demo:', error);
-      alert('Erreur lors du chargement de la démo. Veuillez réessayer.');
-    } finally {
-      setDemoLoading(false);
-    }
   };
 
   // Submit email to waitlist
@@ -176,8 +159,8 @@ function LandingPage() {
       {/* Navigation */}
       <nav className={styles.nav} id="nav">
         <a href="#" className={styles.navLogo}>
-          <span className={styles.navLogoIcon}>🍳</span>
-          SmartCookBook
+          <img src="/favicon.svg" alt="KitchenCommand" className={styles.navLogoIcon} />
+          KitchenCommand
         </a>
 
         {/* Hamburger Button */}
@@ -196,8 +179,8 @@ function LandingPage() {
           <a href="#how-it-works" className={styles.navLink} onClick={handleNavClick}>Comment ça marche</a>
           <a href="#pricing" className={styles.navLink} onClick={handleNavClick}>Accès Bêta</a>
           <button onClick={handleLogin} className={styles.navLink}>Login</button>
-          <button onClick={handleTryDemo} className={styles.navCta} disabled={demoLoading}>
-            {demoLoading ? 'Chargement...' : 'Essayer la Démo'}
+          <button onClick={handleGetStarted} className={styles.navCta}>
+            Créer un compte
           </button>
         </div>
       </nav>
@@ -211,18 +194,18 @@ function LandingPage() {
           <div className={styles.heroText}>
             <div className={styles.heroBadge}>
               <span className={styles.heroBadgeDot}></span>
-              Now with AI-Powered Recipe Import
+              AI-Powered Kitchen Management
             </div>
 
             <h1 className={styles.heroTitle}>
-              Manage Recipes with Your
-              <span className={styles.heroTitleAccent}> Voice</span>
+              Your Recipes. Perfectly Organized.
+              <span className={styles.heroTitleAccent}> AI Does the Paperwork.</span>
             </h1>
 
             <p className={styles.heroSubtitle}>
-              The professional kitchen's secret weapon. Dictate recipes hands-free,
-              scale portions instantly, and keep your team in sync — all without
-              touching a screen.
+              Import recipes from PDFs, photos, or voice dictation.
+              Track costs automatically as prices change.
+              Scale for any batch size. Finally, software that works like you do.
             </p>
 
             <div className={styles.heroCtas}>
@@ -230,16 +213,10 @@ function LandingPage() {
                 onClick={handleGetStarted}
                 className={`${styles.btn} ${styles.btnPrimary}`}
               >
-                Créer un compte
+                Start Free
                 <span>→</span>
               </button>
-              <button
-                onClick={handleTryDemo}
-                className={`${styles.btn} ${styles.btnSecondary}`}
-                disabled={demoLoading}
-              >
-                {demoLoading ? 'Chargement...' : 'Essayer la Démo'}
-              </button>
+              <span className={styles.heroCtaNote}>50 AI credits/month included</span>
             </div>
           </div>
 
@@ -251,13 +228,13 @@ function LandingPage() {
                   <div className={styles.mockupDot}></div>
                   <div className={styles.mockupDot}></div>
                 </div>
-                <span className={styles.mockupTitle}>SmartCookBook</span>
+                <span className={styles.mockupTitle}>KitchenCommand</span>
               </div>
               <div className={styles.mockupContent}>
                 <div className={styles.mockupRecipe}>
                   <div className={styles.mockupRecipeHeader}>
-                    <div className={styles.mockupRecipeTitle}>Pâté Chinois</div>
-                    <span className={styles.mockupRecipeCategory}>Plat Principal</span>
+                    <div className={styles.mockupRecipeTitle}>Boeuf Bourguignon</div>
+                    <span className={styles.mockupRecipeCategory}>French Classic</span>
                   </div>
 
                   <div className={styles.mockupVoiceIndicator}>
@@ -268,34 +245,39 @@ function LandingPage() {
                       <div className={styles.voiceWave}></div>
                       <div className={styles.voiceWave}></div>
                     </div>
-                    Écoute en cours...
+                    Imported from PDF
                   </div>
 
                   <div className={styles.mockupIngredients}>
-                    <span className={styles.mockupIngQty}>500g</span>
-                    <span className={styles.mockupIngName}>Boeuf haché</span>
-                    <span className={styles.mockupIngSpec}>maigre</span>
+                    <span className={styles.mockupIngQty}>2 kg</span>
+                    <span className={styles.mockupIngName}>Boeuf à braiser</span>
+                    <span className={styles.mockupIngSpec}>$18.50</span>
 
-                    <span className={styles.mockupIngQty}>4 tasses</span>
-                    <span className={styles.mockupIngName}>Pommes de terre</span>
-                    <span className={styles.mockupIngSpec}>Yukon Gold</span>
+                    <span className={styles.mockupIngQty}>750 ml</span>
+                    <span className={styles.mockupIngName}>Vin rouge Bourgogne</span>
+                    <span className={styles.mockupIngSpec}>$12.00</span>
 
-                    <span className={styles.mockupIngQty}>2 boîtes</span>
-                    <span className={styles.mockupIngName}>Maïs en crème</span>
-                    <span className={styles.mockupIngSpec}>398ml</span>
+                    <span className={styles.mockupIngQty}>200 g</span>
+                    <span className={styles.mockupIngName}>Lardons fumés</span>
+                    <span className={styles.mockupIngSpec}>$4.25</span>
+                  </div>
+
+                  <div className={styles.mockupCost}>
+                    <span>Cost per portion:</span>
+                    <strong>$5.85</strong>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className={`${styles.heroFloating} ${styles.heroFloating1}`}>
-              <span className={styles.floatingIcon}>⏱️</span>
-              Multiple Timers
+              <span className={styles.floatingIcon}>📖</span>
+              PDF → Recipe
             </div>
 
             <div className={`${styles.heroFloating} ${styles.heroFloating2}`}>
-              <span className={styles.floatingIcon}>☁️</span>
-              Cloud Sync
+              <span className={styles.floatingIcon}>🎤</span>
+              Voice Input
             </div>
           </div>
         </div>
@@ -304,8 +286,8 @@ function LandingPage() {
       {/* Full-Width Feature Slider Showcase */}
       <section className={styles.sliderShowcase}>
         <div className={styles.sliderShowcaseHeader}>
-          <span className={styles.sectionLabel}>See It In Action</span>
-          <h2 className={styles.sectionTitle}>Discover What SmartCookBook Can Do</h2>
+          <span className={styles.sectionLabel}>Powerful Features</span>
+          <h2 className={styles.sectionTitle}>Everything You Need to Run Your Kitchen</h2>
         </div>
         <div className={styles.sliderContainer}>
           <FeatureSlider
@@ -324,67 +306,67 @@ function LandingPage() {
       {/* Features Section */}
       <section className={styles.features} id="features">
         <div className={styles.sectionHeader}>
-          <span className={styles.sectionLabel}>Pourquoi SmartCookBook?</span>
-          <h2 className={styles.sectionTitle}>Built for Professional Kitchens</h2>
+          <span className={styles.sectionLabel}>Why KitchenCommand?</span>
+          <h2 className={styles.sectionTitle}>Focus on Cooking, Not Paperwork</h2>
           <p className={styles.sectionSubtitle}>
-            Every feature designed with real kitchen workflows in mind.
-            No more greasy screens or lost recipes.
+            From home cooks to production kitchens, we handle the tedious stuff
+            so you can focus on what matters: creating great food.
           </p>
         </div>
 
         <div className={styles.featuresGrid}>
           <div className={styles.featureCard}>
-            <div className={styles.featureIcon}>🎤</div>
-            <h3 className={styles.featureTitle}>Voice-First Input</h3>
+            <div className={styles.featureIcon}>📖</div>
+            <h3 className={styles.featureTitle}>AI Recipe Import</h3>
             <p className={styles.featureDesc}>
-              Dictate recipes, ingredients, and cooking steps hands-free.
-              Optimized for French-Canadian kitchen terminology with Google's
-              most advanced speech recognition.
+              Drop a PDF, snap a photo, or paste text. AI extracts ingredients,
+              quantities, and steps automatically. Your grandmother's recipes,
+              digitized in seconds.
+            </p>
+          </div>
+
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>🎤</div>
+            <h3 className={styles.featureTitle}>Voice Input</h3>
+            <p className={styles.featureDesc}>
+              Dictate recipes hands-free while cooking. Add ingredients by voice.
+              Perfect for busy kitchens where your hands are never clean.
+            </p>
+          </div>
+
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>💰</div>
+            <h3 className={styles.featureTitle}>Live Cost Tracking</h3>
+            <p className={styles.featureDesc}>
+              Know your exact cost per portion. When ingredient prices change,
+              all your recipe costs update automatically. Price with confidence.
             </p>
           </div>
 
           <div className={styles.featureCard}>
             <div className={styles.featureIcon}>⚖️</div>
-            <h3 className={styles.featureTitle}>Instant Scaling</h3>
+            <h3 className={styles.featureTitle}>Smart Scaling</h3>
             <p className={styles.featureDesc}>
-              Change portion sizes and watch all measurements update automatically.
-              From 4 servings to 400 — math done for you.
+              Scale any recipe from 1 to 1,000 portions instantly.
+              Automatic unit conversions. Perfect batch calculations every time.
             </p>
           </div>
 
           <div className={styles.featureCard}>
-            <div className={styles.featureIcon}>📱</div>
-            <h3 className={styles.featureTitle}>Works Anywhere</h3>
+            <div className={styles.featureIcon}>📄</div>
+            <h3 className={styles.featureTitle}>Invoice Automation</h3>
             <p className={styles.featureDesc}>
-              Access your recipes from any device. Tablet in the kitchen,
-              phone at the market, laptop for planning — always in sync.
+              Upload supplier invoices and watch AI extract every line item.
+              Inventory updates automatically. Prices sync to your recipes.
             </p>
           </div>
 
           <div className={styles.featureCard}>
-            <div className={styles.featureIcon}>🤖</div>
-            <h3 className={styles.featureTitle}>AI Recipe Import</h3>
+            <div className={styles.featureIcon}>📊</div>
+            <h3 className={styles.featureTitle}>Inventory Control</h3>
             <p className={styles.featureDesc}>
-              Import recipes from PDFs or photos. Our AI extracts and
-              structures ingredients, steps, and notes automatically.
-            </p>
-          </div>
-
-          <div className={styles.featureCard}>
-            <div className={styles.featureIcon}>⏱️</div>
-            <h3 className={styles.featureTitle}>Multiple Timers</h3>
-            <p className={styles.featureDesc}>
-              Set multiple cooking timers that run independently.
-              Never miss a step, even when juggling complex preparations.
-            </p>
-          </div>
-
-          <div className={styles.featureCard}>
-            <div className={styles.featureIcon}>🏢</div>
-            <h3 className={styles.featureTitle}>Multi-Restaurant</h3>
-            <p className={styles.featureDesc}>
-              Manage recipes for multiple locations from one account.
-              Perfect for chains, caterers, and food service consultants.
+              Track stock levels in real-time. Par level alerts prevent shortages.
+              Task completion automatically deducts ingredients used.
             </p>
           </div>
         </div>
@@ -394,36 +376,36 @@ function LandingPage() {
       <section className={styles.howItWorks} id="how-it-works">
         <div className={styles.sectionHeader}>
           <span className={styles.sectionLabel}>Getting Started</span>
-          <h2 className={styles.sectionTitle}>Up and Running in Minutes</h2>
+          <h2 className={styles.sectionTitle}>Up and Running in 60 Seconds</h2>
           <p className={styles.sectionSubtitle}>
-            No complex setup. No training required. Just start cooking.
+            No complex setup. No training required. Just drop a recipe and go.
           </p>
         </div>
 
         <div className={styles.steps}>
           <div className={styles.step}>
             <div className={styles.stepNumber}>1</div>
-            <h3 className={styles.stepTitle}>Create Account</h3>
+            <h3 className={styles.stepTitle}>Import a Recipe</h3>
             <p className={styles.stepDesc}>
-              Sign up free and add your first restaurant in under 2 minutes.
+              Drop a PDF, take a photo, or dictate by voice. AI does the rest.
             </p>
             <span className={styles.stepConnector}>→</span>
           </div>
 
           <div className={styles.step}>
             <div className={styles.stepNumber}>2</div>
-            <h3 className={styles.stepTitle}>Add Recipes</h3>
+            <h3 className={styles.stepTitle}>Review & Adjust</h3>
             <p className={styles.stepDesc}>
-              Import from PDF, dictate by voice, or type manually. Your choice.
+              Quick review, tweak if needed. Link ingredients to your inventory.
             </p>
             <span className={styles.stepConnector}>→</span>
           </div>
 
           <div className={styles.step}>
             <div className={styles.stepNumber}>3</div>
-            <h3 className={styles.stepTitle}>Cook Hands-Free</h3>
+            <h3 className={styles.stepTitle}>Cook & Track</h3>
             <p className={styles.stepDesc}>
-              Access recipes on any device. Edit with voice. Scale portions. Done.
+              Scale for any batch size. Costs update live. Inventory deducts automatically.
             </p>
           </div>
         </div>
@@ -482,16 +464,16 @@ function LandingPage() {
       <section className={styles.testimonial}>
         <div className={styles.testimonialContent}>
           <blockquote className={styles.testimonialQuote}>
-            Finally, a recipe system that understands how real kitchens work.
-            My hands are covered in dough? No problem — I just tell it what to add.
-            Game changer for our bakery.
+            I imported 15 years of family recipes in one afternoon. Handwritten cards,
+            old PDFs, even photos of my grandmother's cookbook. Now I can finally
+            scale them properly and know exactly what each dish costs.
           </blockquote>
 
           <div className={styles.testimonialAuthor}>
             <div className={styles.testimonialAvatar}>👨‍🍳</div>
             <div className={styles.testimonialInfo}>
-              <div className={styles.testimonialName}>Marc-Antoine Leblanc</div>
-              <div className={styles.testimonialRole}>Head Baker, Boulangerie St-Denis</div>
+              <div className={styles.testimonialName}>Marco Pellegrini</div>
+              <div className={styles.testimonialRole}>Chef-Owner, Trattoria Bella Vita</div>
             </div>
           </div>
         </div>
@@ -500,13 +482,13 @@ function LandingPage() {
       {/* CTA Section */}
       <section className={styles.cta}>
         <div className={styles.ctaContent}>
-          <h2 className={styles.ctaTitle}>Prêt à transformer votre cuisine?</h2>
+          <h2 className={styles.ctaTitle}>Ready to organize your recipes?</h2>
           <p className={styles.ctaSubtitle}>
-            Testez SmartCookBook gratuitement pendant la bêta.
-            Aucune carte de crédit requise.
+            Join chefs who finally have their recipes under control.
+            50 free AI credits per month. No credit card required.
           </p>
           <button onClick={handleGetStarted} className={`${styles.btn} ${styles.btnWhite}`}>
-            Commencer Gratuitement
+            Start Free
             <span>→</span>
           </button>
         </div>
@@ -516,10 +498,13 @@ function LandingPage() {
       <footer className={styles.footer}>
         <div className={styles.footerContent}>
           <div>
-            <div className={styles.footerBrand}>🍳 SmartCookBook</div>
+            <div className={styles.footerBrand}>
+              <img src="/favicon.svg" alt="" className={styles.footerLogoIcon} />
+              KitchenCommand
+            </div>
             <p className={styles.footerDesc}>
-              Voice-powered recipe management for professional kitchens.
-              Built in Montreal, serving chefs worldwide.
+              AI-powered recipe management and kitchen operations.
+              Import, organize, scale, and cost your recipes. Built in Montreal.
             </p>
           </div>
 
@@ -544,18 +529,17 @@ function LandingPage() {
           </div>
 
           <div>
-            <h4 className={styles.footerTitle}>Company</h4>
+            <h4 className={styles.footerTitle}>Legal</h4>
             <ul className={styles.footerLinks}>
-              <li><a href="#">About</a></li>
-              <li><a href="#">Blog</a></li>
-              <li><a href="#">Contact</a></li>
-              <li><a href="#">Privacy</a></li>
+              <li><Link to="/privacy">Privacy Policy</Link></li>
+              <li><Link to="/terms">Terms of Service</Link></li>
+              <li><a href="mailto:contact@smartcookbook.app">Contact</a></li>
             </ul>
           </div>
         </div>
 
         <div className={styles.footerBottom}>
-          <span>© 2025 SmartCookBook. All rights reserved.</span>
+          <span>© 2025 KitchenCommand. All rights reserved.</span>
           <div className={styles.footerSocial}>
             <a href="#" title="LinkedIn">in</a>
             <a href="#" title="Twitter">𝕏</a>
@@ -580,14 +564,8 @@ function LandingPage() {
         ) : (
           <div className={styles.waitlistContent}>
             <p className={styles.waitlistText}>
-              SmartCookBook est en version bêta fermée. Laissez votre email pour être notifié
+              KitchenCommand est en version bêta fermée. Laissez votre email pour être notifié
               dès l'ouverture des inscriptions.
-            </p>
-
-            <p className={styles.waitlistAlt}>
-              Ou <button onClick={handleTryDemo} className={styles.waitlistDemoLink}>
-                essayez la démo
-              </button> pour découvrir l'application maintenant!
             </p>
 
             <form onSubmit={handleWaitlistSubmit} className={styles.waitlistForm}>

@@ -1,0 +1,672 @@
+{
+  "invoice_number": "FC0294549",
+  "invoice_date": "2025/11/24",
+  "terms": "NET 28 JOURS",
+  "vendor": {
+    "name": "LES DÉPENDANCES",
+    "address": ""
+  },
+  "sold_to": {
+    "name": "AUX SAVEURS DES SÉVELIN",
+    "address": "1575, BOUL JACQUES CARTIER EST LONGUEUIL, QUÉBEC, J4M 2B5"
+  },
+  "shipped_by": {
+    "name": "STEPANA",
+    "address": "9050 IMP. DE L'INVENTION, ANJOU QUÉBEC, CANADA, H1J 3A7"
+  },
+  "shipped_to": {
+    "name": "AUX SAVEURS DES SÉVELIN",
+    "address": "1575, BOUL JACQUES CARTIER EST LONGUEUIL, QUÉBEC, J4M 2B5"
+  },
+  "customer_number": "CL00000217",
+  "reference": "PO251124_CL00000217_IMP",
+  "transaction_reference": "CO00285476",
+  "departure_date": "2025/11/24",
+  "advisor": "FRANCE LECOCQ",
+  "delivery_route": "M7,J14 (M7,J14)",
+  "delivery_distance": "7",
+  "carrier": "STEPANA_INT",
+  "shipping_terms": "Pré-payé/Prepaid",
+  "attention": "Mélissa Véronneau",
+  "items": [
+    {
+      "product_id": "401688",
+      "description": "Crémeux Germain Truffe 0,15kg",
+      "qty_ordered": 6,
+      "qty_shipped": 6,
+      "qty_invoiced": 6,
+      "unit": "un",
+      "unit_price": 12.2,
+      "amount": 73.2
+    },
+    {
+      "product_id": "501106",
+      "description": "Godminster Cheddar Bio coeur 0,2kg",
+      "qty_ordered": 24,
+      "qty_shipped": 24,
+      "qty_invoiced": 24,
+      "unit": "un",
+      "unit_price": 13.23,
+      "amount": 317.52
+    },
+    {
+      "product_id": "401646",
+      "description": "Château de Bourgogne P.M. 0,2kg",
+      "qty_ordered": 30,
+      "qty_shipped": 30,
+      "qty_invoiced": 30,
+      "unit": "un",
+      "unit_price": 10.41,
+      "amount": 312.3
+    },
+    {
+      "product_id": "441519",
+      "description": "Château de Bourgogne 1,7kg",
+      "qty_ordered": 5,
+      "qty_shipped": 5,
+      "qty_invoiced": 8.18,
+      "unit": "kg",
+      "unit_price": 37.02,
+      "amount": 302.82
+    },
+    {
+      "product_id": "401686",
+      "description": "Triple crème Germain 0,18kg",
+      "qty_ordered": 18,
+      "qty_shipped": 18,
+      "qty_invoiced": 18,
+      "unit": "UN",
+      "unit_price": 11.38,
+      "amount": 204.84
+    },
+    {
+      "product_id": "402242",
+      "description": "Crottin Germain coque x1 60g",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "un",
+      "unit_price": 3.96,
+      "amount": 47.52
+    },
+    {
+      "product_id": "441431",
+      "description": "Brie aux Truffes 1,3kg",
+      "qty_ordered": 3,
+      "qty_shipped": 3,
+      "qty_invoiced": 3.92,
+      "unit": "kg",
+      "unit_price": 58,
+      "amount": 227.36
+    },
+    {
+      "product_id": "501357",
+      "description": "Gigha Pear cheese 0,2kg",
+      "qty_ordered": 42,
+      "qty_shipped": 42,
+      "qty_invoiced": 42,
+      "unit": "un",
+      "unit_price": 10.54,
+      "amount": 442.68
+    },
+    {
+      "product_id": "443175",
+      "description": "Brebirousse 1kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 1,
+      "unit": "kg",
+      "unit_price": 53.26,
+      "amount": 53.26
+    },
+    {
+      "product_id": "401342",
+      "description": "Munster AOP Haxaire Artisanal 0,22kg",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "un",
+      "unit_price": 9.04,
+      "amount": 108.48
+    },
+    {
+      "product_id": "441220",
+      "description": "Époisses AOP Perrière meule 0,9kg",
+      "qty_ordered": 4,
+      "qty_shipped": 4,
+      "qty_invoiced": 3.3,
+      "unit": "kg",
+      "unit_price": 58,
+      "amount": 191.4
+    },
+    {
+      "product_id": "441380",
+      "description": "St-Nectaire AOP Légende 1,7kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 1.84,
+      "unit": "kg",
+      "unit_price": 41.41,
+      "amount": 76.19
+    },
+    {
+      "product_id": "401193",
+      "description": "Camembert au lait de Normandie 0,25kg",
+      "qty_ordered": 18,
+      "qty_shipped": 18,
+      "qty_invoiced": 18,
+      "unit": "un",
+      "unit_price": 10.22,
+      "amount": 183.96
+    },
+    {
+      "product_id": "441206",
+      "description": "Crémeux du Jura 1,1kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 1.08,
+      "unit": "kg",
+      "unit_price": 40.76,
+      "amount": 44.02
+    },
+    {
+      "product_id": "401660",
+      "description": "Époisses AOP Berthaut 0,25kg",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "un",
+      "unit_price": 20.27,
+      "amount": 243.24
+    },
+    {
+      "product_id": "441635",
+      "description": "Normanville 1kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 1.23,
+      "unit": "kg",
+      "unit_price": 41,
+      "amount": 50.43
+    },
+    {
+      "product_id": "441615",
+      "description": "Langres AOP Germain coupe 1kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 0.98,
+      "unit": "KG",
+      "unit_price": 56.5,
+      "amount": 55.37
+    },
+    {
+      "product_id": "401160",
+      "description": "Flocon de Savoie 0,12kg",
+      "qty_ordered": 24,
+      "qty_shipped": 24,
+      "qty_invoiced": 24,
+      "unit": "un",
+      "unit_price": 5.62,
+      "amount": 134.88
+    },
+    {
+      "product_id": "661250",
+      "description": "Crème Isigny AOP 200ml",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "un",
+      "unit_price": 9.96,
+      "amount": 119.52
+    },
+    {
+      "product_id": "401310",
+      "description": "Maroilles AOP Ducornet 0,75kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 1,
+      "unit": "un",
+      "unit_price": 44.19,
+      "amount": 44.19
+    },
+    {
+      "product_id": "441771",
+      "description": "Tomme du Châtelard 1,4kg",
+      "qty_ordered": 2,
+      "qty_shipped": 2,
+      "qty_invoiced": 2.9,
+      "unit": "KG",
+      "unit_price": 34.2,
+      "amount": 99.18
+    },
+    {
+      "product_id": "401685",
+      "description": "Langres AOP Germain 0,18kg",
+      "qty_ordered": 24,
+      "qty_shipped": 24,
+      "qty_invoiced": 24,
+      "unit": "UN",
+      "unit_price": 10.9,
+      "amount": 261.6
+    },
+    {
+      "product_id": "401272",
+      "description": "Fondue 3 Comtés vin blanc 0,4kg",
+      "qty_ordered": 6,
+      "qty_shipped": 6,
+      "qty_invoiced": 6,
+      "unit": "UN",
+      "unit_price": 13.8,
+      "amount": 82.8
+    },
+    {
+      "product_id": "441425",
+      "description": "Raclette Brézain au feu de bois 6,6kg",
+      "qty_ordered": 3,
+      "qty_shipped": 3,
+      "qty_invoiced": 17.51,
+      "unit": "kg",
+      "unit_price": 35.5,
+      "amount": 621.61
+    },
+    {
+      "product_id": "402153",
+      "description": "Bonde d'Antan 0,2kg",
+      "qty_ordered": 6,
+      "qty_shipped": 6,
+      "qty_invoiced": 6,
+      "unit": "un",
+      "unit_price": 11.09,
+      "amount": 66.54
+    },
+    {
+      "product_id": "402217",
+      "description": "Mothais sur feuille Antan 0,18kg",
+      "qty_ordered": 6,
+      "qty_shipped": 6,
+      "qty_invoiced": 6,
+      "unit": "un",
+      "unit_price": 11.31,
+      "amount": 67.86
+    },
+    {
+      "product_id": "401772",
+      "description": "Fleur des Alpes 0,44kg",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "UN",
+      "unit_price": 13.8,
+      "amount": 165.6
+    },
+    {
+      "product_id": "402030",
+      "description": "Chabichou coque 0,15kg",
+      "qty_ordered": 6,
+      "qty_shipped": 6,
+      "qty_invoiced": 6,
+      "unit": "UN",
+      "unit_price": 10.98,
+      "amount": 65.88
+    },
+    {
+      "product_id": "666603",
+      "description": "Beurre Isigny AOP ½ sel panier 0,25kg",
+      "qty_ordered": 6,
+      "qty_shipped": 6,
+      "qty_invoiced": 6,
+      "unit": "un",
+      "unit_price": 18.37,
+      "amount": 110.22
+    },
+    {
+      "product_id": "441442",
+      "description": "Vacherousse 2kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 2,
+      "unit": "kg",
+      "unit_price": 48.7,
+      "amount": 97.4
+    },
+    {
+      "product_id": "441476",
+      "description": "Bleu d'Auvergne AOP Morin 2,8kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 2.67,
+      "unit": "kg",
+      "unit_price": 48.9,
+      "amount": 130.56
+    },
+    {
+      "product_id": "443100",
+      "description": "Etorki pur Brebis 4,4kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 4.34,
+      "unit": "kg",
+      "unit_price": 48.97,
+      "amount": 212.53
+    },
+    {
+      "product_id": "441228",
+      "description": "Comté AOP Arnaud Réserve 36M 4,5kg",
+      "qty_ordered": 2,
+      "qty_shipped": 2,
+      "qty_invoiced": 8.51,
+      "unit": "kg",
+      "unit_price": 56.95,
+      "amount": 484.64
+    },
+    {
+      "product_id": "551822",
+      "description": "Gruyère AOP 1655 4,4kg",
+      "qty_ordered": 6,
+      "qty_shipped": 6,
+      "qty_invoiced": 25.49,
+      "unit": "kg",
+      "unit_price": 45.37,
+      "amount": 1156.48
+    },
+    {
+      "product_id": "443130",
+      "description": "Roquefort AOP Carles ½ meule 1,45kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 1.44,
+      "unit": "kg",
+      "unit_price": 58.17,
+      "amount": 83.76
+    },
+    {
+      "product_id": "441213",
+      "description": "Comté AOP Arnaud Réserve 18M 4,5kg",
+      "qty_ordered": 5,
+      "qty_shipped": 5,
+      "qty_invoiced": 23.07,
+      "unit": "kg",
+      "unit_price": 45.14,
+      "amount": 1041.38
+    },
+    {
+      "product_id": "401043",
+      "description": "Nuiton d'Or 0,45kg §",
+      "qty_ordered": 20,
+      "qty_shipped": 20,
+      "qty_invoiced": 20,
+      "unit": "un",
+      "unit_price": 13.8,
+      "amount": 276
+    },
+    {
+      "product_id": "403121",
+      "description": "Pérail 0,15kg",
+      "qty_ordered": 8,
+      "qty_shipped": 8,
+      "qty_invoiced": 8,
+      "unit": "UN",
+      "unit_price": 9.41,
+      "amount": 75.28
+    },
+    {
+      "product_id": "441134",
+      "description": "Beaufort Été AOP Haute Montagne 5kg",
+      "qty_ordered": 4,
+      "qty_shipped": 4,
+      "qty_invoiced": 21.37,
+      "unit": "kg",
+      "unit_price": 63.2,
+      "amount": 1350.58
+    },
+    {
+      "product_id": "401730",
+      "description": "Pont L'Évêque AOP petit 0,22kg",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "un",
+      "unit_price": 9.68,
+      "amount": 116.16
+    },
+    {
+      "product_id": "441190",
+      "description": "Comté Entre-Deux AOP haut fromage 6M 4,7kg",
+      "qty_ordered": 2,
+      "qty_shipped": 2,
+      "qty_invoiced": 9.8,
+      "unit": "kg",
+      "unit_price": 41.12,
+      "amount": 402.98
+    },
+    {
+      "product_id": "401570",
+      "description": "Brillat-Savarin affiné IGP Delin 0,5kg",
+      "qty_ordered": 3,
+      "qty_shipped": 3,
+      "qty_invoiced": 3,
+      "unit": "un",
+      "unit_price": 21.62,
+      "amount": 64.86
+    },
+    {
+      "product_id": "441263",
+      "description": "Comté AOP M.Petite Millésime 4,5kg",
+      "qty_ordered": 10,
+      "qty_shipped": 10,
+      "qty_invoiced": 42.92,
+      "unit": "kg",
+      "unit_price": 55.59,
+      "amount": 2385.92
+    },
+    {
+      "product_id": "401687",
+      "description": "Affiné au Chablis Germain 0,2kg",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "UN",
+      "unit_price": 13.25,
+      "amount": 159
+    },
+    {
+      "product_id": "441662",
+      "description": "Raclette carrée à l'ail noir ours 6,5kg §",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 6.33,
+      "unit": "kg",
+      "unit_price": 31.83,
+      "amount": 201.48
+    },
+    {
+      "product_id": "441314",
+      "description": "Mimolette Isigny 20M 3kg",
+      "qty_ordered": 2,
+      "qty_shipped": 2,
+      "qty_invoiced": 6.19,
+      "unit": "kg",
+      "unit_price": 58,
+      "amount": 359.02
+    },
+    {
+      "product_id": "441661",
+      "description": "Raclette carrée au poivre 6,5kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 6.58,
+      "unit": "kg",
+      "unit_price": 32.84,
+      "amount": 216.09
+    },
+    {
+      "product_id": "441720",
+      "description": "St-Paulin Isigny Ste-Mère 2kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 1.61,
+      "unit": "kg",
+      "unit_price": 44.99,
+      "amount": 72.43
+    },
+    {
+      "product_id": "111120",
+      "description": "Cheddar Le Silo X-fort 7 ans 2,3kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 2.46,
+      "unit": "kg",
+      "unit_price": 44.08,
+      "amount": 108.44
+    },
+    {
+      "product_id": "551160",
+      "description": "Chimay 1876 Grand Cru 2kg",
+      "qty_ordered": 3,
+      "qty_shipped": 3,
+      "qty_invoiced": 5.78,
+      "unit": "kg",
+      "unit_price": 48.5,
+      "amount": 280.33
+    },
+    {
+      "product_id": "551350",
+      "description": "Poteaupré Chimay 1kg",
+      "qty_ordered": 2,
+      "qty_shipped": 2,
+      "qty_invoiced": 1.98,
+      "unit": "kg",
+      "unit_price": 52.13,
+      "amount": 103.22
+    },
+    {
+      "product_id": "401683",
+      "description": "L'Ambré Germain à la bière 0,17kg",
+      "qty_ordered": 6,
+      "qty_shipped": 6,
+      "qty_invoiced": 6,
+      "unit": "UN",
+      "unit_price": 11.95,
+      "amount": 71.7
+    },
+    {
+      "product_id": "441633",
+      "description": "Mont des Cats 2kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 1.55,
+      "unit": "kg",
+      "unit_price": 50.88,
+      "amount": 78.86
+    },
+    {
+      "product_id": "401481",
+      "description": "Soumaintrain IGP Berthaut 0,4kg",
+      "qty_ordered": 6,
+      "qty_shipped": 6,
+      "qty_invoiced": 6,
+      "unit": "un",
+      "unit_price": 18.56,
+      "amount": 111.36
+    },
+    {
+      "product_id": "441014",
+      "description": "Raclette vin blanc 5,5kg §",
+      "qty_ordered": 9,
+      "qty_shipped": 9,
+      "qty_invoiced": 46.98,
+      "unit": "KG",
+      "unit_price": 35.81,
+      "amount": 1682.35
+    },
+    {
+      "product_id": "401192",
+      "description": "Camembert Calvados affiné 0,25kg §",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "un",
+      "unit_price": 10.88,
+      "amount": 130.56
+    },
+    {
+      "product_id": "551770",
+      "description": "Mifofoglie Marzemino 0,3kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 5.93,
+      "unit": "kg",
+      "unit_price": 57.05,
+      "amount": 338.31
+    },
+    {
+      "product_id": "553143",
+      "description": "Manchego AOP 12M PAST 3,1kg",
+      "qty_ordered": 5,
+      "qty_shipped": 5,
+      "qty_invoiced": 16.23,
+      "unit": "kg",
+      "unit_price": 40.76,
+      "amount": 661.53
+    },
+    {
+      "product_id": "553761",
+      "description": "Moliterno al Tartufo 5,5kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 5.64,
+      "unit": "kg",
+      "unit_price": 75.99,
+      "amount": 428.58
+    },
+    {
+      "product_id": "442210",
+      "description": "Chèvrerousse 0,94kg",
+      "qty_ordered": 1,
+      "qty_shipped": 1,
+      "qty_invoiced": 0.94,
+      "unit": "KG",
+      "unit_price": 54.33,
+      "amount": 51.07
+    },
+    {
+      "product_id": "501348",
+      "description": "Isle of Kintyre Gin & Tonic mature cheddar 0,2kg",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "un",
+      "unit_price": 9.19,
+      "amount": 110.28
+    },
+    {
+      "product_id": "401758",
+      "description": "St-Julien aux Noix tranche 0,15kg",
+      "qty_ordered": 12,
+      "qty_shipped": 12,
+      "qty_invoiced": 12,
+      "unit": "un",
+      "unit_price": 8.07,
+      "amount": 96.84
+    }
+  ],
+  "summary": {
+    "packages_count": 54,
+    "total_weight": 376.02,
+    "subtotal": 17914.45,
+    "exemption": 0,
+    "total": 17914.45
+  },
+  "identifiers": {
+    "NIR": "R5596565",
+    "TPS": "89169 5447 RT0001",
+    "TVQ": "1020179500"
+  },
+  "banking_info": "Transit 05111 - Institution 004 - Compte 5233961",
+  "contact_info": {
+    "address": "4990 J.-A. Bombardier, St-Hubert, QC J3Z 1H1",
+    "phone": "TÉL.: 1-450-656-6661 - 1-888-266-4491",
+    "email": "info@lesdependances.com",
+    "website": "www.lesdependances.com"
+  }
+}

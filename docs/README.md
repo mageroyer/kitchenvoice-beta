@@ -2,6 +2,12 @@
 
 **Live App:** https://smartcookbook-2afe2.web.app
 
+## User Documentation
+
+| Document | Description |
+|----------|-------------|
+| [USER_GUIDE.md](USER_GUIDE.md) | **Complete feature walkthrough** - Getting started, invoices, inventory, recipes, tasks |
+
 ## Quick Links
 
 | Document | Description |
@@ -31,14 +37,24 @@
 | Document | Description |
 |----------|-------------|
 | [INVENTORY_SYSTEM.md](INVENTORY_SYSTEM.md) | Inventory, vendors, invoices, orders |
+| [INVOICE_ARCHITECTURE.md](INVOICE_ARCHITECTURE.md) | Invoice processing system (handlers, data flow, math engine) |
 | [VOICE_RECOGNITION_GUIDE.md](VOICE_RECOGNITION_GUIDE.md) | Voice input implementation |
 
 ## Project Status
 
 | Document | Description |
 |----------|-------------|
+| [PROJECT_STATUS.md](PROJECT_STATUS.md) | Executive summary, metrics, architecture overview (for presentations) |
+| [CRITICAL_ISSUES.md](CRITICAL_ISSUES.md) | Critical gaps, risks, and improvements (customer perspective) |
+| [DATA_PROTECTION_REQUIREMENTS.md](DATA_PROTECTION_REQUIREMENTS.md) | Legal compliance: Law 25, PIPEDA, PCI DSS, OWASP, SOC 2 |
 | [TODO.md](TODO.md) | Current tasks and priorities |
+
+## Philosophy & Origins
+
+| Document | Description |
+|----------|-------------|
+| [PHILOSOPHY.md](PHILOSOPHY.md) | Creative origins, Heartbeat metaphor, human-AI collaboration reflections |
 
 ---
 
-*Last Updated: 2025-12-19*
+*Last Updated: 2026-01-11*

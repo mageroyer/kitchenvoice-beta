@@ -7,14 +7,47 @@ interface MarcheTemplateProps {
   data: StoreData;
 }
 
+// Certification data (matching the app)
+const CERTIFICATIONS: Record<string, { icon: string; label: string }> = {
+  'halal': { icon: '☪️', label: 'Halal' },
+  'kosher': { icon: '✡️', label: 'Kosher' },
+  'organic': { icon: '🌿', label: 'Organic' },
+  'local': { icon: '📍', label: 'Local Products' },
+  'fair-trade': { icon: '🤝', label: 'Fair Trade' },
+  'sustainable': { icon: '♻️', label: 'Sustainable' },
+  'family-owned': { icon: '👨‍👩‍👧‍👦', label: 'Family Owned' },
+  'artisan': { icon: '🎨', label: 'Artisan' },
+  'vegan-options': { icon: '🌱', label: 'Vegan Options' },
+  'gluten-free': { icon: '🌾', label: 'Gluten-Free Options' },
+};
+
+// Days of week for hours formatting
+const DAYS_OF_WEEK = [
+  { id: 'monday', label: 'Monday' },
+  { id: 'tuesday', label: 'Tuesday' },
+  { id: 'wednesday', label: 'Wednesday' },
+  { id: 'thursday', label: 'Thursday' },
+  { id: 'friday', label: 'Friday' },
+  { id: 'saturday', label: 'Saturday' },
+  { id: 'sunday', label: 'Sunday' },
+];
+
 /**
- * Marche Template - Classic Quebec Style
+ * Marche Template - Classic Quebec Style (Single Page)
  *
- * A warm, traditional design perfect for family grocery stores.
- * Features: card-based menu, prominent hero, category sections.
+ * Sections: Hero → Certifications → Services → Gallery → Team → About → Contact → Footer
+ * Navigation in header scrolls to each section.
  */
 export default function MarcheTemplate({ data }: MarcheTemplateProps) {
-  const { store, menu, settings, seo } = data;
+  const { store, menu, settings, seo, _raw } = data;
+
+  // Extract raw data for full sections
+  const about = _raw?.about || {};
+  const services = _raw?.services || {};
+  const gallery = _raw?.gallery || {};
+  const contact = _raw?.contact || {};
+  const social = _raw?.social || {};
+  const identity = _raw?.identity || {};
 
   // Set CSS variables for dynamic colors
   const cssVars = {
@@ -22,104 +55,436 @@ export default function MarcheTemplate({ data }: MarcheTemplateProps) {
     '--color-accent': settings.accentColor,
   } as React.CSSProperties;
 
+  // Format hours for display
+  const formatHoursTable = (hours: any) => {
+    if (!hours) return null;
+    return DAYS_OF_WEEK.map(day => {
+      const dayHours = hours[day.id];
+      if (!dayHours || dayHours.closed) {
+        return { day: day.label, hours: 'Closed' };
+      }
+      return { day: day.label, hours: `${dayHours.open} - ${dayHours.close}` };
+    });
+  };
+
+  const formattedHours = formatHoursTable(contact?.hours);
+
+  // Check which sections exist
+  const hasServices = services?.catering?.enabled ||
+    services?.delivery?.enabled ||
+    services?.customOrders?.enabled ||
+    services?.wholesale?.enabled ||
+    services?.giftCards?.enabled;
+  // Collect all gallery photos from all categories
+  const allGalleryPhotos = [
+    ...(gallery?.products || []).map((p: any) => ({ ...p, category: 'product' })),
+    ...(gallery?.storefront || []).map((p: any) => ({ ...p, category: 'store' })),
+    ...(gallery?.interior || []).map((p: any) => ({ ...p, category: 'interior' })),
+    ...(gallery?.behindScenes || []).map((p: any) => ({ ...p, category: 'behind' })),
+    ...(gallery?.events || []).map((p: any) => ({ ...p, category: 'event' })),
+  ];
+  const hasGallery = allGalleryPhotos.length > 0;
+  const hasTeam = about?.team?.length > 0;
+  const hasAbout = about?.story || about?.mission;
+  const hasCertifications = about?.certifications?.length > 0;
+
+  // Build navigation items based on what sections exist
+  const navItems = [];
+  if (hasServices) navItems.push({ id: 'services', label: 'Services' });
+  if (hasGallery) navItems.push({ id: 'gallery', label: 'Gallery' });
+  if (hasTeam) navItems.push({ id: 'team', label: 'Team' });
+  if (hasAbout) navItems.push({ id: 'about', label: 'About' });
+  navItems.push({ id: 'contact', label: 'Contact' });
+
   return (
     <div style={cssVars} className="min-h-screen bg-marche-cream">
-      {/* Header */}
-      <header className="marche-header py-4 px-4">
+      {/* Header - Sticky Navigation */}
+      <header className="marche-header py-3 px-4 sticky top-0 z-50 shadow-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          {/* Logo & Name */}
+          <div className="flex items-center gap-3">
             {store.logo && (
               <Image
                 src={store.logo}
                 alt={store.name}
-                width={60}
-                height={60}
+                width={50}
+                height={50}
                 className="rounded-full bg-white"
               />
             )}
-            <div className="text-white">
-              <h1 className="text-2xl font-display font-bold">{store.name}</h1>
-              {store.tagline && (
-                <p className="text-sm opacity-90">{store.tagline}</p>
-              )}
-            </div>
+            <span className="text-white font-display font-bold text-xl hidden sm:block">
+              {store.name}
+            </span>
           </div>
+
+          {/* Navigation Menu */}
+          <nav className="hidden md:flex items-center gap-6">
+            {navItems.map(item => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className="text-white/90 hover:text-white font-medium transition"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* Phone Button */}
           {store.phone && (
             <a
               href={`tel:${store.phone.replace(/\D/g, '')}`}
-              className="hidden md:flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition"
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition"
             >
               <PhoneIcon />
-              <span>{store.phone}</span>
+              <span className="hidden sm:inline">{store.phone}</span>
             </a>
           )}
         </div>
       </header>
 
-      {/* Hero */}
-      {store.coverPhoto && (
-        <div
-          className="marche-hero"
-          style={{ backgroundImage: `url(${store.coverPhoto})` }}
-        >
-          <div className="marche-hero-overlay flex items-center justify-center">
-            <div className="text-center text-white px-4">
-              <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">
-                {store.name}
+      {/* Hero Section */}
+      <section id="hero">
+        {store.coverPhoto ? (
+          <div
+            className="marche-hero"
+            style={{ backgroundImage: `url(${store.coverPhoto})` }}
+          >
+            <div className="marche-hero-overlay flex items-center justify-center">
+              <div className="text-center text-white px-4">
+                <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">
+                  {store.name}
+                </h1>
+                {store.tagline && (
+                  <p className="text-xl opacity-90">{store.tagline}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="py-16 text-center bg-primary">
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
+              {store.name}
+            </h1>
+            {store.tagline && (
+              <p className="text-xl text-white/90">{store.tagline}</p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Certifications */}
+      {hasCertifications && (
+        <section className="py-6 px-4 bg-gray-50">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex flex-wrap justify-center gap-3">
+              {about.certifications.map((certId: string) => {
+                const cert = CERTIFICATIONS[certId];
+                return cert ? (
+                  <div
+                    key={certId}
+                    className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm"
+                  >
+                    <span className="text-lg">{cert.icon}</span>
+                    <span className="text-gray-700 font-medium text-sm">{cert.label}</span>
+                  </div>
+                ) : null;
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Services Section */}
+      {hasServices && (
+        <section id="services" className="scroll-mt-16">
+          {/* Section Banner */}
+          {gallery?.hero?.menu && (
+            <SectionBanner image={gallery.hero.menu} title="Our Services" />
+          )}
+          <div className={`py-12 px-4 bg-white ${!gallery?.hero?.menu ? 'pt-16' : ''}`}>
+            <div className="max-w-5xl mx-auto">
+              {!gallery?.hero?.menu && (
+                <h2 className="text-3xl font-display font-bold text-gray-800 mb-8 text-center">
+                  Our Services
+                </h2>
+              )}
+              <div className="grid md:grid-cols-3 gap-6">
+                {services?.catering?.enabled && (
+                  <ServiceCard
+                    icon="🍽️"
+                    title="Catering"
+                    description={services.catering.description || 'Professional catering for all occasions'}
+                  />
+                )}
+                {services?.delivery?.enabled && (
+                  <ServiceCard
+                    icon="🚚"
+                    title="Delivery"
+                    description={services.delivery.description || 'Fresh delivery to your door'}
+                    note={services.delivery.radius ? `Delivery radius: ${services.delivery.radius} km` : undefined}
+                  />
+                )}
+                {services?.customOrders?.enabled && (
+                  <ServiceCard
+                    icon="📝"
+                    title="Custom Orders"
+                    description={services.customOrders.description || 'Special orders made to your specifications'}
+                  />
+                )}
+                {services?.wholesale?.enabled && (
+                  <ServiceCard
+                    icon="📦"
+                    title="Wholesale"
+                    description={services.wholesale.description || 'Wholesale pricing for businesses'}
+                  />
+                )}
+                {services?.giftCards?.enabled && (
+                  <ServiceCard
+                    icon="🎁"
+                    title="Gift Cards"
+                    description="The perfect gift for food lovers"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Gallery Section */}
+      {hasGallery && (
+        <section id="gallery" className="scroll-mt-16">
+          {/* Section Banner */}
+          {gallery?.hero?.about && (
+            <SectionBanner image={gallery.hero.about} title="Gallery" />
+          )}
+          <div className={`py-12 px-4 bg-gray-50 ${!gallery?.hero?.about ? 'pt-16' : ''}`}>
+            <div className="max-w-5xl mx-auto">
+              {!gallery?.hero?.about && (
+                <h2 className="text-3xl font-display font-bold text-gray-800 mb-8 text-center">
+                  Gallery
+                </h2>
+              )}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {allGalleryPhotos.map((photo: any, i: number) => (
+                  <div key={`${photo.category}-${i}`} className="aspect-square rounded-lg overflow-hidden shadow-md">
+                    <Image
+                      src={photo.url}
+                      alt={photo.caption || photo.category}
+                      width={300}
+                      height={300}
+                      className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Team Section */}
+      {hasTeam && (
+        <section id="team" className="scroll-mt-16">
+          <div className="py-12 px-4 bg-white">
+            <div className="max-w-5xl mx-auto">
+              <h2 className="text-3xl font-display font-bold text-gray-800 mb-8 text-center">
+                Meet Our Team
               </h2>
-              {store.tagline && (
-                <p className="text-xl opacity-90">{store.tagline}</p>
+              <div className="grid md:grid-cols-3 gap-8 justify-items-center">
+                {about.team.map((member: any, i: number) => (
+                  <div key={i} className="text-center">
+                    {member.photo ? (
+                      <Image
+                        src={member.photo}
+                        alt={member.name}
+                        width={150}
+                        height={150}
+                        className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"
+                      />
+                    ) : (
+                      <div className="w-32 h-32 rounded-full mx-auto mb-4 bg-gray-200 flex items-center justify-center text-4xl text-gray-400 shadow-lg">
+                        👤
+                      </div>
+                    )}
+                    <h3 className="font-display font-bold text-lg text-primary">{member.name}</h3>
+                    {member.role && <p className="text-gray-500">{member.role}</p>}
+                    {member.bio && <p className="text-sm text-gray-600 mt-2">{member.bio}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* About Section (moved before Contact) */}
+      {hasAbout && (
+        <section id="about" className="scroll-mt-16">
+          {/* Section Banner */}
+          {gallery?.hero?.contact && (
+            <SectionBanner image={gallery.hero.contact} title="About Us" />
+          )}
+          <div className={`py-12 px-4 bg-gray-50 ${!gallery?.hero?.contact ? 'pt-16' : ''}`}>
+            <div className="max-w-4xl mx-auto text-center">
+              {!gallery?.hero?.contact && (
+                <h2 className="text-3xl font-display font-bold text-gray-800 mb-6">
+                  About Us
+                </h2>
+              )}
+              {identity?.yearEstablished && (
+                <p className="text-primary font-medium mb-4">
+                  Serving our community since {identity.yearEstablished}
+                </p>
+              )}
+              {about?.story && (
+                <p className="text-gray-600 text-lg mb-6 leading-relaxed">
+                  {about.story}
+                </p>
+              )}
+              {about?.mission && (
+                <div className="bg-primary text-white py-4 px-6 rounded-lg inline-block">
+                  <strong>Our Mission:</strong> {about.mission}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Contact Section */}
+      <section id="contact" className="scroll-mt-16">
+        <div className="py-12 px-4 bg-white">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-3xl font-display font-bold text-gray-800 mb-8 text-center">
+              Contact Us
+            </h2>
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Contact Info */}
+              <div className="space-y-4">
+                {contact?.address?.street && (
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl text-primary">📍</span>
+                    <div>
+                      <p className="font-medium">{contact.address.street}</p>
+                      <p className="text-gray-600">
+                        {contact.address.city}, {contact.address.province} {contact.address.postalCode}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {contact?.phone && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl text-primary">📞</span>
+                    <a href={`tel:${contact.phone}`} className="text-primary hover:underline font-medium">
+                      {contact.phone}
+                    </a>
+                  </div>
+                )}
+                {contact?.email && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl text-primary">✉️</span>
+                    <a href={`mailto:${contact.email}`} className="text-primary hover:underline">
+                      {contact.email}
+                    </a>
+                  </div>
+                )}
+
+                {/* Additional Info */}
+                {(contact?.parking || contact?.publicTransit) && (
+                  <div className="pt-4 border-t border-gray-200 space-y-2">
+                    {contact.parking && (
+                      <p className="text-sm text-gray-600">🅿️ {contact.parking}</p>
+                    )}
+                    {contact.publicTransit && (
+                      <p className="text-sm text-gray-600">🚌 {contact.publicTransit}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Hours */}
+              {formattedHours && (
+                <div>
+                  <h3 className="font-display font-bold text-lg mb-4 text-primary">Business Hours</h3>
+                  <div className="space-y-2">
+                    {formattedHours.map(({ day, hours }) => (
+                      <div key={day} className="flex justify-between py-1 border-b border-gray-100">
+                        <span className="text-gray-700">{day}</span>
+                        <span className={hours === 'Closed' ? 'text-gray-400' : 'text-gray-800 font-medium'}>
+                          {hours}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
         </div>
-      )}
-
-      {/* Today's Menu Section */}
-      <TodayMenuSection menu={menu} settings={settings} />
-
-      {/* Menu Categories */}
-      <main className="max-w-6xl mx-auto px-4 py-12">
-        {menu.categories.map((category) => (
-          <CategorySection
-            key={category}
-            category={category}
-            items={menu.items[category] || []}
-            settings={settings}
-          />
-        ))}
-      </main>
-
-      {/* About Section */}
-      <section className="bg-white py-12 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h3 className="text-3xl font-display font-bold text-gray-800 mb-6">
-            A Propos
-          </h3>
-          <div className="grid md:grid-cols-3 gap-8 text-gray-600">
-            {store.address && (
-              <div>
-                <LocationIcon className="w-8 h-8 mx-auto mb-3 text-primary" />
-                <p>{store.address}</p>
-              </div>
-            )}
-            {store.hours && (
-              <div>
-                <ClockIcon className="w-8 h-8 mx-auto mb-3 text-primary" />
-                <p className="whitespace-pre-line">{store.hours}</p>
-              </div>
-            )}
-            {store.phone && (
-              <div>
-                <PhoneIcon className="w-8 h-8 mx-auto mb-3 text-primary" />
-                <a href={`tel:${store.phone.replace(/\D/g, '')}`} className="hover:text-primary">
-                  {store.phone}
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
       </section>
+
+      {/* Social Links */}
+      {(social?.facebook || social?.instagram || social?.googleBusiness || social?.tiktok || social?.youtube) && (
+        <section className="py-8 px-4 bg-gray-50">
+          <div className="max-w-4xl mx-auto text-center">
+            <h3 className="text-xl font-display font-bold text-gray-800 mb-4">Follow Us</h3>
+            <div className="flex flex-wrap justify-center gap-4">
+              {social?.facebook && (
+                <a
+                  href={social.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition"
+                >
+                  <FacebookIcon className="w-5 h-5" /> Facebook
+                </a>
+              )}
+              {social?.instagram && (
+                <a
+                  href={social.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-pink-600 text-white px-4 py-2 rounded-full hover:bg-pink-700 transition"
+                >
+                  <InstagramIcon className="w-5 h-5" /> Instagram
+                </a>
+              )}
+              {social?.googleBusiness && (
+                <a
+                  href={social.googleBusiness}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-full hover:bg-yellow-600 transition"
+                >
+                  🌟 Google Reviews
+                </a>
+              )}
+              {social?.tiktok && (
+                <a
+                  href={social.tiktok}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition"
+                >
+                  🎵 TikTok
+                </a>
+              )}
+              {social?.youtube && (
+                <a
+                  href={social.youtube}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-full hover:bg-red-700 transition"
+                >
+                  ▶️ YouTube
+                </a>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="marche-footer py-8 px-4">
@@ -157,9 +522,9 @@ export default function MarcheTemplate({ data }: MarcheTemplateProps) {
           )}
 
           <p className="text-sm opacity-60">
-            Propulse par{' '}
+            Powered by{' '}
             <a
-              href="https://kitchencommand.io"
+              href="https://smartcookbook-2afe2.web.app"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:opacity-100"
@@ -177,156 +542,71 @@ export default function MarcheTemplate({ data }: MarcheTemplateProps) {
           className="call-button md:hidden"
         >
           <PhoneIcon className="w-5 h-5" />
-          Appeler
+          Call
         </a>
       )}
-    </div>
-  );
-}
 
-// Today's Menu Section
-function TodayMenuSection({
-  menu,
-  settings,
-}: {
-  menu: StoreData['menu'];
-  settings: StoreData['settings'];
-}) {
-  // Find items marked as available today
-  const todayItems: MenuItem[] = [];
-  Object.values(menu.items).forEach((items) => {
-    items.forEach((item: any) => {
-      if (item.isAvailableToday) {
-        todayItems.push(item);
-      }
-    });
-  });
-
-  if (todayItems.length === 0) {
-    return null;
-  }
-
-  return (
-    <section className="bg-white py-8 px-4 border-b-4 border-accent">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <span className="today-badge">Menu du Jour</span>
-          <span className="text-sm text-gray-500">
-            Mis a jour: {new Date(menu.lastUpdated).toLocaleDateString('fr-CA')}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {todayItems.slice(0, 8).map((item) => (
-            <MenuCard key={item.id} item={item} settings={settings} compact />
+      {/* Mobile Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40 pb-safe">
+        <div className="flex justify-around py-2">
+          {navItems.slice(0, 5).map(item => (
+            <a
+              key={item.id}
+              href={`#${item.id}`}
+              className="flex flex-col items-center text-xs text-gray-600 hover:text-primary"
+            >
+              <span className="text-lg mb-1">
+                {item.id === 'services' && '🍽️'}
+                {item.id === 'gallery' && '📷'}
+                {item.id === 'team' && '👥'}
+                {item.id === 'about' && 'ℹ️'}
+                {item.id === 'contact' && '📞'}
+              </span>
+              {item.label}
+            </a>
           ))}
         </div>
-      </div>
-    </section>
+      </nav>
+    </div>
   );
 }
 
-// Category Section
-function CategorySection({
-  category,
-  items,
-  settings,
-}: {
-  category: string;
-  items: MenuItem[];
-  settings: StoreData['settings'];
-}) {
-  if (items.length === 0) return null;
-
+// Section Banner Component
+function SectionBanner({ image, title }: { image: string; title: string }) {
   return (
-    <section className="mb-12">
-      <h2 className="marche-category-title text-2xl font-display font-bold text-gray-800 mb-6">
-        {category}
-      </h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {items.map((item) => (
-          <MenuCard key={item.id} item={item} settings={settings} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// Menu Item Card
-function MenuCard({
-  item,
-  settings,
-  compact = false,
-}: {
-  item: MenuItem;
-  settings: StoreData['settings'];
-  compact?: boolean;
-}) {
-  return (
-    <div className="menu-card">
-      {settings.showPhotos && (
-        <>
-          {item.photo ? (
-            <Image
-              src={item.photo}
-              alt={item.name}
-              width={400}
-              height={180}
-              className="menu-card-image"
-            />
-          ) : (
-            <div className="menu-card-placeholder">
-              <span>+</span>
-            </div>
-          )}
-        </>
-      )}
-
-      <div className={`p-4 ${compact ? 'p-3' : ''}`}>
-        <h3 className={`font-display font-bold text-gray-800 ${compact ? 'text-sm' : 'text-lg'} mb-1`}>
-          {item.name}
-        </h3>
-
-        {!compact && item.description && (
-          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-            {item.description}
-          </p>
-        )}
-
-        <div className="flex items-center justify-between mt-2">
-          {settings.showPrices && item.sellingPrice && (
-            <span className="text-lg font-bold text-primary">
-              ${item.sellingPrice.toFixed(2)}
-            </span>
-          )}
-
-          {item.tags && item.tags.length > 0 && (
-            <div className="flex gap-1 flex-wrap">
-              {item.tags.slice(0, 2).map((tag) => (
-                <span key={tag} className="tag-chip">
-                  {formatTag(tag)}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+    <div
+      className="h-48 md:h-56 bg-cover bg-center relative"
+      style={{ backgroundImage: `url(${image})` }}
+    >
+      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+        <h2 className="text-3xl md:text-4xl font-display font-bold text-white">
+          {title}
+        </h2>
       </div>
     </div>
   );
 }
 
-// Format tag for display
-function formatTag(tag: string): string {
-  const labels: Record<string, string> = {
-    'vegetarien': 'V',
-    'vegan': 'VG',
-    'sans-gluten': 'SG',
-    'sans-lactose': 'SL',
-    'bio': 'Bio',
-    'local': 'Local',
-    'fait-maison': 'Maison',
-  };
-  return labels[tag] || tag;
+// Service Card Component
+function ServiceCard({
+  icon,
+  title,
+  description,
+  note,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+  note?: string;
+}) {
+  return (
+    <div className="bg-gray-50 rounded-xl p-6 text-center hover:shadow-md transition">
+      <span className="text-4xl mb-4 block">{icon}</span>
+      <h3 className="font-display font-bold text-lg text-primary mb-2">{title}</h3>
+      <p className="text-gray-600 text-sm">{description}</p>
+      {note && <p className="text-xs text-gray-400 mt-2">{note}</p>}
+    </div>
+  );
 }
 
 // Icons
@@ -334,23 +614,6 @@ function PhoneIcon({ className = 'w-5 h-5' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-    </svg>
-  );
-}
-
-function LocationIcon({ className = 'w-5 h-5' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  );
-}
-
-function ClockIcon({ className = 'w-5 h-5' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }

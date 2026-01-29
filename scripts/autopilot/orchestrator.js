@@ -12,8 +12,196 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import dotenv from 'dotenv';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 dotenv.config();
+
+// ── Firestore initialization ──
+let firestoreDB = null;
+
+async function initFirestore() {
+  if (getApps().length > 0) {
+    firestoreDB = getFirestore();
+    return;
+  }
+
+  // Try service account key from env or local path
+  const keyPath = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!keyPath) {
+    console.log('[Firestore] No service account key configured - reports will not be persisted');
+    return;
+  }
+
+  try {
+    const keyFile = JSON.parse(await fs.readFile(path.resolve(keyPath), 'utf-8'));
+    initializeApp({ credential: cert(keyFile) });
+    firestoreDB = getFirestore();
+    console.log('[Firestore] Connected for report persistence');
+  } catch (err) {
+    console.warn('[Firestore] Init failed:', err.message, '- reports will not be persisted');
+  }
+}
+
+/**
+ * Save agent report to Firestore for the dashboard
+ */
+async function saveReportToFirestore(report, agentResult = {}) {
+  if (!firestoreDB) return;
+
+  try {
+    const reportData = {
+      agentName: report.agent,
+      status: report.errors.length > 0 ? 'failed' : (report.changes.length > 0 ? 'success' : 'success'),
+      timestamp: FieldValue.serverTimestamp(),
+      duration: Math.round(report.duration * 1000), // ms
+      changes: report.changes || [],
+      issues: report.errors || [],
+      prUrl: report.prUrl || null,
+      prCreated: report.prCreated || false,
+      testsRun: report.testsRun || false,
+      testsPassing: report.testsPassing || 0,
+      // Agent-specific metrics (from the agent's return value)
+      metrics: agentResult.metrics || {},
+      // Store full result for detail view
+      fullResult: JSON.stringify(agentResult).slice(0, 900000), // Keep under 1MB Firestore limit
+    };
+
+    const ref = await firestoreDB.collection('autopilot_reports').add(reportData);
+    console.log(`[Firestore] Report saved: ${ref.id}`);
+
+    // If security scanner, also save individual alerts
+    if (report.agent === 'security-scanner' && agentResult.vulnerabilities) {
+      await saveSecurityAlerts(agentResult, ref.id);
+    }
+  } catch (err) {
+    console.error('[Firestore] Failed to save report:', err.message);
+  }
+}
+
+/**
+ * Save security scan findings as individual alerts.
+ * - Skips duplicates (same title already exists and is unacknowledged)
+ * - Auto-resolves old alerts that are no longer detected
+ */
+async function saveSecurityAlerts(agentResult, reportId) {
+  if (!firestoreDB) return;
+
+  const alertsRef = firestoreDB.collection('autopilot_alerts');
+
+  // 1. Get all existing unacknowledged alerts
+  const existingSnap = await alertsRef.where('acknowledged', '==', false).get();
+  const existingAlerts = {};
+  existingSnap.docs.forEach(doc => {
+    existingAlerts[doc.data().title] = doc;
+  });
+
+  // 2. Build set of currently-detected alert titles
+  const currentTitles = new Set();
+
+  const batch = firestoreDB.batch();
+  let newCount = 0;
+
+  // Vulnerabilities
+  if (agentResult.vulnerabilities) {
+    for (const vuln of agentResult.vulnerabilities) {
+      const title = `${vuln.package}: ${vuln.via || 'vulnerability'}`;
+      currentTitles.add(title);
+
+      // Skip if already exists
+      if (existingAlerts[title]) continue;
+
+      const ref = alertsRef.doc();
+      batch.set(ref, {
+        type: 'vulnerability',
+        severity: vuln.severity || 'medium',
+        title,
+        details: JSON.stringify(vuln),
+        package: vuln.package || null,
+        file: null,
+        fixAvailable: vuln.fixAvailable || false,
+        acknowledged: false,
+        fixAttempted: false,
+        detectedAt: FieldValue.serverTimestamp(),
+        sourceReportId: reportId,
+      });
+      newCount++;
+    }
+  }
+
+  // Secrets found
+  if (agentResult.secrets) {
+    for (const secret of agentResult.secrets) {
+      const title = `${secret.type} found in ${secret.file}`;
+      currentTitles.add(title);
+
+      if (existingAlerts[title]) continue;
+
+      const ref = alertsRef.doc();
+      batch.set(ref, {
+        type: 'secret',
+        severity: 'high',
+        title,
+        details: `Line ${secret.line}: ${secret.preview}`,
+        package: null,
+        file: secret.file || null,
+        fixAvailable: false,
+        acknowledged: false,
+        fixAttempted: false,
+        detectedAt: FieldValue.serverTimestamp(),
+        sourceReportId: reportId,
+      });
+      newCount++;
+    }
+  }
+
+  // Anti-patterns
+  if (agentResult.patterns) {
+    for (const pattern of agentResult.patterns) {
+      const title = `${pattern.pattern} in ${pattern.file}`;
+      currentTitles.add(title);
+
+      if (existingAlerts[title]) continue;
+
+      const ref = alertsRef.doc();
+      batch.set(ref, {
+        type: 'pattern',
+        severity: pattern.severity || 'medium',
+        title,
+        details: JSON.stringify(pattern),
+        package: null,
+        file: pattern.file || null,
+        fixAvailable: false,
+        acknowledged: false,
+        fixAttempted: false,
+        detectedAt: FieldValue.serverTimestamp(),
+        sourceReportId: reportId,
+      });
+      newCount++;
+    }
+  }
+
+  // 3. Auto-resolve alerts no longer detected (mark acknowledged + resolved)
+  let resolvedCount = 0;
+  for (const [title, doc] of Object.entries(existingAlerts)) {
+    if (!currentTitles.has(title)) {
+      batch.update(doc.ref, {
+        acknowledged: true,
+        fixResolved: true,
+        resolvedAt: FieldValue.serverTimestamp(),
+        resolvedByReportId: reportId,
+      });
+      resolvedCount++;
+    }
+  }
+
+  if (newCount > 0 || resolvedCount > 0) {
+    await batch.commit();
+    console.log(`[Firestore] Alerts: ${newCount} new, ${resolvedCount} auto-resolved`);
+  } else {
+    console.log(`[Firestore] No alert changes (${Object.keys(existingAlerts).length} existing, all still detected)`);
+  }
+}
 
 const execAsync = promisify(exec);
 
@@ -61,6 +249,12 @@ const AGENTS = {
     name: 'Documentation Generator',
     schedule: '0 5 * * 5', // 5 AM Friday
     description: 'Update JSDoc, README files, changelogs',
+    autoFix: true,
+  },
+  'codebase-mapper': {
+    name: 'Codebase Mapper',
+    schedule: '0 1 * * 3', // Wednesday 1 AM UTC (weekly)
+    description: 'Scan codebase, update manifest, detect stale docs, generate reference docs',
     autoFix: true,
   },
   'code-reviewer': {
@@ -223,6 +417,9 @@ async function orchestrate(agentName, options = {}) {
   console.log(`Time: ${new Date().toISOString()}`);
   console.log(`${'='.repeat(60)}\n`);
 
+  // Initialize Firestore (idempotent)
+  await initFirestore();
+
   const report = {
     agent: agentName,
     startTime: new Date(),
@@ -233,6 +430,8 @@ async function orchestrate(agentName, options = {}) {
     prUrl: null,
     errors: [],
   };
+
+  let agentResult = {};
 
   try {
     // Create branch for changes (if autoFix enabled)
@@ -252,6 +451,7 @@ async function orchestrate(agentName, options = {}) {
       ...options,
     });
 
+    agentResult = result;
     report.changes = result.changes || [];
 
     // Run tests if changes were made
@@ -289,6 +489,9 @@ async function orchestrate(agentName, options = {}) {
   // Generate and send report
   const reportText = generateReport(report);
   console.log(reportText);
+
+  // Persist report to Firestore (for dashboard)
+  await saveReportToFirestore(report, agentResult);
 
   if (report.errors.length > 0 || report.prCreated) {
     await notify(

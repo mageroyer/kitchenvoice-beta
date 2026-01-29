@@ -1,3 +1,5 @@
+<!-- covers: src/services/** -->
+
 # SmartCookBook API Reference
 
 Complete documentation for all backend API endpoints.

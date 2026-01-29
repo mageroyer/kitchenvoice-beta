@@ -11,4 +11,4 @@
 - Docs: `docs/` (all documentation lives here)
 
 ## Tasks
-- See @docs/TODO.md for current tasks and priorities
+- See @docs/status/TODO.md for current tasks and priorities

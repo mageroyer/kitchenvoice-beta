@@ -1,7 +1,9 @@
+<!-- covers: src/services/**, src/components/**, src/pages/** -->
+
 # SmartCookBook - System Architecture
 
 **Version:** 2.0
-**Last Updated:** 2025-12-30
+**Last Updated:** 2026-01-27
 **Status:** Current
 
 ## Overview
@@ -87,11 +89,13 @@ SmartCookBook is a comprehensive kitchen management system built with a hybrid o
 | Local DB | IndexedDB (Dexie) | Offline-first storage |
 | Cloud DB | Firebase Firestore | Real-time sync |
 | Auth | Firebase Auth | User authentication |
+| Storage | Firebase Storage | Image uploads (logos, gallery) |
 | Hosting | Firebase Hosting | Static hosting |
 | Backend | Firebase Cloud Functions | Serverless APIs |
 | AI | Claude Vision API (Anthropic) | Invoice parsing, recipe extraction |
 | Voice | Google Cloud Speech-to-Text | Voice input |
 | Accounting | QuickBooks API | Invoice sync |
+| Public Website | Next.js 14 + Vercel | Auto-generated store websites |
 
 ---
 
@@ -151,12 +155,25 @@ app-new/src/
 │   │   └── Notes.jsx
 │   ├── users/             # User management
 │   │   └── UserTaskList.jsx
-│   └── vendors/           # Vendor management (6 components)
-│       ├── VendorsTab.jsx
-│       ├── VendorList.jsx
-│       ├── VendorCard.jsx
-│       ├── VendorDetailModal.jsx
-│       └── AddEditVendorModal.jsx
+│   ├── vendors/           # Vendor management (6 components)
+│   │   ├── VendorsTab.jsx
+│   │   ├── VendorList.jsx
+│   │   ├── VendorCard.jsx
+│   │   ├── VendorDetailModal.jsx
+│   │   └── AddEditVendorModal.jsx
+│   └── website/           # Website builder (12 components) NEW
+│       ├── WebsiteBuilder.jsx      # Main 10-step wizard
+│       └── steps/                  # Step components
+│           ├── StepBusinessType.jsx
+│           ├── StepIdentity.jsx
+│           ├── StepDesign.jsx
+│           ├── StepAbout.jsx
+│           ├── StepContact.jsx
+│           ├── StepServices.jsx
+│           ├── StepSocial.jsx
+│           ├── StepGallery.jsx
+│           ├── StepSEO.jsx
+│           └── StepReview.jsx
 ├── contexts/              # React Context providers
 │   ├── AuthContext.jsx    # Firebase auth state
 │   └── AccessContext.jsx  # Role-based access control
@@ -189,6 +206,8 @@ app-new/src/
 │   │   ├── orderDB.js         # Stock transactions + POs
 │   │   ├── supportingDB.js    # Departments, categories
 │   │   ├── cloudSync.js       # Firestore sync
+│   │   ├── websiteSchema.js   # Website data schema (NEW)
+│   │   ├── websiteDB.js       # Website Firestore CRUD (NEW)
 │   │   └── indexedDB.js       # Barrel export (backwards compat)
 │   ├── exports/           # PDF generation
 │   ├── inventory/         # Inventory business logic
@@ -227,18 +246,20 @@ app-new/src/
 
 | Feature Area | Components | Services |
 |--------------|------------|----------|
-| Common/Shared | 23 | 2 |
+| Common/Shared | 25 | 2 |
 | Recipes | 9 | 1 |
 | Inventory | 15 | 6 |
 | Orders | 9 | 1 |
 | Vendors | 6 | 1 |
-| Invoice | 5 | 31 |
+| Invoice | 8 | 31 |
+| Website | 12 | 2 |
 | Layout | 1 | 0 |
 | Auth | 2 | 2 |
-| Other | 24 | 76 |
-| **Total** | **94** | **120+** |
+| Other | 28 | 84 |
+| **Total** | **115+** | **130+** |
 
 *Note: Invoice services include vision/, handlers/, and mathEngine/ subdirectories*
+*Note: Website includes WebsiteBuilder + 10 step components + websiteDB/websiteSchema*
 
 ---
 
@@ -321,6 +342,14 @@ functions/
 ├── recipes/              # User's recipes
 ├── departments/          # Kitchen departments
 └── tasks/                # Team tasks
+
+/stores/{storeId}/        # NEW: Public website data
+├── website/
+│   └── data              # Website settings, design, content
+└── publicRecipes/        # Future: Public menu items
+
+/slugs/{slug}             # NEW: URL slug reservation
+└── storeId               # Maps slug → store ID
 
 /shared/
 └── vendors/              # Shared vendor database
@@ -410,6 +439,8 @@ functions/
 | **Speech** | `googleCloudSpeech.js` | Voice recognition |
 | **Auth** | `firebaseAuth.js` | Firebase authentication |
 | **Privileges** | `privilegesService.js` | Role-based access control |
+| **Website Schema** | `websiteSchema.js` | Website data structures, business types, templates |
+| **Website DB** | `websiteDB.js` | Firestore CRUD for website data, slug reservation |
 
 ---
 
@@ -472,7 +503,13 @@ functions/
 │   │               └── <InvoiceLineMatchModal />
 │   ├── <DepartmentTasksPage>
 │   │   └── <UserTaskList />
-│   └── <SettingsPage />
+│   ├── <SettingsPage />
+│   ├── <WebsiteBuilderPage>        ← NEW
+│   │   └── <WebsiteBuilder>
+│   │       ├── Step Navigation
+│   │       └── <Step{1-10}> components
+│   └── <WebsitePreviewPage>        ← NEW
+│       └── Full website preview
 ├── <Timer /> (global)
 ├── <PinModal /> (access control)
 └── <GuidedTour />
@@ -745,6 +782,10 @@ functions/
 | Auth Context | `app-new/src/contexts/AuthContext.jsx` |
 | Access Context | `app-new/src/contexts/AccessContext.jsx` |
 | Route Constants | `app-new/src/constants/routes.js` |
+| **Website Builder** | `app-new/src/components/website/WebsiteBuilder.jsx` |
+| **Website Schema** | `app-new/src/services/database/websiteSchema.js` |
+| **Website DB** | `app-new/src/services/database/websiteDB.js` |
+| **Public Website** | `website/app/[slug]/page.tsx` |
 
 ### Environment Variables
 
@@ -765,4 +806,4 @@ functions/
 ---
 
 *Document maintained by SmartCookBook Development Team*
-*Last Updated: 2025-12-30*
+*Last Updated: 2026-01-27*

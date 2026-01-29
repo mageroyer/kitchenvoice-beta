@@ -356,7 +356,96 @@
 
 ---
 
-*Last updated: 2026-01-27*
+*Last updated: 2026-01-28*
+
+---
+
+## AI AUTOPILOT SYSTEM - Resume Guide (2026-01-28)
+
+### What Was Built
+An AI-powered automated maintenance system that watches over your codebase 24/7.
+
+### Where It Lives
+- **GitHub Actions:** https://github.com/mageroyer/kitchenvoice-beta/actions
+- **Workflow:** "SmartCookBook Autopilot"
+- **Local scripts:** `scripts/autopilot/`
+
+### How to Run It Manually
+1. Go to: https://github.com/mageroyer/kitchenvoice-beta/actions
+2. Click "SmartCookBook Autopilot" in left sidebar
+3. Click "Run workflow" button (right side)
+4. Select branch: `main`
+5. Select agent: `daily-health` (or other)
+6. Click green "Run workflow"
+
+### How to See Reports
+1. After workflow completes, click on the run (e.g., "#4")
+2. The **Summary** section shows a formatted table with:
+   - Tests passing/failing
+   - Build status
+   - Lint errors
+   - Security vulnerabilities
+3. Click "run-agent" in sidebar to see full console logs
+
+### Automatic Schedule (UTC Time)
+| Time | Agent | What It Does |
+|------|-------|--------------|
+| Daily 6 AM | daily-health | Run tests, build, lint, security check |
+| Sunday 3 AM | deps-updater | Update safe dependencies |
+| Monday 4 AM | security-scanner | Scan for vulnerabilities |
+| Friday 5 AM | docs-generator | Add JSDoc to functions |
+| 1st of month | full-audit | Comprehensive codebase audit |
+
+### Files Created
+```
+scripts/autopilot/
+├── orchestrator.js          # Main coordinator
+├── package.json             # Dependencies
+├── agents/
+│   ├── daily-health.js      # Health check agent
+│   ├── test-fixer.js        # Auto-fix failing tests
+│   ├── deps-updater.js      # Update dependencies
+│   ├── security-scanner.js  # Security scan
+│   ├── docs-generator.js    # Generate docs
+│   └── full-audit.js        # Full audit
+└── README.md                # Full documentation
+
+.github/workflows/
+└── autopilot.yml            # GitHub Actions workflow
+```
+
+### GitHub Secret Required
+- `ANTHROPIC_API_KEY` - Already set up at:
+  https://github.com/mageroyer/kitchenvoice-beta/settings/secrets/actions
+
+### To Run Locally
+```bash
+cd scripts/autopilot
+npm install
+node orchestrator.js daily-health
+```
+
+---
+
+## Promotions Feature - Resume Guide (2026-01-28)
+
+### What Was Built
+- **PromotionModal** - Popup when clicking W button on recipes
+- **StepPromotions** - New Website Builder step (Step 9)
+- **Promotions Carousel** - Shows on public website
+
+### How It Works
+1. Go to Recipes list
+2. Click "W" button on a recipe to enable website visibility
+3. Modal pops up asking for: description, price, valid dates
+4. Fill in and save
+5. Promotion appears in Website Builder → Promotions step
+6. Publish website to see carousel on public site
+
+### Files Created
+- `app-new/src/components/common/PromotionModal.jsx`
+- `app-new/src/components/website/steps/StepPromotions.jsx`
+- `app-new/src/styles/components/promotionmodal.module.css`
 
 ---
 

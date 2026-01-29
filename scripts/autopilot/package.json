@@ -9,11 +9,13 @@
     "deps-update": "node agents/deps-updater.js",
     "security-scan": "node agents/security-scanner.js",
     "docs-update": "node agents/docs-generator.js",
+    "codebase-map": "node agents/codebase-mapper.js",
     "full-audit": "node agents/full-audit.js",
     "orchestrator": "node orchestrator.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "firebase-admin": "^12.0.0",
     "simple-git": "^3.22.0",
     "nodemailer": "^6.9.8",
     "dotenv": "^16.3.1"

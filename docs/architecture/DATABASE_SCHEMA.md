@@ -1,3 +1,5 @@
+<!-- covers: src/services/database/** -->
+
 # SmartCookBook Database Schema
 
 Complete documentation of IndexedDB (local) and Firestore (cloud) database structures.

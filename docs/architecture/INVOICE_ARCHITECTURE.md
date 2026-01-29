@@ -1,3 +1,5 @@
+<!-- covers: src/services/invoice/**, src/components/invoice/** -->
+
 # Invoice Processing System Architecture
 
 **Version:** 2.0

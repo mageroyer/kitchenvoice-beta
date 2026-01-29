@@ -1,27 +1,28 @@
 # SmartCookBook - Project Status Report
 
-**Report Date:** January 11, 2026
+**Report Date:** January 27, 2026
 **Version:** 2.0 (Pre-release)
 **Live URL:** https://smartcookbook-2afe2.web.app
+**Public Website:** https://kitchencommand-website.vercel.app
 
 ---
 
 ## Executive Summary
 
-SmartCookBook is a comprehensive kitchen management system designed for commercial kitchens. The application provides recipe management, AI-powered invoice processing, inventory tracking, purchase order generation, and team task management with an offline-first architecture.
+SmartCookBook is a comprehensive kitchen management system designed for commercial kitchens. The application provides recipe management, AI-powered invoice processing, inventory tracking, purchase order generation, team task management, and auto-generated public websites with an offline-first architecture.
 
 ### Key Metrics
 
 | Metric | Value |
 |--------|-------|
-| **Total Source Files** | 289 JS/JSX files |
-| **Lines of Code** | ~190,000+ |
+| **Total Source Files** | 310+ JS/JSX/TS files |
+| **Lines of Code** | ~200,000+ |
 | **Test Files** | 63 |
 | **Tests Passing** | 1,921 |
 | **Test Success Rate** | 100% |
-| **Components** | 94 React components |
-| **Services** | 120+ service files |
-| **Pages** | 29 pages |
+| **Components** | 115+ React components |
+| **Services** | 130+ service files |
+| **Pages** | 32 pages |
 
 ---
 
@@ -40,6 +41,8 @@ SmartCookBook is a comprehensive kitchen management system designed for commerci
 | AI | Claude Vision API | Invoice parsing, recipe extraction |
 | Voice | Google Cloud Speech-to-Text | Voice input |
 | Accounting | QuickBooks API | Invoice sync |
+| Storage | Firebase Storage | Image uploads for websites |
+| Public Website | Next.js 14 + Vercel | Auto-generated store websites |
 
 ---
 
@@ -94,6 +97,25 @@ SmartCookBook is a comprehensive kitchen management system designed for commerci
 - QuickBooks Online integration
 - Invoice sync with line type tagging
 - Vendor synchronization
+
+### 7. Auto-Generated Public Websites (NEW)
+**Complete website builder for food businesses:**
+
+| Feature | Description |
+|---------|-------------|
+| **10-Step Wizard** | Business type, identity, design, about, contact, services, social, gallery, SEO, publish |
+| **3 Templates** | Marche (classic), Urbain (modern), Chaleur (vibrant) |
+| **Business Types** | Butcher, bakery, deli, grocery, caterer, restaurant, food truck, etc. |
+| **Certifications** | Halal, kosher, organic, local, gluten-free badges |
+| **Image Upload** | Firebase Storage for logos, hero images, gallery |
+| **Public URL** | `kitchencommand-website.vercel.app/{slug}` |
+| **SEO** | Meta title, description, keywords |
+
+**Technical Stack:**
+- Next.js 14 with ISR (5-min revalidation)
+- Firestore direct queries from client
+- Slug-based routing (`/slugs/{slug}` → `storeId`)
+- Vercel deployment with CDN
 
 ---
 
@@ -211,7 +233,7 @@ SmartCookBook is a comprehensive kitchen management system designed for commerci
 - Auto-create prerequisite tasks for shortfalls
 - Production execution mode with autosave
 
-### Week 10: Credits & Training Data (Latest)
+### Week 10: Credits & Training Data
 - **API Credits System**: 50 credits/month per user
   - Credit costs per operation type
   - Owner bypass for unlimited credits
@@ -223,37 +245,80 @@ SmartCookBook is a comprehensive kitchen management system designed for commerci
   - User Guide, Security Overview, Terms of Service
 - **Legal Compliance**: Real contact info, Privacy Officer designation
 
+### Week 11: Auto-Generated Public Websites (Latest)
+- **10-Step Website Builder Wizard**
+  - Complete wizard with step navigation and validation
+  - Business type selection (12 types)
+  - Identity setup (logo, name, tagline, year)
+  - Template selection with color customization
+  - About section (story, mission, certifications, team)
+  - Contact info with business hours
+  - Services configuration (catering, delivery, wholesale)
+  - Social media integration
+  - Gallery with hero images and store photos
+  - SEO configuration with URL slug
+  - Review and publish flow
+- **Firebase Storage Setup**
+  - Security rules for dish-photos and store-assets
+  - CORS configuration for localhost and production
+- **Next.js Public Website**
+  - Deployed to Vercel at `kitchencommand-website.vercel.app`
+  - Firebase SDK integration for direct Firestore queries
+  - Slug-based routing for dynamic store pages
+  - Marche template with dynamic colors
+- **In-App Preview**
+  - Full website preview within the app
+  - All sections rendered with live data
+
 ---
 
 ## File Structure Summary
 
 ```
 app-new/src/
-├── components/         94 files   # React UI components
-│   ├── common/         23 files   # Shared UI (Button, Modal, Card...)
+├── components/        115+ files  # React UI components
+│   ├── common/         25 files   # Shared UI (Button, Modal, Card...)
 │   ├── inventory/      15 files   # Inventory management
 │   ├── recipes/         9 files   # Recipe editing
 │   ├── vendors/         6 files   # Vendor management
 │   ├── orders/          9 files   # Purchase orders
-│   ├── invoice/         5 files   # Invoice display
+│   ├── invoice/         8 files   # Invoice display
+│   ├── website/        12 files   # Website builder (NEW)
+│   │   ├── WebsiteBuilder.jsx
+│   │   └── steps/      10 files   # 10-step wizard
 │   └── ...
-├── services/          125+ files  # Business logic
+├── services/          130+ files  # Business logic
 │   ├── invoice/        31 files   # Invoice processing system
 │   │   ├── vision/      4 files   # Vision parser
 │   │   ├── handlers/    9 files   # Type-specific handlers
 │   │   └── mathEngine/  7 files   # Math validation
-│   ├── database/       15 files   # Data persistence
+│   ├── database/       17 files   # Data persistence
+│   │   ├── websiteSchema.js       # Website data schema (NEW)
+│   │   └── websiteDB.js           # Website Firestore CRUD (NEW)
 │   ├── inventory/      10 files   # Inventory operations
 │   ├── ai/              5 files   # Claude integration
 │   ├── credits/         1 file    # API credit management
 │   ├── training/        1 file    # Training data collection
 │   └── ...
-├── pages/              29 files   # Route pages
+├── pages/              32 files   # Route pages
+│   ├── WebsiteBuilderPage.jsx     # Website builder (NEW)
+│   └── WebsitePreviewPage.jsx     # In-app preview (NEW)
 ├── hooks/               4 files   # Custom React hooks
 ├── contexts/            2 files   # Auth & Access contexts
 ├── utils/              19 files   # Utility functions
 ├── constants/           5 files   # App constants
 └── __tests__/          11 files   # Integration & E2E tests
+
+website/                            # Public website (Next.js)
+├── app/
+│   ├── [slug]/page.tsx            # Dynamic store page
+│   └── layout.tsx
+├── components/
+│   └── templates/
+│       └── MarcheTemplate.tsx
+└── lib/
+    ├── api.ts                     # Firestore API client
+    └── firebase.ts                # Firebase SDK init
 ```
 
 ---
@@ -328,10 +393,11 @@ firebase deploy --only functions
 
 SmartCookBook is a mature, well-architected React application with:
 
-- **190,000+ lines** of production code
+- **200,000+ lines** of production code
 - **100% test pass rate** (1,921 tests)
 - **Modern AI-powered** invoice processing
 - **Offline-first** architecture with cloud sync
+- **Auto-generated public websites** for food businesses
 - **Clean separation** of concerns (UI / Services / Data)
 - **Comprehensive documentation**
 
@@ -339,4 +405,4 @@ The system is ready for v2.0 release pending final smoke tests and dependency up
 
 ---
 
-*Report generated: December 30, 2025*
+*Report generated: January 27, 2026*

@@ -1,3 +1,5 @@
+<!-- covers: src/services/database/inventoryDB.js, src/services/inventory/** -->
+
 # Inventory Item Schema Reference
 
 Complete field reference for inventory items, organized by category with update behavior documentation.

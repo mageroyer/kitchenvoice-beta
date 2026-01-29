@@ -1,3 +1,5 @@
+<!-- covers: src/services/inventory/**, src/components/inventory/** -->
+
 # SmartCookBook Inventory System
 
 Complete documentation for the inventory management system including vendors, inventory items, invoices, and stock tracking.

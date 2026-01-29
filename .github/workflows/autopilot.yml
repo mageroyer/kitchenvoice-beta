@@ -102,12 +102,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: app-new/package-lock.json
-
-      - name: Install app dependencies
-        working-directory: app-new
-        run: npm ci
 
       - name: Install autopilot dependencies
         working-directory: scripts/autopilot

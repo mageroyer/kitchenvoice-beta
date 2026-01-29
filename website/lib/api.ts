@@ -171,6 +171,7 @@ function transformWebsiteData(data: any, slug: string): StoreData {
       social,
       identity,
       design,
+      promotions: data.promotions || {},
       businessType: data.businessType,
     },
   };

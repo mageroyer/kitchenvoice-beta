@@ -10,5 +10,6 @@ export { default as StepContact } from './StepContact';
 export { default as StepServices } from './StepServices';
 export { default as StepSocial } from './StepSocial';
 export { default as StepGallery } from './StepGallery';
+export { default as StepPromotions } from './StepPromotions';
 export { default as StepSEO } from './StepSEO';
 export { default as StepReview } from './StepReview';

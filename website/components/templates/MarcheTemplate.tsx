@@ -48,6 +48,14 @@ export default function MarcheTemplate({ data }: MarcheTemplateProps) {
   const contact = _raw?.contact || {};
   const social = _raw?.social || {};
   const identity = _raw?.identity || {};
+  const promotions = _raw?.promotions || {};
+
+  // Filter active promotions (within date range)
+  const today = new Date().toISOString().split('T')[0];
+  const activePromotions = (promotions?.items || []).filter((promo: any) => {
+    if (!promo.validFrom || !promo.validTo) return false;
+    return promo.validFrom <= today && promo.validTo >= today;
+  });
 
   // Set CSS variables for dynamic colors
   const cssVars = {
@@ -87,9 +95,11 @@ export default function MarcheTemplate({ data }: MarcheTemplateProps) {
   const hasTeam = about?.team?.length > 0;
   const hasAbout = about?.story || about?.mission;
   const hasCertifications = about?.certifications?.length > 0;
+  const hasPromotions = promotions?.carouselEnabled !== false && activePromotions.length > 0;
 
   // Build navigation items based on what sections exist
   const navItems = [];
+  if (hasPromotions) navItems.push({ id: 'promotions', label: 'Promotions' });
   if (hasServices) navItems.push({ id: 'services', label: 'Services' });
   if (hasGallery) navItems.push({ id: 'gallery', label: 'Gallery' });
   if (hasTeam) navItems.push({ id: 'team', label: 'Team' });
@@ -191,6 +201,66 @@ export default function MarcheTemplate({ data }: MarcheTemplateProps) {
                 ) : null;
               })}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Promotions Carousel Section */}
+      {hasPromotions && (
+        <section id="promotions" className="scroll-mt-16 py-12 px-4 bg-gradient-to-b from-amber-50 to-white">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-3xl font-display font-bold text-gray-800 mb-8 text-center">
+              {promotions?.carouselTitle || 'Promotions de la Semaine'}
+            </h2>
+            <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+              {activePromotions.map((promo: any, i: number) => (
+                <div
+                  key={`promo-${i}`}
+                  className="flex-shrink-0 w-72 md:w-80 snap-center bg-white rounded-xl shadow-lg overflow-hidden border-2 border-amber-200"
+                >
+                  {/* Promo Image */}
+                  <div className="relative h-48 bg-gray-100">
+                    {promo.photo ? (
+                      <Image
+                        src={promo.photo}
+                        alt={promo.recipeName}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-amber-100">
+                        <span className="text-4xl">🍽️</span>
+                      </div>
+                    )}
+                    {/* Price Badge */}
+                    {promo.price && (
+                      <div className="absolute top-3 right-3 bg-red-600 text-white px-3 py-1 rounded-full font-bold shadow-lg">
+                        ${promo.price.toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                  {/* Promo Content */}
+                  <div className="p-4">
+                    <h3 className="font-bold text-lg text-gray-800 mb-2">{promo.recipeName}</h3>
+                    {promo.description && (
+                      <p className="text-gray-600 text-sm line-clamp-2">{promo.description}</p>
+                    )}
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                      <span>Valid until {new Date(promo.validTo).toLocaleDateString()}</span>
+                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                        Special
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Scroll hint for mobile */}
+            {activePromotions.length > 1 && (
+              <p className="text-center text-gray-400 text-sm mt-4 md:hidden">
+                ← Swipe to see more →
+              </p>
+            )}
           </div>
         </section>
       )}
@@ -556,6 +626,7 @@ export default function MarcheTemplate({ data }: MarcheTemplateProps) {
               className="flex flex-col items-center text-xs text-gray-600 hover:text-primary"
             >
               <span className="text-lg mb-1">
+                {item.id === 'promotions' && '🏷️'}
                 {item.id === 'services' && '🍽️'}
                 {item.id === 'gallery' && '📷'}
                 {item.id === 'team' && '👥'}

@@ -4,6 +4,7 @@ import SearchBar from '../components/common/SearchBar';
 import Dropdown from '../components/common/Dropdown';
 import AlphabetNav from '../components/recipes/AlphabetNav';
 import AssignTaskModal from '../components/common/AssignTaskModal';
+import PromotionModal from '../components/common/PromotionModal';
 import { recipeDB, categoryDB } from '../services/database/indexedDB';
 import GoogleCloudSpeechService from '../services/speech/googleCloudSpeech';
 import styles from '../styles/pages/recipelistpage.module.css';
@@ -28,6 +29,8 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
   const [availableCategories, setAvailableCategories] = useState([]);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [selectedRecipeForTask, setSelectedRecipeForTask] = useState(null);
+  const [promoModalOpen, setPromoModalOpen] = useState(false);
+  const [selectedRecipeForPromo, setSelectedRecipeForPromo] = useState(null);
 
   // Initialize Google Cloud Speech service
   useEffect(() => {
@@ -189,12 +192,32 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
   // Handle website visibility toggle
   const handleWebsiteToggle = async (recipe, e) => {
     e.stopPropagation();
+
+    // If turning ON (currently not visible), show promo modal
+    if (!recipe.public?.isVisible) {
+      setSelectedRecipeForPromo(recipe);
+      setPromoModalOpen(true);
+      return;
+    }
+
+    // If turning OFF, just toggle directly
     try {
       await recipeDB.toggleWebsiteVisibility(recipe.id);
       loadRecipes(); // Refresh list
     } catch (error) {
       console.error('Failed to toggle website visibility:', error);
     }
+  };
+
+  // Handle promo modal close
+  const handlePromoModalClose = () => {
+    setPromoModalOpen(false);
+    setSelectedRecipeForPromo(null);
+  };
+
+  // Handle promo saved
+  const handlePromoSaved = () => {
+    loadRecipes(); // Refresh list to show W as active
   };
 
   // Handle "available today" toggle
@@ -391,6 +414,15 @@ function RecipeListPage({ micFlag = false, isUnlocked = true, currentDepartment 
           currentDepartment={currentDepartment}
           onClose={handleTaskModalClose}
           onTaskCreated={handleTaskCreated}
+        />
+      )}
+
+      {/* Promotion Modal */}
+      {promoModalOpen && selectedRecipeForPromo && (
+        <PromotionModal
+          recipe={selectedRecipeForPromo}
+          onClose={handlePromoModalClose}
+          onSaved={handlePromoSaved}
         />
       )}
     </div>

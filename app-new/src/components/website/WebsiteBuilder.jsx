@@ -35,6 +35,7 @@ import {
   StepServices,
   StepSocial,
   StepGallery,
+  StepPromotions,
   StepSEO,
   StepReview,
 } from './steps';
@@ -59,7 +60,7 @@ export default function WebsiteBuilder({ onComplete }) {
 
       // If they already have a published site, go to review step
       if (data.status === 'published') {
-        setCurrentStep(9);
+        setCurrentStep(10);
       }
     } catch (err) {
       console.error('Error loading website data:', err);
@@ -138,23 +139,42 @@ export default function WebsiteBuilder({ onComplete }) {
     setError(null);
 
     try {
+      console.log('Starting publish process...');
+      console.log('Current slug:', websiteData.slug);
+
       // Make sure slug is reserved
       if (websiteData.slug) {
+        console.log('Reserving slug...');
         const reserved = await reserveSlug(websiteData.slug);
+        console.log('Slug reservation result:', reserved);
         if (!reserved) {
           setError('The chosen URL is no longer available. Please choose another.');
           goToStep(8); // Go to SEO step
           setSaving(false);
           return;
         }
+      } else {
+        setError('Please set a URL slug in the SEO step before publishing.');
+        goToStep(8);
+        setSaving(false);
+        return;
       }
 
       // Save final data
+      console.log('Saving website data with status: published');
       await saveWebsiteData({
         ...websiteData,
         status: 'published',
         publishedAt: new Date().toISOString(),
       });
+      console.log('Website published successfully!');
+
+      // Update local state to reflect published status
+      setWebsiteData(prev => ({
+        ...prev,
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+      }));
 
       // Redirect to success or settings
       if (onComplete) {
@@ -162,7 +182,8 @@ export default function WebsiteBuilder({ onComplete }) {
       }
     } catch (err) {
       console.error('Error publishing website:', err);
-      setError('Failed to publish website. Please try again.');
+      console.error('Error details:', err.message, err.code);
+      setError(`Failed to publish: ${err.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
@@ -195,8 +216,10 @@ export default function WebsiteBuilder({ onComplete }) {
       case 7:
         return <StepGallery {...stepProps} />;
       case 8:
-        return <StepSEO {...stepProps} />;
+        return <StepPromotions {...stepProps} />;
       case 9:
+        return <StepSEO {...stepProps} />;
+      case 10:
         return <StepReview {...stepProps} onPublish={handlePublish} />;
       default:
         return null;
@@ -210,7 +233,7 @@ export default function WebsiteBuilder({ onComplete }) {
         return !!websiteData.businessType;
       case 1:
         return !!websiteData.identity?.name;
-      case 8:
+      case 9: // SEO step
         return !!websiteData.slug && websiteData.slug.length >= 3;
       default:
         return true;

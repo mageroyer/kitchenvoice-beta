@@ -1,0 +1,24 @@
+{
+  "name": "smartcookbook-autopilot",
+  "version": "1.0.0",
+  "description": "Autonomous AI maintenance agent for SmartCookBook",
+  "type": "module",
+  "scripts": {
+    "daily": "node agents/daily-health.js",
+    "test-fix": "node agents/test-fixer.js",
+    "deps-update": "node agents/deps-updater.js",
+    "security-scan": "node agents/security-scanner.js",
+    "docs-update": "node agents/docs-generator.js",
+    "full-audit": "node agents/full-audit.js",
+    "orchestrator": "node orchestrator.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "simple-git": "^3.22.0",
+    "nodemailer": "^6.9.8",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

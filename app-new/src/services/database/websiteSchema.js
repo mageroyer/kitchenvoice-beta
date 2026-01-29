@@ -336,22 +336,27 @@ export const DEFAULT_WEBSITE_DATA = {
     priceFormat: '$0.00',
   },
 
-  // Step 10: Promotions & News
+  // Step 9: Promotions (Recipe-based)
   promotions: {
-    // Current promotions
-    active: [
-      // { title, description, image, startDate, endDate, code }
+    // Recipe promotions (linked to recipes with W=green)
+    items: [
+      // {
+      //   recipeId: number,
+      //   recipeName: string,
+      //   photo: string (URL),
+      //   description: string (promo text),
+      //   price: number,
+      //   validFrom: string (ISO date),
+      //   validTo: string (ISO date),
+      //   sortOrder: number
+      // }
     ],
 
-    // Upcoming events
-    events: [
-      // { title, description, date, time, location }
-    ],
-
-    // Blog/News posts
-    posts: [
-      // { title, content, image, date, slug }
-    ],
+    // Carousel settings
+    carouselEnabled: true,
+    carouselTitle: 'Promotions de la Semaine',
+    autoPlay: true,
+    autoPlayInterval: 5000, // ms
 
     // Announcement banner
     banner: {
@@ -497,6 +502,14 @@ export const WIZARD_STEPS = [
     description: 'Upload photos of your store and products',
     descriptionFr: 'Téléchargez des photos de votre commerce',
     icon: '📸',
+  },
+  {
+    id: 'promotions',
+    title: 'Promotions',
+    titleFr: 'Promotions',
+    description: 'Set up weekly promotions from your recipes',
+    descriptionFr: 'Configurez vos promotions de la semaine',
+    icon: '🏷️',
   },
   {
     id: 'seo',

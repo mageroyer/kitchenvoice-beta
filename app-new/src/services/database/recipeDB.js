@@ -324,7 +324,17 @@ export const recipeDB = {
     }
 
     const newVisibility = !(recipe.public?.isVisible);
-    await this.updatePublicFields(id, { isVisible: newVisibility });
+
+    // When enabling visibility, auto-set promotional photo if available
+    const updates = { isVisible: newVisibility };
+    if (newVisibility && recipe.promotionalPhotoId && recipe.photos?.length > 0) {
+      const promotionalPhoto = recipe.photos.find(p => p.id === recipe.promotionalPhotoId);
+      if (promotionalPhoto?.url) {
+        updates.photo = promotionalPhoto.url;
+      }
+    }
+
+    await this.updatePublicFields(id, updates);
     return newVisibility;
   },
 

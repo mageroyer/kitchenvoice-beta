@@ -9,7 +9,9 @@ import PlatingInstructions from '../components/recipes/PlatingInstructions';
 import Notes from '../components/recipes/Notes';
 import ScaleSettingsModal from '../components/recipes/ScaleSettingsModal';
 import WebsiteTab from '../components/recipes/WebsiteTab';
+import RecipePhotoGallery from '../components/recipes/RecipePhotoGallery';
 import { recipeDB, categoryDB, departmentDB, inventoryItemDB } from '../services/database/indexedDB';
+import { uploadDishPhoto } from '../services/storage/imageStorage';
 import { updateTask } from '../services/tasks/tasksService';
 import { compressToDataUrl, isValidImageType } from '../utils/imageCompression';
 import { formatFileSize } from '../utils/format';
@@ -80,6 +82,13 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false,
   const [lastSaved, setLastSaved] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle'); // 'idle', 'pending', 'saving', 'saved', 'error'
+
+  // Recipe photos state
+  const [recipePhotos, setRecipePhotos] = useState([]); // Array of { id, url, takenAt, caption }
+  const [promotionalPhotoId, setPromotionalPhotoId] = useState(null);
+  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+  const photoInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   // Scale integration (optional)
   const [showScaleModal, setShowScaleModal] = useState(false);
@@ -399,6 +408,8 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false,
         setPlatingInstructions(recipe.platingInstructions || null);
         setNotes(recipe.notes || null);
         setImageUrl(recipe.imageUrl || null);
+        setRecipePhotos(recipe.photos || []);
+        setPromotionalPhotoId(recipe.promotionalPhotoId || null);
         setIsProductionMode(recipe.isProductionRecipe || false);
         setPublicData(recipe.public || null);
         setShowWebsiteTab(!!recipe.public); // Show tab if recipe has public data
@@ -555,6 +566,8 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false,
       const currentOutputContainerSize = overrides.outputContainerSize !== undefined ? overrides.outputContainerSize : outputContainerSize;
       const currentOutputContainerUnit = overrides.outputContainerUnit !== undefined ? overrides.outputContainerUnit : outputContainerUnit;
       const currentPublicData = overrides.publicData !== undefined ? overrides.publicData : publicData;
+      const currentPhotos = overrides.photos !== undefined ? overrides.photos : recipePhotos;
+      const currentPromotionalPhotoId = overrides.promotionalPhotoId !== undefined ? overrides.promotionalPhotoId : promotionalPhotoId;
 
       // Sanitize all inputs before saving
       const recipeData = sanitizeRecipe({
@@ -568,6 +581,8 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false,
         platingInstructions: currentPlating,
         notes: currentNotes,
         imageUrl: currentImageUrl,
+        photos: currentPhotos,
+        promotionalPhotoId: currentPromotionalPhotoId,
         isProductionRecipe: currentIsProductionRecipe,
         outputContainerSize: currentOutputContainerSize,
         outputContainerUnit: currentOutputContainerUnit,
@@ -599,7 +614,7 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false,
     } finally {
       setSaving(false);
     }
-  }, [isNewRecipe, recipeName, id, ingredients, methodSteps, platingInstructions, notes, category, imageUrl, basePortion, portionUnit, department, isProductionMode, outputContainerSize, outputContainerUnit, publicData]);
+  }, [isNewRecipe, recipeName, id, ingredients, methodSteps, platingInstructions, notes, category, imageUrl, recipePhotos, promotionalPhotoId, basePortion, portionUnit, department, isProductionMode, outputContainerSize, outputContainerUnit, publicData]);
 
   // Debounced auto-save with max wait
   // - Waits 1.5s after user stops editing (trailing edge)
@@ -712,7 +727,133 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false,
     setCurrentRecipe(null);
     setLastSaved(null);
     setAutoSaveStatus('idle');
+    setRecipePhotos([]);
+    setPromotionalPhotoId(null);
   }, [isNewRecipe, flushAutoSave]);
+
+  // ============================================
+  // Recipe Photo Handlers
+  // ============================================
+
+  // Handle taking a photo with camera (for tablets)
+  const handleTakePhoto = useCallback(() => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+    }
+  }, []);
+
+  // Handle importing a photo from device
+  const handleImportPhoto = useCallback(() => {
+    if (photoInputRef.current) {
+      photoInputRef.current.click();
+    }
+  }, []);
+
+  // Open the photo gallery modal
+  const handleOpenGallery = useCallback(() => {
+    setShowPhotoGallery(true);
+  }, []);
+
+  // Process uploaded/captured photo
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoCapture = useCallback(async (file) => {
+    if (!file) {
+      alert('No file selected');
+      return;
+    }
+
+    if (!isValidImageType(file)) {
+      alert('Please select a valid image file (JPEG, PNG, or WebP)');
+      return;
+    }
+
+    setUploadingPhoto(true);
+
+    try {
+      // Upload to Firebase Storage
+      const photoUrl = await uploadDishPhoto(file, id || `new-${Date.now()}`, {
+        maxWidth: 1200,
+        maxHeight: 900,
+        quality: 0.85,
+      });
+
+      const newPhoto = {
+        id: `photo-${Date.now()}`,
+        url: photoUrl,
+        takenAt: new Date().toISOString(),
+        caption: '',
+      };
+
+      const updatedPhotos = [...recipePhotos, newPhoto];
+      setRecipePhotos(updatedPhotos);
+
+      // Auto-set as promotional if it's the first photo
+      if (updatedPhotos.length === 1) {
+        setPromotionalPhotoId(newPhoto.id);
+      }
+
+      // Auto-save the photos
+      if (!isNewRecipe) {
+        autoSave({ photos: updatedPhotos, promotionalPhotoId: updatedPhotos.length === 1 ? newPhoto.id : promotionalPhotoId });
+      }
+
+      // Auto-open gallery to show the new photo
+      setShowPhotoGallery(true);
+    } catch (err) {
+      console.error('Failed to upload photo:', err);
+      alert('Failed to upload photo: ' + (err.message || 'Please try again.'));
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }, [id, recipePhotos, promotionalPhotoId, isNewRecipe, autoSave]);
+
+  // Handle file input change (both camera and import)
+  const handlePhotoInputChange = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handlePhotoCapture(file);
+    }
+    e.target.value = ''; // Reset input
+  }, [handlePhotoCapture]);
+
+  // Set promotional photo
+  const handleSetPromotional = useCallback((photoId) => {
+    setPromotionalPhotoId(photoId);
+
+    // Get the photo URL for the promotional photo
+    const photo = recipePhotos.find(p => p.id === photoId);
+
+    if (!isNewRecipe) {
+      const updates = { promotionalPhotoId: photoId };
+
+      // If recipe is visible on website, also update the public photo
+      if (publicData?.isVisible && photo?.url) {
+        const newPublicData = { ...publicData, photo: photo.url };
+        setPublicData(newPublicData);
+        updates.publicData = newPublicData;
+      }
+
+      autoSave(updates);
+    }
+  }, [isNewRecipe, autoSave, recipePhotos, publicData]);
+
+  // Delete photo
+  const handleDeletePhoto = useCallback((photoId) => {
+    const updatedPhotos = recipePhotos.filter(p => p.id !== photoId);
+    setRecipePhotos(updatedPhotos);
+
+    // Clear promotional if deleted
+    if (promotionalPhotoId === photoId) {
+      const newPromoId = updatedPhotos.length > 0 ? updatedPhotos[0].id : null;
+      setPromotionalPhotoId(newPromoId);
+      if (!isNewRecipe) {
+        autoSave({ photos: updatedPhotos, promotionalPhotoId: newPromoId });
+      }
+    } else if (!isNewRecipe) {
+      autoSave({ photos: updatedPhotos });
+    }
+  }, [recipePhotos, promotionalPhotoId, isNewRecipe, autoSave]);
 
   // Listen for "new recipe" event from MenuBar
   useEffect(() => {
@@ -750,6 +891,8 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false,
         platingInstructions,
         notes,
         imageUrl,
+        photos: recipePhotos,
+        promotionalPhotoId,
         isProductionRecipe: isProductionMode,
         outputContainerSize,
         outputContainerUnit,
@@ -1070,6 +1213,12 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false,
           linkedPackageItems={linkedPackageItems}
           methodPackagingCost={totalPackagingCost}
           onCostChange={setTotalRecipeCost}
+          // Photo handlers
+          onTakePhoto={effectiveIsUnlocked ? handleTakePhoto : null}
+          onImportPhoto={effectiveIsUnlocked ? handleImportPhoto : null}
+          onOpenGallery={handleOpenGallery}
+          photoCount={recipePhotos.length}
+          uploadingPhoto={uploadingPhoto}
         />
       </section>
 
@@ -1225,6 +1374,34 @@ function RecipeEditorPage({ micFlag = false, isUnlocked = true, isOwner = false,
         onClose={() => setShowScaleModal(false)}
         onSave={handleSaveScaleSettings}
         recipe={currentRecipe}
+      />
+
+      {/* Recipe Photo Gallery Modal */}
+      {showPhotoGallery && (
+        <RecipePhotoGallery
+          photos={recipePhotos}
+          promotionalPhotoId={promotionalPhotoId}
+          onSetPromotional={handleSetPromotional}
+          onDeletePhoto={handleDeletePhoto}
+          onClose={() => setShowPhotoGallery(false)}
+        />
+      )}
+
+      {/* Hidden file inputs for photo capture/import */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handlePhotoInputChange}
+        style={{ display: 'none' }}
+      />
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoInputChange}
+        style={{ display: 'none' }}
       />
 
       {/* Save/Cancel Buttons (only for new recipes when unlocked) */}

@@ -1,0 +1,105 @@
+/**
+ * Daily Health Check Agent
+ *
+ * Runs every morning to verify system health:
+ * - Run all tests
+ * - Check for obvious issues
+ * - Report any problems
+ */
+
+export async function run({ runTests, runCommand, projectRoot }) {
+  const report = {
+    changes: [],
+    issues: [],
+    metrics: {},
+  };
+
+  console.log('Starting daily health check...\n');
+
+  // 1. Run tests
+  console.log('1. Running test suite...');
+  const testResult = await runTests();
+
+  // Strip ANSI color codes and parse Vitest output
+  // Format: "Tests  1929 passed | 1 skipped (1930)"
+  const cleanOutput = testResult.output?.replace(/\x1b\[[0-9;]*m/g, '') || '';
+  const passMatch = cleanOutput.match(/Tests\s+(\d+)\s+passed/);
+  const failMatch = cleanOutput.match(/(\d+)\s+failed/);
+  const skipMatch = cleanOutput.match(/(\d+)\s+skipped/);
+
+  report.metrics.tests = {
+    passing: passMatch ? parseInt(passMatch[1]) : 0,
+    failing: failMatch ? parseInt(failMatch[1]) : 0,
+    skipped: skipMatch ? parseInt(skipMatch[1]) : 0,
+    success: testResult.success,
+  };
+
+  if (report.metrics.tests.failing > 0) {
+    report.issues.push(`${report.metrics.tests.failing} tests failing`);
+  }
+
+  // 2. Check for build errors
+  console.log('2. Running build...');
+  const buildResult = await runCommand('npm run build');
+  report.metrics.build = {
+    success: buildResult.success,
+  };
+
+  if (!buildResult.success) {
+    report.issues.push('Build failed');
+  }
+
+  // 3. Check for ESLint errors
+  console.log('3. Running linter...');
+  const lintResult = await runCommand('npm run lint 2>&1 || true');
+  const errorMatch = lintResult.stdout?.match(/(\d+) errors?/);
+  const warnMatch = lintResult.stdout?.match(/(\d+) warnings?/);
+
+  report.metrics.lint = {
+    errors: errorMatch ? parseInt(errorMatch[1]) : 0,
+    warnings: warnMatch ? parseInt(warnMatch[1]) : 0,
+  };
+
+  if (report.metrics.lint.errors > 0) {
+    report.issues.push(`${report.metrics.lint.errors} lint errors`);
+  }
+
+  // 4. Check bundle size
+  console.log('4. Checking bundle size...');
+  const statsResult = await runCommand('du -sh dist/ 2>/dev/null || echo "N/A"');
+  report.metrics.bundleSize = statsResult.stdout?.trim() || 'N/A';
+
+  // 5. Check for security vulnerabilities
+  console.log('5. Running security audit...');
+  const auditResult = await runCommand('npm audit --json 2>/dev/null || echo "{}"');
+  try {
+    const audit = JSON.parse(auditResult.stdout || '{}');
+    report.metrics.vulnerabilities = {
+      critical: audit.metadata?.vulnerabilities?.critical || 0,
+      high: audit.metadata?.vulnerabilities?.high || 0,
+      moderate: audit.metadata?.vulnerabilities?.moderate || 0,
+    };
+
+    if (report.metrics.vulnerabilities.critical > 0) {
+      report.issues.push(`${report.metrics.vulnerabilities.critical} critical vulnerabilities`);
+    }
+  } catch (e) {
+    report.metrics.vulnerabilities = { error: 'Could not parse audit' };
+  }
+
+  // Summary
+  console.log('\n=== HEALTH CHECK SUMMARY ===');
+  console.log(`Tests: ${report.metrics.tests.passing} passing, ${report.metrics.tests.failing} failing, ${report.metrics.tests.skipped} skipped`);
+  console.log(`Build: ${report.metrics.build.success ? 'OK' : 'FAILED'}`);
+  console.log(`Lint: ${report.metrics.lint.errors} errors, ${report.metrics.lint.warnings} warnings`);
+  console.log(`Bundle: ${report.metrics.bundleSize}`);
+  console.log(`Vulnerabilities: critical=${report.metrics.vulnerabilities.critical || 0}, high=${report.metrics.vulnerabilities.high || 0}`);
+  console.log(`\nIssues found: ${report.issues.length}`);
+  if (report.issues.length > 0) {
+    report.issues.forEach(i => console.log(`  - ${i}`));
+  } else {
+    console.log('  None - System healthy!');
+  }
+
+  return report;
+}

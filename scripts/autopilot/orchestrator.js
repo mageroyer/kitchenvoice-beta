@@ -1,0 +1,359 @@
+/**
+ * SmartCookBook Autopilot Orchestrator
+ *
+ * Central coordinator for all autonomous AI agents.
+ * Manages agent execution, change pipelines, and notifications.
+ */
+
+import Anthropic from '@anthropic-ai/sdk';
+import simpleGit from 'simple-git';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs/promises';
+import path from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const execAsync = promisify(exec);
+
+// Configuration
+const CONFIG = {
+  projectRoot: path.resolve(process.cwd(), '../../app-new'),
+  mainBranch: 'fresh-start',
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  notifyEmail: process.env.NOTIFY_EMAIL || 'mageroyer@hotmail.com',
+  maxChangesPerRun: 10,
+  testCommand: 'npm test -- --reporter=verbose',
+  buildCommand: 'npm run build',
+};
+
+// Log the resolved path for debugging
+console.log('Project root:', CONFIG.projectRoot);
+
+// Agent definitions
+const AGENTS = {
+  'daily-health': {
+    name: 'Daily Health Check',
+    schedule: '0 6 * * *', // 6 AM daily
+    description: 'Run tests, check for obvious issues, report status',
+    autoFix: false,
+  },
+  'test-fixer': {
+    name: 'Test Fixer',
+    schedule: 'on-failure',
+    description: 'Analyze and fix failing tests',
+    autoFix: true,
+  },
+  'deps-updater': {
+    name: 'Dependency Updater',
+    schedule: '0 3 * * 0', // 3 AM Sunday
+    description: 'Update dependencies, run tests, create PR if passing',
+    autoFix: true,
+  },
+  'security-scanner': {
+    name: 'Security Scanner',
+    schedule: '0 4 * * 1', // 4 AM Monday
+    description: 'Scan for vulnerabilities, fix if possible',
+    autoFix: true,
+  },
+  'docs-generator': {
+    name: 'Documentation Generator',
+    schedule: '0 5 * * 5', // 5 AM Friday
+    description: 'Update JSDoc, README files, changelogs',
+    autoFix: true,
+  },
+  'code-reviewer': {
+    name: 'Code Reviewer',
+    schedule: 'on-pr',
+    description: 'Review PRs, suggest improvements, check patterns',
+    autoFix: false,
+  },
+  'full-audit': {
+    name: 'Full Codebase Audit',
+    schedule: '0 2 1 * *', // 2 AM 1st of month
+    description: 'Comprehensive code quality audit',
+    autoFix: false,
+  },
+};
+
+/**
+ * Initialize Git for the project
+ */
+function initGit() {
+  return simpleGit(CONFIG.projectRoot);
+}
+
+/**
+ * Create a new branch for agent changes
+ */
+async function createAgentBranch(agentName) {
+  const git = initGit();
+  const timestamp = new Date().toISOString().split('T')[0];
+  const branchName = `autopilot/${agentName}-${timestamp}`;
+
+  await git.checkout(CONFIG.mainBranch);
+  await git.pull();
+  await git.checkoutLocalBranch(branchName);
+
+  return branchName;
+}
+
+/**
+ * Run Claude to analyze/fix code
+ */
+async function runClaudeAgent(prompt, options = {}) {
+  const client = new Anthropic({
+    apiKey: CONFIG.anthropicApiKey,
+  });
+
+  const systemPrompt = `You are an autonomous code maintenance agent for SmartCookBook, a commercial kitchen management system.
+
+Project context:
+- React 19 + Vite 7 frontend
+- Firebase backend (Firestore, Auth, Functions)
+- ~200,000 lines of code across 310+ files
+- 1,921 tests across 63 test files
+- Key directories: app-new/src/components, app-new/src/services, app-new/src/pages
+
+Your task is to ${options.task || 'analyze and improve the codebase'}.
+
+Guidelines:
+1. Always run tests after making changes
+2. Create focused, atomic changes
+3. Follow existing code patterns
+4. Add comments explaining non-obvious changes
+5. Never break existing functionality
+6. Prefer minimal, targeted fixes over large refactors
+
+Output format:
+- Start with a brief analysis
+- List changes you'll make
+- Show the actual changes
+- Report test results
+- Summarize what was done`;
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 8192,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  return response.content[0].text;
+}
+
+/**
+ * Execute a shell command in the project directory
+ */
+async function runCommand(command) {
+  try {
+    const { stdout, stderr } = await execAsync(command, {
+      cwd: CONFIG.projectRoot,
+      timeout: 300000, // 5 minute timeout
+    });
+    return { success: true, stdout, stderr };
+  } catch (error) {
+    return { success: false, error: error.message, stdout: error.stdout, stderr: error.stderr };
+  }
+}
+
+/**
+ * Run tests and return results
+ */
+async function runTests() {
+  console.log('Running tests...');
+  const result = await runCommand(CONFIG.testCommand);
+
+  // Parse test output for summary
+  const passMatch = result.stdout?.match(/(\d+) passing/);
+  const failMatch = result.stdout?.match(/(\d+) failing/);
+
+  return {
+    success: result.success,
+    passing: passMatch ? parseInt(passMatch[1]) : 0,
+    failing: failMatch ? parseInt(failMatch[1]) : 0,
+    output: result.stdout || result.stderr,
+  };
+}
+
+/**
+ * Create a PR with changes
+ */
+async function createPR(branchName, title, description) {
+  const git = initGit();
+
+  // Commit changes
+  await git.add('.');
+  await git.commit(`[Autopilot] ${title}\n\n${description}\n\nCo-Authored-By: Claude Autopilot <autopilot@anthropic.com>`);
+
+  // Push branch
+  await git.push('origin', branchName, ['--set-upstream']);
+
+  // Create PR using gh CLI
+  const prResult = await runCommand(`gh pr create --title "[Autopilot] ${title}" --body "${description.replace(/"/g, '\\"')}" --base ${CONFIG.mainBranch}`);
+
+  return prResult;
+}
+
+/**
+ * Send notification
+ */
+async function notify(subject, body) {
+  console.log(`\n=== NOTIFICATION ===`);
+  console.log(`Subject: ${subject}`);
+  console.log(`Body: ${body}`);
+  console.log(`====================\n`);
+
+  // In production, send email or Slack message
+  // For now, just log
+}
+
+/**
+ * Main orchestrator function
+ */
+async function orchestrate(agentName, options = {}) {
+  const agent = AGENTS[agentName];
+  if (!agent) {
+    throw new Error(`Unknown agent: ${agentName}`);
+  }
+
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`Starting: ${agent.name}`);
+  console.log(`Time: ${new Date().toISOString()}`);
+  console.log(`${'='.repeat(60)}\n`);
+
+  const report = {
+    agent: agentName,
+    startTime: new Date(),
+    changes: [],
+    testsRun: false,
+    testsPassing: 0,
+    prCreated: false,
+    prUrl: null,
+    errors: [],
+  };
+
+  try {
+    // Create branch for changes (if autoFix enabled)
+    let branchName = null;
+    if (agent.autoFix) {
+      branchName = await createAgentBranch(agentName);
+      console.log(`Created branch: ${branchName}`);
+    }
+
+    // Run the specific agent logic
+    const agentModule = await import(`./agents/${agentName}.js`);
+    const result = await agentModule.run({
+      runClaudeAgent,
+      runCommand,
+      runTests,
+      projectRoot: CONFIG.projectRoot,
+      ...options,
+    });
+
+    report.changes = result.changes || [];
+
+    // Run tests if changes were made
+    if (report.changes.length > 0 && agent.autoFix) {
+      const testResult = await runTests();
+      report.testsRun = true;
+      report.testsPassing = testResult.passing;
+
+      if (testResult.success) {
+        // Create PR
+        const prResult = await createPR(
+          branchName,
+          `${agent.name}: ${report.changes.length} changes`,
+          generatePRDescription(report)
+        );
+        report.prCreated = true;
+        report.prUrl = prResult.stdout?.trim();
+      } else {
+        report.errors.push(`Tests failed: ${testResult.failing} failing`);
+        // Revert changes
+        const git = initGit();
+        await git.checkout(CONFIG.mainBranch);
+        await git.deleteLocalBranch(branchName, true);
+      }
+    }
+
+  } catch (error) {
+    report.errors.push(error.message);
+    console.error('Agent error:', error);
+  }
+
+  report.endTime = new Date();
+  report.duration = (report.endTime - report.startTime) / 1000;
+
+  // Generate and send report
+  const reportText = generateReport(report);
+  console.log(reportText);
+
+  if (report.errors.length > 0 || report.prCreated) {
+    await notify(
+      `[SmartCookBook Autopilot] ${agent.name} - ${report.errors.length > 0 ? 'Issues Found' : 'PR Created'}`,
+      reportText
+    );
+  }
+
+  return report;
+}
+
+/**
+ * Generate PR description
+ */
+function generatePRDescription(report) {
+  return `## Autopilot Changes
+
+**Agent:** ${AGENTS[report.agent].name}
+**Changes:** ${report.changes.length}
+**Tests:** ${report.testsPassing} passing
+
+### Changes Made
+${report.changes.map(c => `- ${c}`).join('\n')}
+
+---
+*This PR was automatically generated by SmartCookBook Autopilot*
+`;
+}
+
+/**
+ * Generate report
+ */
+function generateReport(report) {
+  return `
+## Autopilot Report: ${AGENTS[report.agent].name}
+
+**Duration:** ${report.duration.toFixed(1)}s
+**Changes:** ${report.changes.length}
+**Tests Run:** ${report.testsRun ? 'Yes' : 'No'}
+**Tests Passing:** ${report.testsPassing}
+**PR Created:** ${report.prCreated ? 'Yes' : 'No'}
+${report.prUrl ? `**PR URL:** ${report.prUrl}` : ''}
+
+### Changes
+${report.changes.length > 0 ? report.changes.map(c => `- ${c}`).join('\n') : 'No changes made'}
+
+### Errors
+${report.errors.length > 0 ? report.errors.map(e => `- ${e}`).join('\n') : 'None'}
+`;
+}
+
+// CLI handler
+const agentName = process.argv[2];
+if (agentName) {
+  orchestrate(agentName)
+    .then(report => {
+      process.exit(report.errors.length > 0 ? 1 : 0);
+    })
+    .catch(error => {
+      console.error('Orchestrator failed:', error);
+      process.exit(1);
+    });
+} else {
+  console.log('Available agents:', Object.keys(AGENTS).join(', '));
+  console.log('Usage: node orchestrator.js <agent-name>');
+}
+
+export { orchestrate, AGENTS, runClaudeAgent, runCommand, runTests };

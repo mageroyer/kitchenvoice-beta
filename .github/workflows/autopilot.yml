@@ -1,0 +1,156 @@
+name: SmartCookBook Autopilot
+
+on:
+  # Scheduled runs
+  schedule:
+    # Daily health check at 6 AM UTC
+    - cron: '0 6 * * *'
+    # Weekly dependency update on Sunday at 3 AM UTC
+    - cron: '0 3 * * 0'
+    # Weekly security scan on Monday at 4 AM UTC
+    - cron: '0 4 * * 1'
+    # Weekly docs update on Friday at 5 AM UTC
+    - cron: '0 5 * * 5'
+    # Monthly full audit on 1st at 2 AM UTC
+    - cron: '0 2 1 * *'
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: 'Agent to run'
+        required: true
+        default: 'daily-health'
+        type: choice
+        options:
+          - daily-health
+          - test-fixer
+          - deps-updater
+          - security-scanner
+          - docs-generator
+          - full-audit
+
+  # Run on test failures
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+jobs:
+  determine-agent:
+    runs-on: ubuntu-latest
+    outputs:
+      agent: ${{ steps.determine.outputs.agent }}
+      should_run: ${{ steps.determine.outputs.should_run }}
+    steps:
+      - name: Determine which agent to run
+        id: determine
+        run: |
+          # Manual trigger
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "agent=${{ github.event.inputs.agent }}" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # CI failure trigger
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            if [ "${{ github.event.workflow_run.conclusion }}" == "failure" ]; then
+              echo "agent=test-fixer" >> $GITHUB_OUTPUT
+              echo "should_run=true" >> $GITHUB_OUTPUT
+            else
+              echo "should_run=false" >> $GITHUB_OUTPUT
+            fi
+            exit 0
+          fi
+
+          # Scheduled trigger - determine by current time
+          HOUR=$(date -u +%H)
+          DOW=$(date -u +%u)  # 1=Monday, 7=Sunday
+          DOM=$(date -u +%d)  # Day of month
+
+          if [ "$DOM" == "01" ] && [ "$HOUR" == "02" ]; then
+            echo "agent=full-audit" >> $GITHUB_OUTPUT
+          elif [ "$DOW" == "7" ] && [ "$HOUR" == "03" ]; then
+            echo "agent=deps-updater" >> $GITHUB_OUTPUT
+          elif [ "$DOW" == "1" ] && [ "$HOUR" == "04" ]; then
+            echo "agent=security-scanner" >> $GITHUB_OUTPUT
+          elif [ "$DOW" == "5" ] && [ "$HOUR" == "05" ]; then
+            echo "agent=docs-generator" >> $GITHUB_OUTPUT
+          else
+            echo "agent=daily-health" >> $GITHUB_OUTPUT
+          fi
+
+          echo "should_run=true" >> $GITHUB_OUTPUT
+
+  run-agent:
+    needs: determine-agent
+    if: needs.determine-agent.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app-new/package-lock.json
+
+      - name: Install app dependencies
+        working-directory: app-new
+        run: npm ci
+
+      - name: Install autopilot dependencies
+        working-directory: scripts/autopilot
+        run: npm install
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "SmartCookBook Autopilot"
+          git config --global user.email "autopilot@smartcookbook.app"
+
+      - name: Run autopilot agent
+        working-directory: scripts/autopilot
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+        run: |
+          echo "Running agent: ${{ needs.determine-agent.outputs.agent }}"
+          node orchestrator.js ${{ needs.determine-agent.outputs.agent }}
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autopilot-report-${{ needs.determine-agent.outputs.agent }}-${{ github.run_id }}
+          path: scripts/autopilot/reports/
+          retention-days: 30
+
+  notify:
+    needs: [determine-agent, run-agent]
+    if: always() && needs.run-agent.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification
+        run: |
+          STATUS="${{ needs.run-agent.result }}"
+          AGENT="${{ needs.determine-agent.outputs.agent }}"
+
+          echo "Autopilot run complete"
+          echo "Agent: $AGENT"
+          echo "Status: $STATUS"
+
+          # Add Slack/email notification here if needed
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"Autopilot: '$AGENT' - '$STATUS'"}' \
+          #   ${{ secrets.SLACK_WEBHOOK }}

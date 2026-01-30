@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-01-30T23:44:02.442Z",
+  "mode": "init",
+  "docsGenerated": [
+    "GLOSSARY.md",
+    "CHANGELOG.md",
+    "ONBOARDING.md",
+    "RISK_REGISTER.md",
+    "adrs/INDEX.md"
+  ],
+  "docsExisting": [],
+  "humanReviewNeeded": [
+    {
+      "doc": "GLOSSARY.md",
+      "question": "Review generated glossary — add any missing domain terms specific to your business",
+      "priority": "medium"
+    },
+    {
+      "doc": "ONBOARDING.md",
+      "question": "Review onboarding guide — add team-specific setup steps, credentials, and communication channels",
+      "priority": "high"
+    },
+    {
+      "doc": "RISK_REGISTER.md",
+      "question": "Review risk register — adjust likelihood/impact ratings based on business context, add business risks",
+      "priority": "high"
+    },
+    {
+      "doc": "docs/adrs/",
+      "question": "Review 5 auto-generated ADRs — verify accuracy, add missing context, mark any as \"Superseded\" if no longer relevant",
+      "priority": "medium"
+    }
+  ],
+  "summary": "Generated 5 new doc(s). 4 question(s) for human review."
+}

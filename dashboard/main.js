@@ -294,6 +294,17 @@ ipcMain.handle('close-pr', async (event, pullNumber) => {
   return githubService.closePR(pullNumber);
 });
 
+// ── Doc Queue ──
+ipcMain.handle('get-doc-queue', async () => {
+  if (!firestoreService) return [];
+  return firestoreService.getDocQueue();
+});
+
+ipcMain.handle('submit-session-digest', async (event, summaryText) => {
+  if (!firestoreService) return null;
+  return firestoreService.submitSessionDigest(summaryText);
+});
+
 // ── Realtime report listener ──
 ipcMain.on('start-reports-listener', () => {
   if (!firestoreService) return;

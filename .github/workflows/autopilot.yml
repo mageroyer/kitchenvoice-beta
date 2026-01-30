@@ -11,6 +11,8 @@ on:
     - cron: '0 3 * * 0'
     # Weekly security scan on Monday at 4 AM UTC
     - cron: '0 4 * * 1'
+    # Weekly documentalist on Thursday at 2 AM UTC
+    - cron: '0 2 * * 4'
     # Monthly full audit on 1st at 2 AM UTC
     - cron: '0 2 1 * *'
 
@@ -28,7 +30,18 @@ on:
           - deps-updater
           - security-scanner
           - codebase-mapper
+          - documentalist
           - full-audit
+      mode:
+        description: 'Agent mode (optional, for documentalist)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - update
+          - init
+          - digest
 
   # Run on test failures
   workflow_run:
@@ -71,6 +84,8 @@ jobs:
 
           if [ "$DOM" == "01" ] && [ "$HOUR" == "02" ]; then
             echo "agent=full-audit" >> $GITHUB_OUTPUT
+          elif [ "$DOW" == "4" ] && [ "$HOUR" == "02" ]; then
+            echo "agent=documentalist" >> $GITHUB_OUTPUT
           elif [ "$DOW" == "3" ] && [ "$HOUR" == "01" ]; then
             echo "agent=codebase-mapper" >> $GITHUB_OUTPUT
           elif [ "$DOW" == "7" ] && [ "$HOUR" == "03" ]; then
@@ -131,8 +146,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
         run: |
-          echo "Running agent: ${{ needs.determine-agent.outputs.agent }}"
-          node orchestrator.js ${{ needs.determine-agent.outputs.agent }}
+          AGENT="${{ needs.determine-agent.outputs.agent }}"
+          MODE="${{ github.event.inputs.mode }}"
+          echo "Running agent: $AGENT (mode: ${MODE:-default})"
+          if [ -n "$MODE" ]; then
+            node orchestrator.js "$AGENT" "$MODE"
+          else
+            node orchestrator.js "$AGENT"
+          fi
 
       - name: Upload report artifact
         uses: actions/upload-artifact@v4

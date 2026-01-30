@@ -155,6 +155,7 @@ function showCreateTaskModal() {
               <option value="deps-updater">Deps Updater</option>
               <option value="security-scanner">Security Scan</option>
               <option value="codebase-mapper">Codebase Mapper</option>
+              <option value="documentalist">Documentalist</option>
               <option value="full-audit">Full Audit</option>
             </select>
           </div>

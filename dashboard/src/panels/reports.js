@@ -8,6 +8,7 @@ const AGENT_META = {
   'deps-updater':     { name: 'Deps Updater',   icon: '\u{1F4E6}', color: '#a855f7' },
   'security-scanner': { name: 'Security Scan',  icon: '\u{1F6E1}', color: '#ef4444' },
   'codebase-mapper':  { name: 'Codebase Mapper', icon: '\u{1F5FA}', color: '#14b8a6' },
+  'documentalist':    { name: 'Documentalist',  icon: '\u{1F4DA}', color: '#f59e0b' },
   'full-audit':       { name: 'Full Audit',     icon: '\u{1F50D}', color: '#06b6d4' },
 };
 
@@ -30,6 +31,7 @@ function initReportsPanel() {
             <option value="deps-updater">Deps Updater</option>
             <option value="security-scanner">Security Scan</option>
             <option value="codebase-mapper">Codebase Mapper</option>
+            <option value="documentalist">Documentalist</option>
             <option value="full-audit">Full Audit</option>
           </select>
         </div>

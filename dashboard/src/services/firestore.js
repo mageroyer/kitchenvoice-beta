@@ -348,6 +348,58 @@ async function getAlertCount() {
 }
 
 // ════════════════════════════════════════════
+//  DOC UPDATE QUEUE
+// ════════════════════════════════════════════
+
+/**
+ * Get pending doc update queue items
+ */
+async function getDocQueue() {
+  if (!db) return [];
+
+  try {
+    const snap = await db.collection('doc_update_queue')
+      .orderBy('createdAt', 'desc')
+      .limit(30)
+      .get();
+
+    return snap.docs.map(doc => serializeDoc(doc));
+  } catch (err) {
+    console.error('[Firestore] getDocQueue error:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Submit a session digest to the doc update queue.
+ * Called from the dashboard when a user pastes a Claude Code session summary.
+ */
+async function submitSessionDigest(summaryText) {
+  if (!db) return null;
+
+  try {
+    const ref = await db.collection('doc_update_queue').add({
+      sourceAgent: 'manual',
+      type: 'session-digest',
+      status: 'pending',
+      priority: 'normal',
+      createdAt: FieldValue.serverTimestamp(),
+      processedAt: null,
+      sessionData: {
+        summary: summaryText,
+        submittedAt: new Date().toISOString(),
+      },
+    });
+
+    console.log('[Firestore] Session digest submitted:', ref.id);
+    return ref.id;
+  } catch (err) {
+    console.error('[Firestore] submitSessionDigest error:', err.message);
+    return null;
+  }
+}
+
+// ════════════════════════════════════════════
 //  DASHBOARD CONFIG
 // ════════════════════════════════════════════
 
@@ -395,6 +447,9 @@ module.exports = {
   updateAlert,
   acknowledgeAlert,
   getAlertCount,
+  // Doc Queue
+  getDocQueue,
+  submitSessionDigest,
   // Config
   getConfig,
 };

@@ -237,6 +237,32 @@ async function clearProgress(agentName) {
   }
 }
 
+/**
+ * Notify the documentalist agent that another agent made changes.
+ * Writes to Firestore `doc_update_queue` for the documentalist to pick up.
+ */
+async function notifyDocumentalist(changeReport) {
+  if (!firestoreDB) return;
+
+  try {
+    await firestoreDB.collection('doc_update_queue').add({
+      sourceAgent: changeReport.agent,
+      type: 'change-report',
+      status: 'pending',
+      priority: 'normal',
+      createdAt: FieldValue.serverTimestamp(),
+      processedAt: null,
+      changeReport: {
+        changedFiles: changeReport.changedFiles || [],
+        summary: changeReport.summary || '',
+      },
+    });
+    console.log(`[Firestore] Queued doc update for documentalist (from ${changeReport.agent})`);
+  } catch (err) {
+    console.warn('[Firestore] Failed to queue doc update:', err.message);
+  }
+}
+
 const execAsync = promisify(exec);
 
 // Configuration
@@ -283,6 +309,13 @@ const AGENTS = {
     name: 'Codebase Mapper',
     schedule: '0 1 * * 3', // Wednesday 1 AM UTC (weekly)
     description: 'Scan codebase, update manifest, detect stale docs, generate reference docs',
+    autoFix: true,
+    skipTests: true, // Only generates docs/ files — cannot break tests
+  },
+  'documentalist': {
+    name: 'Documentalist',
+    schedule: '0 2 * * 4', // Thursday 2 AM UTC (after codebase-mapper Wed 1 AM)
+    description: 'Maintain all documentation layers — detect stale docs and refresh via AI',
     autoFix: true,
     skipTests: true, // Only generates docs/ files — cannot break tests
   },
@@ -533,6 +566,15 @@ async function orchestrate(agentName, options = {}) {
       }
     }
 
+    // Notify documentalist if another agent made changes
+    if (report.changes.length > 0 && agentName !== 'documentalist') {
+      await notifyDocumentalist({
+        agent: agentName,
+        changedFiles: agentResult.changedFiles || [],
+        summary: report.changes.join('; '),
+      });
+    }
+
   } catch (error) {
     report.errors.push(error.message);
     console.error('Agent error:', error);
@@ -603,8 +645,10 @@ ${report.errors.length > 0 ? report.errors.map(e => `- ${e}`).join('\n') : 'None
 
 // CLI handler
 const agentName = process.argv[2];
+const agentMode = process.argv[3] || undefined; // Optional mode (e.g., 'init', 'update', 'digest')
 if (agentName) {
-  orchestrate(agentName)
+  const options = agentMode ? { mode: agentMode } : {};
+  orchestrate(agentName, options)
     .then(report => {
       process.exit(report.errors.length > 0 ? 1 : 0);
     })
@@ -614,7 +658,7 @@ if (agentName) {
     });
 } else {
   console.log('Available agents:', Object.keys(AGENTS).join(', '));
-  console.log('Usage: node orchestrator.js <agent-name>');
+  console.log('Usage: node orchestrator.js <agent-name> [mode]');
 }
 
 export { orchestrate, AGENTS, runClaudeAgent, runCommand, runTests };

@@ -16,6 +16,7 @@ const AGENTS = [
   { id: 'deps-updater',      name: 'Deps Updater',    icon: '\u{1F4E6}', schedule: 'Sunday 3 AM',      color: '#a855f7' },
   { id: 'security-scanner',  name: 'Security Scan',   icon: '\u{1F6E1}', schedule: 'Monday 4 AM',      color: '#ef4444' },
   { id: 'codebase-mapper',   name: 'Codebase Mapper', icon: '\u{1F5FA}', schedule: 'Wednesday 1 AM',   color: '#14b8a6' },
+  { id: 'documentalist',     name: 'Documentalist',   icon: '\u{1F4DA}', schedule: 'Thursday 2 AM',    color: '#f59e0b' },
   { id: 'full-audit',        name: 'Full Audit',      icon: '\u{1F50D}', schedule: 'Monthly 1st',      color: '#06b6d4' },
 ];
 
@@ -129,6 +130,15 @@ function getNextRunTime(agent) {
     if (next.getUTCDay() === 3 && next > utcNow) { /* already wednesday and in future */ }
     else next.setUTCDate(next.getUTCDate() + ((3 - next.getUTCDay() + 7) % 7 || 7));
     if (next.getUTCDay() === 3 && next <= utcNow) next.setUTCDate(next.getUTCDate() + 7);
+    return next;
+  }
+  if (agent.id === 'documentalist') {
+    // Thursday at 2 AM UTC
+    const next = new Date(utcNow);
+    next.setUTCHours(2, 0, 0, 0);
+    if (next.getUTCDay() === 4 && next > utcNow) { /* already thursday and in future */ }
+    else next.setUTCDate(next.getUTCDate() + ((4 - next.getUTCDay() + 7) % 7 || 7));
+    if (next.getUTCDay() === 4 && next <= utcNow) next.setUTCDate(next.getUTCDate() + 7);
     return next;
   }
   if (agent.id === 'full-audit') {
@@ -379,6 +389,8 @@ function updateAgentCard(agentId, report) {
     metricEl.textContent = `${report.metrics.tests.passing || 0} tests passing`;
   } else if (report.metrics && report.metrics.filesScanned) {
     metricEl.textContent = `${report.metrics.filesScanned} files, ${report.metrics.jsdocCoverage || '?'} JSDoc`;
+  } else if (report.metrics && report.metrics.overallHealth !== undefined) {
+    metricEl.textContent = `${report.metrics.overallHealth}% health, ${report.metrics.docsUpdated || 0} updated`;
   } else if (report.changes && report.changes.length > 0) {
     metricEl.textContent = `${report.changes.length} changes made`;
   } else {
@@ -476,6 +488,8 @@ const FRIENDLY_TO_ID = {
   'security scanner': 'security-scanner',
   'codebase mapper': 'codebase-mapper',
   'codebase map': 'codebase-mapper',
+  'documentalist': 'documentalist',
+  'doc maintenance': 'documentalist',
   'full audit': 'full-audit',
 };
 
@@ -508,6 +522,7 @@ function resolveAgentName(run) {
 
     if (hour === 6) return 'daily-health';
     if (hour === 1 && day === 3) return 'codebase-mapper';
+    if (hour === 2 && day === 4) return 'documentalist';
     if (hour === 3 && day === 0) return 'deps-updater';
     if (hour === 4 && day === 1) return 'security-scanner';
     if (hour === 2 && date === 1) return 'full-audit';

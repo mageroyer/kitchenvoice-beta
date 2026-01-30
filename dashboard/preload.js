@@ -48,6 +48,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   acknowledgeAlert: (alertId) => ipcRenderer.invoke('acknowledge-alert', alertId),
   getAlertCount: () => ipcRenderer.invoke('get-alert-count'),
 
+  // ── Doc Queue ──
+  getDocQueue: () => ipcRenderer.invoke('get-doc-queue'),
+  submitSessionDigest: (text) => ipcRenderer.invoke('submit-session-digest', text),
+
   // ── GitHub Actions ──
   getWorkflowRuns: (options) => ipcRenderer.invoke('get-workflow-runs', options),
   triggerWorkflow: (agentName) => ipcRenderer.invoke('trigger-workflow', agentName),

@@ -15,6 +15,7 @@ SmartCookBook uses **Google Cloud Speech-to-Text V2 API** with the **chirp_2 mod
 - Bulk method steps dictation
 - Bulk notes dictation
 - Bulk plating instructions dictation
+- Bulk task dictation with pause detection
 - Individual field voice input
 
 ---
@@ -180,7 +181,7 @@ SPEECH_LOCATION=us-central1 # Google Cloud region
 
 ### 2. Frontend Services
 
-**Two speech services are available:**
+**Multiple voice services are available for different use cases:**
 
 #### a) `googleCloudSpeech.js` - Simple single-field input
 **Location:** `app-new/src/services/speech/googleCloudSpeech.js`
@@ -221,28 +222,88 @@ voiceService.stop();
 voiceService.cancel();
 ```
 
+#### c) `bulkIngredientVoice.js` - Continuous recording with pause detection
+**Location:** `app-new/src/services/voice/bulkIngredientVoice.js`
+**Used by:** Bulk ingredient dictation
+
+```javascript
+import { BulkIngredientVoice, PAUSE_PRESETS } from '../services/voice/bulkIngredientVoice';
+
+const voiceService = new BulkIngredientVoice({
+  pausePreset: 'NORMAL', // 'FAST', 'NORMAL', 'SLOW'
+  language: 'fr-CA',
+  onTranscriptUpdate: (data) => {
+    console.log('Lines:', data.lines);
+    console.log('Current:', data.currentLine);
+  },
+  onComplete: (transcript) => console.log('Done:', transcript),
+  onError: (error) => console.error('Error:', error)
+});
+
+voiceService.start();
+voiceService.stop();
+```
+
+**Pause Detection Presets:**
+- **FAST:** 1 second pause (for fast speakers)
+- **NORMAL:** 1.5 second pause (balanced, default)
+- **SLOW:** 2.5 second pause (for slow/thoughtful speakers)
+
+#### d) `bulkTaskVoice.js` - Task-specific continuous recording
+**Location:** `app-new/src/services/voice/bulkTaskVoice.js`
+**Used by:** Bulk task dictation with intelligent task separation
+
+```javascript
+import { BulkTaskVoice, PAUSE_PRESETS } from '../services/voice/bulkTaskVoice';
+
+const voiceService = new BulkTaskVoice({
+  pausePreset: 'NORMAL',
+  language: 'fr-CA',
+  onTranscriptUpdate: (data) => {
+    console.log('Task lines:', data.lines);
+  }
+});
+
+voiceService.start();
+voiceService.stop();
+```
+
+**Task Separation Features:**
+- Automatically splits on punctuation (. ! ? ;)
+- Recognizes French cooking patterns ("pour" separator)
+- Filters out very short segments (< 2 characters)
+- Removes duplicate lines
+
 ---
 
 ### 3. Component Integration (Completed)
 
-**All components now use GoogleCloudVoiceService:**
+**All components now use appropriate voice services:**
 
-| Component | Feature | Status |
-|-----------|---------|--------|
-| `RecipeListPage.jsx` | Voice search | ✅ Complete |
-| `IngredientList.jsx` | Bulk dictation + field voice | ✅ Complete |
-| `MethodSteps.jsx` | Bulk dictation + field voice | ✅ Complete |
-| `Notes.jsx` | Bulk dictation + field voice | ✅ Complete |
-| `PlatingInstructions.jsx` | Bulk dictation + field voice | ✅ Complete |
+| Component | Voice Service | Feature | Status |
+|-----------|--------------|---------|--------|
+| `RecipeListPage.jsx` | GoogleCloudSpeechService | Voice search | ✅ Complete |
+| `IngredientList.jsx` | BulkIngredientVoice | Bulk dictation + field voice | ✅ Complete |
+| `MethodSteps.jsx` | GoogleCloudVoiceService | Bulk dictation + field voice | ✅ Complete |
+| `Notes.jsx` | GoogleCloudVoiceService | Bulk dictation + field voice | ✅ Complete |
+| `PlatingInstructions.jsx` | GoogleCloudVoiceService | Bulk dictation + field voice | ✅ Complete |
+| `Tasks.jsx` | BulkTaskVoice | Bulk task dictation | ✅ Complete |
 
 **Bulk Dictation Flow:**
 1. User clicks "Dictate" button
 2. Button turns red, text shows "Stop"
 3. User speaks (no timeout - as long as needed)
-4. User clicks "Stop" when done
-5. Audio sent to Google Cloud Speech
-6. Transcript sent to Claude API for parsing
-7. Parsed items added to the list
+4. Pause detection automatically separates lines/tasks
+5. User clicks "Stop" when done
+6. Audio sent to Google Cloud Speech (when using cloud services)
+7. Transcript sent to Claude API for parsing (when applicable)
+8. Parsed items added to the list
+
+**Continuous Recognition Features:**
+- **Pause Detection:** Automatically detects when user pauses between items
+- **Real-time Updates:** Shows current line and completed lines as user speaks
+- **Configurable Timing:** Fast, Normal, or Slow pause presets
+- **Auto-restart:** Continuous recording until user stops manually
 
 ---
 
@@ -329,9 +390,16 @@ Mobile browsers require HTTPS for microphone access. Use Tablet Mode (option 2 i
 
 **How to Change Language:**
 ```javascript
+// Google Cloud services
 speech.start({
   languageCode: 'fr-CA', // Change to desired language
   onTranscript: (text) => console.log(text)
+});
+
+// Bulk voice services
+const voiceService = new BulkIngredientVoice({
+  language: 'fr-CA', // Change to desired language
+  pausePreset: 'NORMAL'
 });
 ```
 
@@ -339,15 +407,16 @@ speech.start({
 
 ## Advantages Over Web Speech API
 
-| Feature | Web Speech API | Google Cloud Speech |
-|---------|---------------|-------------------|
-| **Mobile Timeout** | ❌ 2 seconds | ✅ No limit |
-| **Continuous Recognition** | ❌ Limited | ✅ Full support |
-| **Accuracy** | 🟡 Good | ✅ Excellent |
-| **Language Support** | 🟡 Limited | ✅ 125+ languages |
-| **Cost** | ✅ Free | 🟡 $1-2/month |
-| **Reliability** | 🟡 Varies by browser | ✅ Consistent |
-| **Offline Support** | ❌ No | ❌ No |
+| Feature | Web Speech API | Google Cloud Speech | Bulk Voice Services |
+|---------|---------------|-------------------|-------------------|
+| **Mobile Timeout** | ❌ 2 seconds | ✅ No limit | ✅ No limit |
+| **Continuous Recognition** | ❌ Limited | ✅ Full support | ✅ With pause detection |
+| **Accuracy** | 🟡 Good | ✅ Excellent | 🟡 Good (browser-based) |
+| **Language Support** | 🟡 Limited | ✅ 125+ languages | 🟡 Browser-dependent |
+| **Cost** | ✅ Free | 🟡 $1-2/month | ✅ Free |
+| **Reliability** | 🟡 Varies by browser | ✅ Consistent | 🟡 Browser-dependent |
+| **Pause Detection** | ❌ No | ❌ No | ✅ Built-in |
+| **Real-time Updates** | 🟡 Limited | 🟡 Limited | ✅ Live transcript |
 
 ---
 
@@ -362,6 +431,10 @@ speech.start({
 **On PC:**
 - Accept SSL certificates for localhost:3000 and localhost:3001
 - Visit health endpoints and click "Proceed to localhost (unsafe)"
+
+**For Bulk Voice Services:**
+- Check browser compatibility: Chrome, Edge, Safari support
+- Firefox has limited Web Speech API support
 
 ### ERR_SSL_PROTOCOL_ERROR
 
@@ -422,6 +495,24 @@ taskkill /F /PID <pid>
 - Reduce background noise
 - Check microphone quality
 - Try different language code (en-US vs en-CA)
+- For bulk services: adjust pause preset (FAST/NORMAL/SLOW)
+
+### Pause Detection Issues
+
+**Pauses too short (cutting off mid-sentence):**
+- Change pause preset to 'SLOW' (2.5 seconds)
+- Or set custom pauseDuration: `pauseDuration: 3000`
+
+**Pauses too long (not detecting item boundaries):**
+- Change pause preset to 'FAST' (1 second)
+- Or set custom pauseDuration: `pauseDuration: 800`
+
+### Continuous Recognition Stops
+
+**Web Speech API limitations:**
+- Browser may limit continuous recognition time
+- Service automatically restarts recognition
+- If it stops permanently, try refreshing the page
 
 ---
 
@@ -442,26 +533,39 @@ taskkill /F /PID <pid>
 - Automatically detect language being spoken
 - Switch between English and French seamlessly
 
+### 4. Enhanced Pause Detection
+- Smart punctuation-based splitting
+- Context-aware ingredient parsing
+- Custom pause patterns per user
+
 ---
 
 ## Summary
 
-The Google Cloud Speech-to-Text V2 integration provides:
+The voice recognition system provides multiple options for different use cases:
 
+**Google Cloud Speech-to-Text V2:**
 - **No timeout limitations** - Perfect for mobile devices
 - **96%+ accuracy** - chirp_2 model for French-Canadian
 - **Automatic punctuation** - Commas and periods for proper parsing
 - **Affordable** - ~$1.56/month for typical usage
 - **Reliable** - Consistent across all devices
-- **Claude AI parsing** - French prompt with proper abbreviations
+
+**Bulk Voice Services (Browser-based):**
+- **Continuous recognition** with pause detection
+- **Real-time transcript updates** showing current and completed lines
+- **Configurable pause timing** for different speaking patterns
+- **Free** - No API costs, browser-based
+- **Intelligent separation** for ingredients and tasks
 
 **Current Implementation:**
-- Recipe search voice input
-- Bulk ingredient dictation with Claude parsing (French prompt)
-- Bulk method steps dictation with Claude parsing
-- Bulk notes dictation
-- Bulk plating instructions dictation
-- Individual field voice input
+- Recipe search voice input (Google Cloud)
+- Bulk ingredient dictation with pause detection (BulkIngredientVoice)
+- Bulk method steps dictation with Claude parsing (GoogleCloudVoice)
+- Bulk notes dictation (GoogleCloudVoice)
+- Bulk plating instructions dictation (GoogleCloudVoice)
+- Bulk task dictation with intelligent separation (BulkTaskVoice)
+- Individual field voice input (GoogleCloudVoice)
 
 **Ingredient Parsing Features:**
 - French abbreviations: c.s. (cuillère à soupe), c.t. (cuillère à thé)
@@ -470,12 +574,18 @@ The Google Cloud Speech-to-Text V2 integration provides:
 - Metric preservation: 500g, 750ml stay intact
 - toolQty/toolUnit fields for portion scaling
 
+**Task Parsing Features:**
+- Automatic task separation on punctuation
+- Recognition of French cooking patterns
+- Duplicate removal and length filtering
+- Real-time line processing
+
 ---
 
 **Date Created:** November 29, 2025
-**Version:** 3.2
-**Status:** Complete - V2 API with chirp_2 (configurable)
-**Last Updated:** December 7, 2025
+**Version:** 3.3
+**Status:** Complete - V2 API with chirp_2 (configurable) + Bulk Voice Services
+**Last Updated:** January 7, 2026
 **Backend Version:** 1.1.0 (with health monitoring & request logging)
 
 ---
@@ -486,3 +596,4 @@ The Google Cloud Speech-to-Text V2 integration provides:
 - [Chirp 3 Documentation](https://docs.cloud.google.com/speech-to-text/docs/models/chirp-3)
 - [Speech-to-Text Release Notes](https://docs.cloud.google.com/speech-to-text/docs/release-notes)
 - [Supported Languages](https://cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages)
+- [Web Speech API Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)

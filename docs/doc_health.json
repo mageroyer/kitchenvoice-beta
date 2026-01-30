@@ -1,0 +1,288 @@
+{
+  "generatedAt": "2026-01-30T22:49:42.276Z",
+  "overallHealth": 100,
+  "totalDocs": 24,
+  "freshDocs": 24,
+  "staleDocs": 0,
+  "layers": {
+    "layer_1": {
+      "layer": 1,
+      "docs": [
+        {
+          "name": "manifest.json",
+          "path": "docs/manifest.json",
+          "automation": "auto",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "coverage.json",
+          "path": "docs/coverage.json",
+          "automation": "auto",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        }
+      ],
+      "totalDocs": 2,
+      "staleDocs": 0,
+      "freshDocs": 2,
+      "healthScore": 100
+    },
+    "layer_3": {
+      "layer": 3,
+      "docs": [
+        {
+          "name": "COMPONENT_CATALOG.md",
+          "path": "docs/COMPONENT_CATALOG.md",
+          "automation": "auto",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "SERVICE_REFERENCE.md",
+          "path": "docs/SERVICE_REFERENCE.md",
+          "automation": "auto",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "PAGES_REFERENCE.md",
+          "path": "docs/PAGES_REFERENCE.md",
+          "automation": "auto",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "HOOKS_REFERENCE.md",
+          "path": "docs/HOOKS_REFERENCE.md",
+          "automation": "auto",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        }
+      ],
+      "totalDocs": 4,
+      "staleDocs": 0,
+      "freshDocs": 4,
+      "healthScore": 100
+    },
+    "layer_4": {
+      "layer": 4,
+      "docs": [
+        {
+          "name": "SYSTEM_MAP.md",
+          "path": "docs/SYSTEM_MAP.md",
+          "automation": "auto",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "ONBOARDING.md",
+          "path": "docs/ONBOARDING.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        }
+      ],
+      "totalDocs": 2,
+      "staleDocs": 0,
+      "freshDocs": 2,
+      "healthScore": 100
+    },
+    "layer_5": {
+      "layer": 5,
+      "docs": [
+        {
+          "name": "SYSTEM_ARCHITECTURE.md",
+          "path": "docs/architecture/SYSTEM_ARCHITECTURE.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": true
+        },
+        {
+          "name": "INVOICE_ARCHITECTURE.md",
+          "path": "docs/architecture/INVOICE_ARCHITECTURE.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "DATABASE_SCHEMA.md",
+          "path": "docs/architecture/DATABASE_SCHEMA.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": true
+        },
+        {
+          "name": "INVENTORY_SYSTEM.md",
+          "path": "docs/architecture/INVENTORY_SYSTEM.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "INVENTORY_SCHEMA.md",
+          "path": "docs/architecture/INVENTORY_SCHEMA.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "API_REFERENCE.md",
+          "path": "docs/architecture/API_REFERENCE.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": true
+        }
+      ],
+      "totalDocs": 6,
+      "staleDocs": 0,
+      "freshDocs": 6,
+      "healthScore": 100
+    },
+    "layer_7": {
+      "layer": 7,
+      "docs": [
+        {
+          "name": "USER_GUIDE.md",
+          "path": "docs/guides/USER_GUIDE.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "WEBSITE_BUILDER.md",
+          "path": "docs/guides/WEBSITE_BUILDER.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "VOICE_RECOGNITION_GUIDE.md",
+          "path": "docs/guides/VOICE_RECOGNITION_GUIDE.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": true
+        },
+        {
+          "name": "TESTING_GUIDE.md",
+          "path": "docs/guides/TESTING_GUIDE.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "DEPLOYMENT_CHECKLIST.md",
+          "path": "docs/guides/DEPLOYMENT_CHECKLIST.md",
+          "automation": "manual",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        },
+        {
+          "name": "ENVIRONMENT_SETUP.md",
+          "path": "docs/guides/ENVIRONMENT_SETUP.md",
+          "automation": "manual",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        }
+      ],
+      "totalDocs": 6,
+      "staleDocs": 0,
+      "freshDocs": 6,
+      "healthScore": 100
+    },
+    "layer_6": {
+      "layer": 6,
+      "docs": [
+        {
+          "name": "adrs/INDEX.md",
+          "path": "docs/adrs/INDEX.md",
+          "automation": "auto",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        }
+      ],
+      "totalDocs": 1,
+      "staleDocs": 0,
+      "freshDocs": 1,
+      "healthScore": 100
+    },
+    "layer_8": {
+      "layer": 8,
+      "docs": [
+        {
+          "name": "RISK_REGISTER.md",
+          "path": "docs/RISK_REGISTER.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        }
+      ],
+      "totalDocs": 1,
+      "staleDocs": 0,
+      "freshDocs": 1,
+      "healthScore": 100
+    },
+    "layer_9": {
+      "layer": 9,
+      "docs": [
+        {
+          "name": "CHANGELOG.md",
+          "path": "docs/CHANGELOG.md",
+          "automation": "auto",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        }
+      ],
+      "totalDocs": 1,
+      "staleDocs": 0,
+      "freshDocs": 1,
+      "healthScore": 100
+    },
+    "layer_10": {
+      "layer": 10,
+      "docs": [
+        {
+          "name": "GLOSSARY.md",
+          "path": "docs/GLOSSARY.md",
+          "automation": "assisted",
+          "stale": false,
+          "staleDays": 0,
+          "justUpdated": false
+        }
+      ],
+      "totalDocs": 1,
+      "staleDocs": 0,
+      "freshDocs": 1,
+      "healthScore": 100
+    }
+  },
+  "lastUpdated": [
+    "DATABASE_SCHEMA.md",
+    "VOICE_RECOGNITION_GUIDE.md",
+    "SYSTEM_ARCHITECTURE.md",
+    "API_REFERENCE.md"
+  ]
+}

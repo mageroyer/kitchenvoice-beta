@@ -3,12 +3,12 @@
 # SmartCookBook - System Architecture
 
 **Version:** 2.0
-**Last Updated:** 2026-01-27
+**Last Updated:** 2026-01-28
 **Status:** Current
 
 ## Overview
 
-SmartCookBook is a comprehensive kitchen management system built with a hybrid offline-first architecture. The system enables recipe management, inventory tracking, purchase order generation, invoice processing, and team task management for commercial kitchens.
+SmartCookBook is a comprehensive kitchen management system built with a hybrid offline-first architecture. The system enables recipe management, inventory tracking, purchase order generation, invoice processing, team task management, and public website generation for commercial kitchens.
 
 ## Table of Contents
 
@@ -192,25 +192,43 @@ app-new/src/
 │   └── ...
 ├── services/              # Business logic layer
 │   ├── ai/                # AI integration
-│   │   ├── claudeAPI.js
-│   │   └── priceCalculator.js
+│   │   ├── claudeAPI.js       # Barrel export
+│   │   ├── claudeBase.js      # Shared infrastructure
+│   │   ├── claudeRecipe.js    # Recipe parsing
+│   │   ├── claudeTranslate.js # Translation service
+│   │   └── priceCalculator.js # Ingredient cost calculations
+│   ├── accounting/        # QuickBooks integration
+│   │   └── quickbooksService.js
 │   ├── auth/              # Authentication
 │   │   ├── firebaseAuth.js
 │   │   └── privilegesService.js
+│   ├── credits/           # Credit system for API usage
+│   │   └── creditService.js
 │   ├── database/          # Data persistence (modular)
 │   │   ├── db.js              # Dexie instance + schema
 │   │   ├── recipeDB.js        # Recipe CRUD
 │   │   ├── vendorDB.js        # Vendor CRUD
 │   │   ├── inventoryItemDB.js # Inventory item CRUD
+│   │   ├── inventoryHelpers.js # Computed values for inventory
 │   │   ├── invoiceDB.js       # Invoice + line items
 │   │   ├── orderDB.js         # Stock transactions + POs
 │   │   ├── supportingDB.js    # Departments, categories
+│   │   ├── migrations.js      # Schema validation
+│   │   ├── cleanupService.js  # Data integrity checks
 │   │   ├── cloudSync.js       # Firestore sync
-│   │   ├── websiteSchema.js   # Website data schema (NEW)
-│   │   ├── websiteDB.js       # Website Firestore CRUD (NEW)
+│   │   ├── firebase.js        # Firebase config
+│   │   ├── firebaseCache.js   # In-memory caching
+│   │   ├── businessService.js # Business info
+│   │   ├── websiteSchema.js   # Website data schema
+│   │   ├── websiteDB.js       # Website Firestore CRUD
+│   │   ├── websiteSettingsDB.js # Website settings
 │   │   └── indexedDB.js       # Barrel export (backwards compat)
 │   ├── exports/           # PDF generation
+│   │   └── pdfExportService.js
+│   ├── heartbeat/         # Dashboard analytics
+│   │   └── dashboardData.js   # Four "organs" data aggregation
 │   ├── inventory/         # Inventory business logic
+│   │   ├── autoOrderService.js    # Auto-generated purchase orders
 │   │   ├── stockService.js
 │   │   ├── vendorService.js
 │   │   ├── purchaseOrderService.js
@@ -248,18 +266,22 @@ app-new/src/
 |--------------|------------|----------|
 | Common/Shared | 25 | 2 |
 | Recipes | 9 | 1 |
-| Inventory | 15 | 6 |
+| Inventory | 15 | 7 |
 | Orders | 9 | 1 |
 | Vendors | 6 | 1 |
 | Invoice | 8 | 31 |
-| Website | 12 | 2 |
+| Website | 12 | 4 |
 | Layout | 1 | 0 |
 | Auth | 2 | 2 |
+| Credits | 0 | 1 |
+| Accounting | 0 | 1 |
+| Heartbeat | 0 | 1 |
 | Other | 28 | 84 |
-| **Total** | **115+** | **130+** |
+| **Total** | **115+** | **136+** |
 
 *Note: Invoice services include vision/, handlers/, and mathEngine/ subdirectories*
-*Note: Website includes WebsiteBuilder + 10 step components + websiteDB/websiteSchema*
+*Note: Website includes WebsiteBuilder + 10 step components + websiteDB/websiteSchema/websiteSettingsDB*
+*Note: New services: creditService, quickbooksService, dashboardData, autoOrderService, inventoryHelpers, cleanupService, migrations, businessService, firebaseCache*
 
 ---
 
@@ -288,6 +310,10 @@ functions/
 | `/api/quickbooks/auth` | GET | OAuth initiation |
 | `/api/quickbooks/callback` | GET | OAuth callback |
 | `/api/quickbooks/invoice` | POST | Create QB invoice |
+| `/api/quickbooks/status` | GET | Check connection status |
+| `/api/quickbooks/tokenHealth` | GET | Check token expiration |
+| `/api/quickbooks/disconnect` | POST | Disconnect from QuickBooks |
+| `/api/quickbooks/vendors` | GET | Get QB vendors |
 | `/api/speech/recognize` | POST | Speech-to-text |
 
 ---
@@ -313,6 +339,7 @@ functions/
 │  │  - Background sync to Firestore                          │   │
 │  │  - Conflict resolution: last-write-wins + timestamps     │   │
 │  │  - Offline support: full functionality without network   │   │
+│  │  - Deletion tracking to prevent phantom resurrection     │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -321,16 +348,21 @@ functions/
 
 | Table | Purpose | Key Fields |
 |-------|---------|------------|
-| `recipes` | Recipe storage | id, name, category, department |
-| `departments` | Kitchen departments | id, name |
+| `recipes` | Recipe storage | id, name, nameLower, category, department |
+| `departments` | Kitchen departments | id, name, isDefault |
+| `categories` | Recipe categories | id, name, departmentId |
 | `tasks` | Team tasks | id, recipeId, assignedTo, status |
-| `vendors` | Supplier management | id, name, email, isPrimary |
-| `inventoryItems` | Stock items | id, vendorId, currentStock, parLevel |
+| `vendors` | Supplier management | id, name, nameLower, isActive, isPrimary |
+| `inventoryItems` | Stock items | id, name, nameNormalized, vendorId, currentStock |
 | `purchaseOrders` | Purchase orders | id, vendorId, status, total |
 | `purchaseOrderLines` | PO line items | id, orderId, itemId, quantity |
 | `invoices` | Uploaded invoices | id, vendorId, status, total |
-| `invoiceLines` | Invoice line items | id, invoiceId, itemId |
-| `stockTransactions` | Stock audit trail | id, itemId, type, quantity |
+| `invoiceLineItems` | Invoice line items | id, invoiceId, inventoryItemId |
+| `stockTransactions` | Stock audit trail | id, inventoryItemId, transactionType, quantity |
+| `priceHistory` | Price tracking | id, inventoryItemId, price, recordedAt |
+| `expenseCategories` | Non-inventory expense types | id, name, isActive, qbAccountId |
+| `expenseRecords` | Non-inventory invoices | id, vendorId, expenseCategoryId, amount |
+| `deletedItems` | Deletion tracking | id, entityType, entityId, deletedAt |
 
 ### Firestore Collections
 
@@ -341,15 +373,23 @@ functions/
 │   └── preferences       # User preferences
 ├── recipes/              # User's recipes
 ├── departments/          # Kitchen departments
-└── tasks/                # Team tasks
+├── tasks/                # Team tasks
+└── privileges/           # PIN-based access control
 
-/stores/{storeId}/        # NEW: Public website data
+/stores/{storeId}/        # Public website data
 ├── website/
 │   └── data              # Website settings, design, content
+├── settings/
+│   └── website           # Website configuration
 └── publicRecipes/        # Future: Public menu items
 
-/slugs/{slug}             # NEW: URL slug reservation
+/slugs/{slug}             # URL slug reservation
 └── storeId               # Maps slug → store ID
+
+/userCredits/{userId}     # API credit tracking
+├── credits               # Current credit balance
+├── creditsUsed           # Credits used this month
+└── monthStart            # Month start timestamp
 
 /shared/
 └── vendors/              # Shared vendor database
@@ -369,21 +409,30 @@ functions/
 │  ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐   │
 │  │   AI Services   │   │  Data Services  │   │ Export Services │   │
 │  ├─────────────────┤   ├─────────────────┤   ├─────────────────┤   │
-│  │ claudeAPI.js    │   │ indexedDB.js    │   │ pdfExportService│   │
-│  │ - extractRecipe │   │ - recipeDB      │   │ - generatePO    │   │
-│  │ - parseInvoice  │   │ - vendorDB      │   │ - inventoryRpt  │   │
-│  └─────────────────┘   │ - inventoryDB   │   └─────────────────┘   │
-│                        │ - orderDB       │                          │
-│  ┌─────────────────┐   │ - invoiceDB     │   ┌─────────────────┐   │
-│  │ Voice Services  │   │ - taskDB        │   │  Auth Services  │   │
-│  ├─────────────────┤   └─────────────────┘   ├─────────────────┤   │
-│  │ googleCloud     │                         │ firebaseAuth.js │   │
-│  │  Speech.js      │   ┌─────────────────┐   │ privileges      │   │
-│  │ bulkIngredient  │   │  Sync Services  │   │  Service.js     │   │
-│  │  Voice.js       │   ├─────────────────┤   └─────────────────┘   │
-│  └─────────────────┘   │ cloudSync.js    │                          │
-│                        │ firebaseCache.js│                          │
+│  │ claudeBase.js   │   │ indexedDB.js    │   │ pdfExportService│   │
+│  │ claudeRecipe.js │   │ - recipeDB      │   │ - generatePO    │   │
+│  │ claudeTranslate │   │ - vendorDB      │   │ - inventoryRpt  │   │
+│  │ priceCalculator │   │ - inventoryDB   │   └─────────────────┘   │
+│  └─────────────────┘   │ - orderDB       │                          │
+│                        │ - invoiceDB     │   ┌─────────────────┐   │
+│  ┌─────────────────┐   │ - taskDB        │   │  Auth Services  │   │
+│  │ Voice Services  │   └─────────────────┘   ├─────────────────┤   │
+│  ├─────────────────┤                         │ firebaseAuth.js │   │
+│  │ googleCloud     │   ┌─────────────────┐   │ privileges      │   │
+│  │  Speech.js      │   │  Sync Services  │   │  Service.js     │   │
+│  │ bulkIngredient  │   ├─────────────────┤   └─────────────────┘   │
+│  │  Voice.js       │   │ cloudSync.js    │                          │
+│  └─────────────────┘   │ firebaseCache.js│                          │
 │                        └─────────────────┘                          │
+│                                                                      │
+│  ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐   │
+│  │Credit & Account │   │ Website Services│   │  Data Quality   │   │
+│  ├─────────────────┤   ├─────────────────┤   ├─────────────────┤   │
+│  │ creditService   │   │ websiteDB       │   │ cleanupService  │   │
+│  │ quickbooks      │   │ websiteSchema   │   │ migrations      │   │
+│  │  Service        │   │ websiteSettings │   │ inventoryHelpers│   │
+│  │ businessService │   │                 │   └─────────────────┘   │
+│  └─────────────────┘   └─────────────────┘                          │
 │                                                                      │
 │  ┌───────────────────────────────────────────────────────────────┐  │
 │  │                   INVENTORY SERVICES                           │  │
@@ -391,6 +440,7 @@ functions/
 │  │ vendorService.js      │ Vendor CRUD, search, stats            │  │
 │  │ inventoryItemService  │ Item CRUD, stock levels, alerts       │  │
 │  │ purchaseOrderService  │ PO lifecycle, approval, receiving     │  │
+│  │ autoOrderService.js   │ Auto-generated purchase orders        │  │
 │  │ invoiceLineService.js │ Line operations, inventory creation   │  │
 │  │ stockService.js       │ Stock adjustments, transactions       │  │
 │  │ recipeDeductionSvc    │ Recipe ingredient deduction           │  │
@@ -407,6 +457,13 @@ functions/
 │  │ packagingHandler      │ Container/case counting               │  │
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                      │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │                   ANALYTICS & MONITORING                       │  │
+│  ├───────────────────────────────────────────────────────────────┤  │
+│  │ dashboardData.js      │ Four "organs" health monitoring       │  │
+│  │ heartbeatService      │ System health aggregation             │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -414,17 +471,23 @@ functions/
 
 | Service | File | Responsibilities |
 |---------|------|------------------|
-| **Database Core** | `db.js` | Dexie instance, schema, seed data |
+| **Database Core** | `db.js` | Dexie instance, schema v2, seed data |
 | **Recipe DB** | `recipeDB.js` | Recipe CRUD, search, categories |
 | **Vendor DB** | `vendorDB.js` | Vendor CRUD, search, statistics |
 | **Inventory DB** | `inventoryItemDB.js` | Item CRUD, stock levels, alerts |
+| **Inventory Helpers** | `inventoryHelpers.js` | Computed values, purchase stats |
 | **Invoice DB** | `invoiceDB.js` | Invoice & line item workflows |
 | **Order DB** | `orderDB.js` | Stock transactions, purchase orders |
 | **Supporting DB** | `supportingDB.js` | Departments, categories, settings |
-| **Cloud Sync** | `cloudSync.js` | Firestore bi-directional sync |
+| **Cloud Sync** | `cloudSync.js` | Firestore bi-directional sync, deletion tracking |
+| **Firebase Cache** | `firebaseCache.js` | In-memory query caching |
+| **Cleanup Service** | `cleanupService.js` | Data integrity, orphan cleanup |
+| **Migrations** | `migrations.js` | Schema validation, diagnostics |
+| **Business Service** | `businessService.js` | Business info, setup completion |
 | **Stock Service** | `stockService.js` | Adjustments, deductions, transactions |
 | **Vendor Service** | `vendorService.js` | Vendor business logic, search |
 | **PO Service** | `purchaseOrderService.js` | Order lifecycle, receiving |
+| **Auto Order Service** | `autoOrderService.js` | Auto-generated purchase orders |
 | **Invoice Line Service** | `invoiceLineService.js` | Line operations, inventory creation |
 | **Recipe Deduction** | `recipeDeductionService.js` | Recipe ingredient deduction |
 | **Vision Parser** | `vision/visionParser.js` | PDF → Images → Claude Vision API |
@@ -435,12 +498,18 @@ functions/
 | **Packaging Handler** | `handlers/packagingDistributorHandler.js` | Container/case counting |
 | **PDF Export** | `pdfExportService.js` | Generate PO and inventory PDFs |
 | **Price Calculator** | `priceCalculator.js` | Ingredient cost calculations |
-| **Claude AI** | `claudeAPI.js` | Recipe extraction (barrel export) |
+| **Claude Base** | `claudeBase.js` | Shared infrastructure, rate limiting |
+| **Claude Recipe** | `claudeRecipe.js` | Recipe parsing functions |
+| **Claude Translate** | `claudeTranslate.js` | Translation service with caching |
 | **Speech** | `googleCloudSpeech.js` | Voice recognition |
 | **Auth** | `firebaseAuth.js` | Firebase authentication |
 | **Privileges** | `privilegesService.js` | Role-based access control |
-| **Website Schema** | `websiteSchema.js` | Website data structures, business types, templates |
-| **Website DB** | `websiteDB.js` | Firestore CRUD for website data, slug reservation |
+| **Credit Service** | `creditService.js` | API credit tracking, owner bypass |
+| **QuickBooks Service** | `quickbooksService.js` | QB OAuth, connection management |
+| **Website Schema** | `websiteSchema.js` | Website data structures, business types |
+| **Website DB** | `websiteDB.js` | Firestore CRUD for website data |
+| **Website Settings** | `websiteSettingsDB.js` | Website configuration |
+| **Dashboard Data** | `dashboardData.js` | Four "organs" health monitoring |
 
 ---
 
@@ -471,339 +540,4 @@ functions/
 │   ├── <ControlPanelPage>           ← Owner Only
 │   │   ├── Tab: Users
 │   │   ├── Tab: Departments
-│   │   ├── Tab: Accounting
-│   │   └── Tab: Inventory           ← NEW
-│   │       ├── Sub-tab: Dashboard
-│   │       │   └── <InventoryDashboard>
-│   │       │       ├── <InventoryAlertSummary />
-│   │       │       ├── <InventoryFilters />
-│   │       │       ├── <InventoryListByItem /> or
-│   │       │       ├── <InventoryListByVendor />
-│   │       │       └── <InventoryItemDetail /> (modal)
-│   │       ├── Sub-tab: Vendors
-│   │       │   └── <VendorsTab>
-│   │       │       ├── <VendorList>
-│   │       │       │   └── <VendorCard /> (many)
-│   │       │       ├── <VendorDetailModal />
-│   │       │       └── <AddEditVendorModal />
-│   │       ├── Sub-tab: Orders
-│   │       │   └── <OrdersTab>
-│   │       │       ├── <OrderList>
-│   │       │       │   └── <OrderCard /> (many)
-│   │       │       ├── <OrderDetailModal />
-│   │       │       ├── <OrderEditor />
-│   │       │       ├── <ReceiveOrderModal />
-│   │       │       └── <GenerateOrdersModal />
-│   │       └── Sub-tab: Invoices
-│   │           └── <InvoicesTab>
-│   │               ├── <InvoiceList>
-│   │               │   └── <InvoiceCard /> (many)
-│   │               ├── <InvoiceUploadModal />
-│   │               ├── <InvoiceProcessingModal />
-│   │               └── <InvoiceLineMatchModal />
-│   ├── <DepartmentTasksPage>
-│   │   └── <UserTaskList />
-│   ├── <SettingsPage />
-│   ├── <WebsiteBuilderPage>        ← NEW
-│   │   └── <WebsiteBuilder>
-│   │       ├── Step Navigation
-│   │       └── <Step{1-10}> components
-│   └── <WebsitePreviewPage>        ← NEW
-│       └── Full website preview
-├── <Timer /> (global)
-├── <PinModal /> (access control)
-└── <GuidedTour />
-```
-
----
-
-## 7. Data Flow Diagrams
-
-### Recipe Creation Flow
-
-```
-┌─────────┐    ┌─────────────┐    ┌──────────┐    ┌───────────┐
-│  User   │───►│ RecipeEditor│───►│ recipeDB │───►│ Firestore │
-│ Input   │    │    Page     │    │ (local)  │    │  (cloud)  │
-└─────────┘    └─────────────┘    └──────────┘    └───────────┘
-     │                                  │
-     ▼                                  ▼
-┌─────────┐                      ┌──────────┐
-│  Voice  │                      │  Cloud   │
-│  Input  │                      │   Sync   │
-└─────────┘                      └──────────┘
-```
-
-### Inventory Management Flow
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    INVENTORY LIFECYCLE                            │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐      │
-│  │ Create  │───►│  Stock  │───►│  Low    │───►│ Generate│      │
-│  │ Vendor  │    │  Item   │    │ Stock   │    │   PO    │      │
-│  └─────────┘    └─────────┘    └─────────┘    └─────────┘      │
-│                      │              │              │             │
-│                      ▼              ▼              ▼             │
-│               ┌─────────┐    ┌─────────┐    ┌─────────┐        │
-│               │ Upload  │    │  Alert  │    │  Send   │        │
-│               │ Invoice │    │  Badge  │    │  Order  │        │
-│               └─────────┘    └─────────┘    └─────────┘        │
-│                      │                           │              │
-│                      ▼                           ▼              │
-│               ┌─────────┐                  ┌─────────┐         │
-│               │ Process │                  │ Receive │         │
-│               │ Invoice │                  │  Order  │         │
-│               └─────────┘                  └─────────┘         │
-│                      │                           │              │
-│                      ▼                           ▼              │
-│               ┌─────────┐                  ┌─────────┐         │
-│               │  Match  │                  │ Update  │         │
-│               │  Items  │                  │  Stock  │         │
-│               └─────────┘                  └─────────┘         │
-│                      │                           │              │
-│                      └───────────┬───────────────┘              │
-│                                  ▼                              │
-│                           ┌───────────┐                         │
-│                           │   Stock   │                         │
-│                           │Transaction│                         │
-│                           │   Log     │                         │
-│                           └───────────┘                         │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### Purchase Order Status Flow
-
-```
-┌───────┐    ┌──────────────┐    ┌──────────┐    ┌──────┐
-│ DRAFT │───►│PENDING_APPRV │───►│ APPROVED │───►│ SENT │
-└───────┘    └──────────────┘    └──────────┘    └──────┘
-                                                     │
-                                                     ▼
-                                              ┌───────────┐
-                                              │ CONFIRMED │
-                                              └───────────┘
-                                                     │
-                          ┌──────────────────────────┴───┐
-                          ▼                              ▼
-                   ┌─────────────────┐           ┌──────────┐
-                   │PARTIALLY_RECEIVED│           │ RECEIVED │
-                   └─────────────────┘           └──────────┘
-                          │                              │
-                          └──────────────┬───────────────┘
-                                         ▼
-                                    ┌────────┐
-                                    │ CLOSED │
-                                    └────────┘
-
-   From any state (except CLOSED): ───► CANCELLED
-```
-
-### Stock Transaction Flow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  STOCK TRANSACTION SOURCES                   │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────┐                                           │
-│  │ Task Complete│──► deductStockFromTask() ──┐              │
-│  │ (Recipe use) │                            │              │
-│  └──────────────┘                            │              │
-│                                              ▼              │
-│  ┌──────────────┐                     ┌───────────┐        │
-│  │ Order        │──► addStock() ─────►│   Stock   │        │
-│  │ Received     │                     │Transaction│        │
-│  └──────────────┘                     │   Log     │        │
-│                                       └───────────┘        │
-│  ┌──────────────┐                            ▲              │
-│  │ Manual       │──► adjustStock() ──────────┘              │
-│  │ Adjustment   │                                           │
-│  └──────────────┘                                           │
-│                                                              │
-│  ┌──────────────┐                                           │
-│  │ Waste/       │──► recordWaste() ──────────┘              │
-│  │ Spoilage     │                                           │
-│  └──────────────┘                                           │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 8. External Integrations
-
-### Claude AI Integration
-
-```
-┌─────────────┐     ┌────────────────┐     ┌───────────┐
-│   Client    │────►│ Cloud Function │────►│ Claude    │
-│  (Browser)  │     │  (Proxy)       │     │ API       │
-└─────────────┘     └────────────────┘     └───────────┘
-      │                    │                     │
-      │                    │                     │
-      ▼                    ▼                     ▼
- ┌─────────┐         ┌─────────┐          ┌─────────┐
- │ PDF/    │         │ Rate    │          │ Extract │
- │ Image   │         │ Limit   │          │ Recipe/ │
- │ Upload  │         │ Auth    │          │ Invoice │
- └─────────┘         └─────────┘          └─────────┘
-```
-
-**Capabilities:**
-- Recipe extraction from PDF/image
-- Invoice data parsing
-- Ingredient recognition
-- Smart categorization
-
-### Google Cloud Speech
-
-```
-┌─────────────┐     ┌────────────────┐     ┌───────────────┐
-│ Microphone  │────►│  Web Speech    │────►│ Google Cloud  │
-│  Input      │     │  API + Proxy   │     │ Speech-to-Text│
-└─────────────┘     └────────────────┘     └───────────────┘
-      │                                           │
-      │                                           ▼
-      │                                    ┌───────────┐
-      │                                    │ Transcript│
-      │                                    └───────────┘
-      ▼                                           │
-┌─────────────┐                                   │
-│ Voice       │◄──────────────────────────────────┘
-│ Commands    │
-│ Processing  │
-└─────────────┘
-```
-
-**Features:**
-- Real-time voice input for ingredients
-- Bulk ingredient dictation
-- Voice commands for navigation
-- Multi-language support
-
-### QuickBooks Integration
-
-```
-┌─────────────┐     ┌────────────────┐     ┌───────────────┐
-│   App       │────►│ Cloud Function │────►│  QuickBooks   │
-│             │     │  (OAuth)       │     │  Online API   │
-└─────────────┘     └────────────────┘     └───────────────┘
-      │                    │                      │
-      │                    │                      ▼
-      ▼                    ▼               ┌───────────┐
-┌─────────────┐     ┌─────────────┐        │  Sync     │
-│ Invoice     │     │   Token     │        │ Invoices  │
-│ Upload      │     │   Refresh   │        │ Vendors   │
-└─────────────┘     └─────────────┘        └───────────┘
-```
-
-**Capabilities:**
-- OAuth 2.0 authentication
-- Invoice creation/sync
-- Vendor synchronization
-- Payment status tracking
-
----
-
-## 9. Security Architecture
-
-### Authentication Flow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   AUTHENTICATION LAYERS                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Layer 1: Firebase Auth                                     │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  - Email/password authentication                      │  │
-│  │  - Session management                                 │  │
-│  │  - Token refresh                                      │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                           │                                  │
-│                           ▼                                  │
-│  Layer 2: Access Control (PIN)                              │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  - Owner PIN for elevated access                      │  │
-│  │  - Editor/Viewer role assignment                      │  │
-│  │  - Session-based privileges                           │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                           │                                  │
-│                           ▼                                  │
-│  Layer 3: Resource-Level Security                           │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  - Firestore security rules                           │  │
-│  │  - User-scoped data access                            │  │
-│  │  - Department-based filtering                         │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Role-Based Access Control
-
-| Role | Recipes | Tasks | Inventory | Settings | Users |
-|------|---------|-------|-----------|----------|-------|
-| **Owner** | Full | Full | Full | Full | Full |
-| **Editor** | Edit | Edit | View | None | None |
-| **Viewer** | View | View | None | None | None |
-
-### Data Security
-
-- **IndexedDB**: Local browser storage (encrypted at rest by browser)
-- **Firestore**: Server-side security rules
-- **API Keys**: Stored in Cloud Functions environment
-- **User Data**: Scoped by user ID path
-- **Sensitive Fields**: Not synced (PIN, tokens)
-
----
-
-## Appendix: Quick Reference
-
-### Key Files
-
-| Purpose | File Path |
-|---------|-----------|
-| Main App | `app-new/src/App.jsx` |
-| Routes | `app-new/src/AppRoutes.jsx` |
-| Database Core | `app-new/src/services/database/db.js` |
-| Recipe DB | `app-new/src/services/database/recipeDB.js` |
-| Vendor DB | `app-new/src/services/database/vendorDB.js` |
-| Inventory DB | `app-new/src/services/database/inventoryItemDB.js` |
-| Invoice DB | `app-new/src/services/database/invoiceDB.js` |
-| Order/Stock DB | `app-new/src/services/database/orderDB.js` |
-| Cloud Sync | `app-new/src/services/database/cloudSync.js` |
-| **Vision Parser** | `app-new/src/services/invoice/vision/index.js` |
-| **Handler Registry** | `app-new/src/services/invoice/handlers/handlerRegistry.js` |
-| Auth Context | `app-new/src/contexts/AuthContext.jsx` |
-| Access Context | `app-new/src/contexts/AccessContext.jsx` |
-| Route Constants | `app-new/src/constants/routes.js` |
-| **Website Builder** | `app-new/src/components/website/WebsiteBuilder.jsx` |
-| **Website Schema** | `app-new/src/services/database/websiteSchema.js` |
-| **Website DB** | `app-new/src/services/database/websiteDB.js` |
-| **Public Website** | `website/app/[slug]/page.tsx` |
-
-### Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `VITE_FIREBASE_*` | Firebase configuration |
-| `VITE_CLAUDE_API_URL` | Claude API proxy URL |
-| `VITE_GOOGLE_SPEECH_KEY` | Google Speech API |
-
-### Related Documentation
-
-- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Detailed data models
-- [INVOICE_ARCHITECTURE.md](INVOICE_ARCHITECTURE.md) - Invoice processing system (31 files, Vision parser, handlers)
-- [API_REFERENCE.md](API_REFERENCE.md) - Backend endpoints
-- [INVENTORY_SYSTEM.md](INVENTORY_SYSTEM.md) - Inventory, vendors, orders
-- [PROJECT_STATUS.md](PROJECT_STATUS.md) - Current project status and metrics
-
----
-
-*Document maintained by SmartCookBook Development Team*
-*Last Updated: 2026-01-27*
+│   │   ├

@@ -13,6 +13,7 @@ Complete documentation for all backend API endpoints.
 1. [Claude AI Proxy](#claude-ai-proxy)
 2. [QuickBooks Integration](#quickbooks-integration)
    - [Connection Status](#quickbooks-status)
+   - [Token Health](#quickbooks-token-health)
    - [Authorization URL](#quickbooks-auth-url)
    - [OAuth Callback](#quickbooks-callback)
    - [Disconnect](#quickbooks-disconnect)
@@ -21,6 +22,11 @@ Complete documentation for all backend API endpoints.
    - [Bills](#quickbooks-bills)
 3. [Error Codes Reference](#error-codes-reference)
 4. [Rate Limits](#rate-limits)
+5. [Client Services](#client-services)
+   - [Invoice Processing](#invoice-processing)
+   - [Inventory Management](#inventory-management)
+   - [Order Management](#order-management)
+   - [Recipe Management](#recipe-management)
 
 ---
 
@@ -194,6 +200,47 @@ Check connection status and verify token validity.
   "error": "Internal server error message"
 }
 ```
+
+---
+
+### QuickBooks Token Health
+
+Check token health and expiration warnings.
+
+#### `GET /quickbooksTokenHealth`
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| environment | string | sandbox | `sandbox` or `production` |
+
+**Success Response (200):**
+```json
+{
+  "connected": true,
+  "environment": "sandbox",
+  "accessToken": {
+    "expiresAt": 1703980800000,
+    "expiresIn": "2 hours",
+    "expired": false,
+    "status": "healthy"
+  },
+  "refreshToken": {
+    "expiresAt": 1711756800000,
+    "expiresIn": "89 days",
+    "expired": false,
+    "status": "healthy",
+    "message": null,
+    "daysRemaining": 89
+  }
+}
+```
+
+**Status Values:**
+- `healthy` - More than 30 days remaining
+- `warning` - 7-30 days remaining
+- `critical` - 1-7 days remaining
+- `expired` - Token has expired
 
 ---
 
@@ -613,324 +660,352 @@ x-ratelimit-tokens-remaining: 45000
 
 ---
 
-## Handler Line Processing
+## Client Services
 
-**Location:** `services/invoice/handlers/`
+The frontend uses a comprehensive set of client-side services for data management.
 
-Line processing and analysis is now handled by type-specific handlers via `processLines()`.
+### Credit System
 
-> **Note:** The `invoiceMerger.js` module was removed. All line processing logic has been moved to handlers.
+**Location:** `services/credits/creditService.js`
 
-### Constants
+Manages user API credits for Claude usage.
+
+#### Constants
 
 ```javascript
-import { LINE_TYPE, CONFIDENCE, SOURCE, ANOMALY_TYPES } from 'services/invoice/handlers/types';
+export const MONTHLY_CREDITS = 50;
 
-// Line type classification
-LINE_TYPE.PRODUCT   // Regular inventory item
-LINE_TYPE.DEPOSIT   // Bottle deposits, consignment
-LINE_TYPE.FEE       // Delivery, shipping charges
-LINE_TYPE.CREDIT    // Returns, refunds (negative)
-LINE_TYPE.ZERO      // Zero qty AND zero price
-
-// Confidence levels
-CONFIDENCE.HIGH     // Math validated, weight extracted
-CONFIDENCE.MEDIUM   // Only Claude data available
-CONFIDENCE.LOW      // Discrepancy detected
-CONFIDENCE.MANUAL   // Needs manual entry
-
-// Data sources
-SOURCE.LOCAL        // From local regex extraction
-SOURCE.CLAUDE       // From Claude AI parsing
-SOURCE.MERGED       // Combination of both
-SOURCE.USER         // User-provided override
-
-// Anomaly types (line-level)
-ANOMALY_TYPES.MATH_MISMATCH      // qty × price ≠ total
-ANOMALY_TYPES.ZERO_PRICE         // Item at $0
-ANOMALY_TYPES.MISSING_QUANTITY   // No quantity
-ANOMALY_TYPES.MISSING_WEIGHT     // Food supply only
+export const CREDIT_COSTS = {
+  INVOICE_VISION: 5,
+  RECIPE_IMAGE: 5,
+  RECIPE_TEXT: 2,
+  TRANSLATION: 1,
+  BULK_DICTATION: 3,
+  RECIPE_SUGGESTIONS: 2,
+  GENERIC: 2
+};
 ```
 
-### Handler Methods
-
-#### `handler.processLines(claudeLines)`
-
-Main entry point for line processing. Includes math validation, anomaly detection, and type-specific analysis.
+#### Functions
 
 ```javascript
-import { getHandlerForProfile } from 'services/invoice/handlers';
+// Check credit balance
+const creditData = await getCredits(userId);
 
-const handler = getHandlerForProfile(profile);
-const result = handler.processLines(claudeLines);
-// Returns: {
-//   lines: [ ... ],           // Processed line items
-//   allAnomalies: [ ... ],    // Collected anomalies
-//   summary: {
-//     totalLines, linesWithAnomalies,
-//     byType: { product, deposit, fee, credit, zero },
-//     productSubtotal, depositTotal, effectiveSubtotal,
-//     inventoryLineCount, accountingLineCount,
-//     calculatedSubtotal
-//   }
-// }
+// Check if user can perform operation
+const { canProceed, cost } = await checkCredits(userId, 'INVOICE_VISION');
+
+// Deduct credits for operation
+const { success } = await deductCredits(userId, 'INVOICE_VISION');
 ```
 
-#### `handler.processLine(claudeLine, index)`
+### Authentication Service
 
-Process a single line item with analysis.
+**Location:** `services/auth/firebaseAuth.js`
+
+Firebase authentication with password validation.
+
+#### Password Requirements
+
+- Minimum 8 characters
+- At least 1 uppercase letter
+- At least 1 lowercase letter  
+- At least 1 number
+- At least 1 special character
+
+#### Functions
 
 ```javascript
-const processed = handler.processLine(claudeLine, 0);
-// Returns: {
-//   name, description, category,
-//   quantity, unitPrice, totalPrice,
-//   mathValid, anomalies, hasAnomalies,
-//   lineType: 'product',
-//   forInventory: true,
-//   forAccounting: true,
-//   isDeposit: false,
-//   // Type-specific fields (e.g., pricePerG for food supply)
-// }
+// Register new user
+const result = await registerUser(email, password, displayName);
+
+// Login user
+const result = await loginUser(email, password);
+
+// Logout (clears local data)
+await logoutUser();
+
+// Password validation
+const { isValid, errors } = validatePasswordStrength(password);
+const score = getPasswordStrength(password); // 0-4
 ```
 
-### Base Handler Functions
+### Privileges Service
 
-Available in all handlers via `baseHandler.js`:
+**Location:** `services/auth/privilegesService.js`
+
+PIN-based access control for employees.
+
+#### Constants
 
 ```javascript
-import { detectLineType, getRoutingFlags, analyzeLineItem } from 'services/invoice/handlers/baseHandler';
+export const ACCESS_LEVELS = {
+  VIEWER: 'viewer',
+  EDITOR: 'editor', 
+  OWNER: 'owner'
+};
+```
 
-// Detect line type from description
-const lineType = detectLineType({
-  description: 'CONSIGNATION BOUTEILLE',
-  quantity: 6,
-  totalPrice: 3.00
+#### Functions
+
+```javascript
+// Verify PIN
+const privilege = await verifyPin('1234');
+
+// Create privilege
+const id = await createPrivilege({
+  name: 'John Doe',
+  pin: '1234',
+  accessLevel: 'editor',
+  departments: ['Cuisine', 'Pastry']
 });
-// Returns: LINE_TYPE.DEPOSIT
 
-// Get routing flags
-const flags = getRoutingFlags({ lineType: LINE_TYPE.PRODUCT });
-// Returns: { forInventory: true, forAccounting: true, isDeposit: false }
-
-// Base analysis (used by genericHandler)
-const analysis = analyzeLineItem(line, lineNumber);
-// Returns: { mathValid, anomalies, quantity, unitPrice, totalPrice, ... }
+// Get all privileges
+const privileges = await getAllPrivileges();
 ```
 
----
+### Database Services
 
-## Invoice Type Handler Registry
+**Location:** `services/database/indexedDB.js`
 
-**Location:** `services/invoice/handlers/handlerRegistry.js`
+Local-first database with cloud sync.
 
-The handler registry dispatches invoice processing to type-specific handlers based on vendor configuration.
-
-### Handler Types
+#### Recipe Operations
 
 ```javascript
-import { INVOICE_TYPES } from 'services/invoice/handlers';
+import { recipeDB } from 'services/database/indexedDB';
 
-INVOICE_TYPES.FOOD_SUPPLY          // 'foodSupply'
-INVOICE_TYPES.PACKAGING_DISTRIBUTOR // 'packagingDistributor'
-INVOICE_TYPES.GENERIC              // 'generic'
-INVOICE_TYPES.UTILITIES            // 'utilities' (coming soon)
-INVOICE_TYPES.SERVICES             // 'services' (coming soon)
-```
+// CRUD operations
+const recipes = await recipeDB.getAll();
+const recipe = await recipeDB.getById(id);
+const results = await recipeDB.search('chicken');
+const id = await recipeDB.add(recipeData);
+await recipeDB.update(id, updates);
+await recipeDB.delete(id);
 
-### Functions
-
-#### `getHandler(invoiceType)`
-
-Get handler for a specific invoice type.
-
-```javascript
-import { getHandler } from 'services/invoice/handlers';
-
-const handler = getHandler('foodSupply');
-// Returns: foodSupplyHandler object
-```
-
-#### `getHandlerForVendor(vendor)`
-
-Get handler from vendor object (checks parsingProfile.invoiceType).
-
-```javascript
-import { getHandlerForVendor } from 'services/invoice/handlers';
-
-const handler = getHandlerForVendor(vendor);
-// Returns: appropriate handler based on vendor.parsingProfile.invoiceType
-```
-
-#### `getHandlerForProfile(profile)`
-
-Get handler from a parsing profile.
-
-```javascript
-import { getHandlerForProfile } from 'services/invoice/handlers';
-
-const handler = getHandlerForProfile(profile);
-// Returns: handler based on profile.invoiceType
-```
-
-#### `createInventoryItem({ lineItem, vendor, profile, invoiceId, invoiceDate })`
-
-Create a new inventory item using the appropriate handler.
-
-```javascript
-import { createInventoryItem } from 'services/invoice/handlers';
-
-const { item, warnings, validation } = createInventoryItem({
-  lineItem: { description: 'Beef Tenderloin', quantity: 10, unitPrice: 25.00, weight: 50, weightUnit: 'lb' },
-  vendor: { id: 1, name: 'Sysco' },
-  profile: { invoiceType: 'foodSupply' },
-  invoiceId: 'inv_123',
-  invoiceDate: '2025-01-15'
+// Pagination
+const { recipes, total, totalPages } = await recipeDB.getPaginated({
+  page: 1,
+  pageSize: 20,
+  sortBy: 'name'
 });
-// Returns: {
-//   item: { name, vendorId, pricePerG, stockWeight, ... },
-//   warnings: [],
-//   validation: { valid: true, errors: [], warnings: [] }
-// }
 ```
 
-#### `updateInventoryItem({ existingItem, lineItem, vendor, profile, invoiceId, invoiceDate })`
-
-Update an existing inventory item using the appropriate handler.
+#### Inventory Operations
 
 ```javascript
-import { updateInventoryItem } from 'services/invoice/handlers';
+import { inventoryItemDB } from 'services/database/indexedDB';
 
-const { updates, warnings, previousValues, validation } = updateInventoryItem({
-  existingItem: { id: 1, name: 'Beef Tenderloin', stockWeight: 100 },
-  lineItem: { quantity: 10, unitPrice: 26.00, weight: 50, weightUnit: 'lb' },
-  vendor: { id: 1, name: 'Sysco' },
-  profile: { invoiceType: 'foodSupply' },
-  invoiceId: 'inv_456',
-  invoiceDate: '2025-01-20'
+// Get items
+const items = await inventoryItemDB.getAll();
+const activeItems = await inventoryItemDB.getActive();
+const item = await inventoryItemDB.getByName('Flour');
+
+// Search with filters
+const results = await inventoryItemDB.search('beef', {
+  filters: { category: 'Meat', vendorId: 1 }
 });
-// Returns: {
-//   updates: { lastPurchasePrice: 26.00, stockWeight: 150, pricePerG: 0.0115, ... },
-//   warnings: [],
-//   previousValues: { lastPurchasePrice: 25.00 },
-//   validation: { valid: true, errors: [], warnings: [] }
-// }
+
+// Stock management
+await inventoryItemDB.updateStock(id, newQuantity);
+await inventoryItemDB.updatePricing(id, { pricePerG: 0.05 });
 ```
 
-#### `formatLinesForDisplay({ lines, profile })`
-
-Format invoice lines for UI display using the appropriate handler.
+#### Invoice Operations
 
 ```javascript
-import { formatLinesForDisplay } from 'services/invoice/handlers';
+import { invoiceDB, INVOICE_STATUS } from 'services/database/indexedDB';
 
-const formattedLines = formatLinesForDisplay({
-  lines: claudeParsedLines,
-  profile: { invoiceType: 'foodSupply' }
+// Status management
+const pending = await invoiceDB.getByStatus(INVOICE_STATUS.PENDING);
+await invoiceDB.updateStatus(id, INVOICE_STATUS.PROCESSED);
+
+// Payment tracking
+await invoiceDB.recordPayment(id, amount, { method: 'check' });
+const unpaid = await invoiceDB.getByPaymentStatus('unpaid');
+```
+
+#### Stock Transactions
+
+```javascript
+import { stockTransactionDB, TRANSACTION_TYPE } from 'services/database/indexedDB';
+
+// Record transactions
+await stockTransactionDB.recordPurchase(itemId, quantity, {
+  invoiceId: 1,
+  unitCost: 2.50
 });
-// Returns: Array of lines with display-ready fields
-```
 
-#### `getDisplayFieldMap({ item, profile })`
-
-Get display field map for table columns.
-
-```javascript
-import { getDisplayFieldMap } from 'services/invoice/handlers';
-
-const fieldMap = getDisplayFieldMap({
-  item: lineItem,
-  profile: { invoiceType: 'packagingDistributor' }
+await stockTransactionDB.recordTaskUsage(itemId, quantity, {
+  taskId: 'task_123',
+  recipeName: 'Beef Stew'
 });
-// Returns: { 'sku': 'ABC123', 'description': 'Container 2.25LB', 'format': '6x50', ... }
+
+// Get history
+const history = await stockTransactionDB.getItemHistory(itemId);
 ```
 
-#### `getAllWizardOptions()`
+### AI Services
 
-Get all wizard configurations for vendor profile setup UI.
+**Location:** `services/ai/`
+
+Claude API integration with credit management.
+
+#### Recipe Parsing
 
 ```javascript
-import { getAllWizardOptions } from 'services/invoice/handlers';
+import { 
+  parsePDFRecipeWithClaude,
+  parseImageRecipeWithClaude 
+} from 'services/ai/claudeRecipe';
 
-const options = getAllWizardOptions();
-// Returns: [
-//   { type: 'foodSupply', icon: '🥩', title: 'Food Supplier', description: '...', options: [...] },
-//   { type: 'packagingDistributor', icon: '📦', title: 'Packaging Distributor', ... },
-//   { type: 'generic', icon: '📄', title: 'Other / General', ... },
-//   { type: 'utilities', icon: '⚡', title: 'Utilities', comingSoon: true, ... },
-//   { type: 'services', icon: '🔧', title: 'Services', comingSoon: true, ... }
-// ]
+// Parse PDF recipe
+const recipe = await parsePDFRecipeWithClaude(pdfFile);
+
+// Parse recipe from image
+const recipe = await parseImageRecipeWithClaude(imageFile);
 ```
 
-#### `getPromptHints(profile)`
-
-Get AI prompt hints for Claude parsing.
+#### Translation
 
 ```javascript
-import { getPromptHints } from 'services/invoice/handlers';
+import { translateTerm, expandSearchTerms } from 'services/ai/claudeTranslate';
 
-const hints = getPromptHints({ invoiceType: 'foodSupply' });
-// Returns: Array of strings to add to Claude prompt for type-specific parsing
+// Translate ingredient term
+const { en, fr } = await translateTerm('patate');
+
+// Expand search with translations
+const terms = await expandSearchTerms('carottes');
+// Returns: ['carottes', 'carotte', 'carrots', 'carrot']
 ```
 
----
+### Price Calculator
 
-## QuickBooks Client Service
+**Location:** `services/ai/priceCalculator.js`
+
+Calculate ingredient costs from inventory pricing.
+
+```javascript
+import { calculateIngredientPrice } from 'services/ai/priceCalculator';
+
+// Calculate single ingredient cost
+const result = await calculateIngredientPrice({
+  linkedIngredientId: 'item_123',
+  metric: '4kg'
+}, 1.5); // scaling factor
+
+// Result: { price: 31.75, pricePerKg: 7.94, unit: 'kg', error: null }
+```
+
+### QuickBooks Service
 
 **Location:** `services/accounting/quickbooksService.js`
 
-Client-side functions for QuickBooks integration.
-
-### Functions
-
-#### `prepareInvoiceForQuickBooks(invoice)`
-
-Filter invoice to only accounting-relevant lines before QB sync.
+Client-side QuickBooks integration.
 
 ```javascript
-import { prepareInvoiceForQuickBooks } from 'services/accounting/quickbooksService';
+import {
+  getQBStatus,
+  connectQuickBooks,
+  getVendors,
+  syncInvoiceToQuickBooks
+} from 'services/accounting/quickbooksService';
 
-const prepared = prepareInvoiceForQuickBooks(invoice);
-// Returns: {
-//   ...invoice,
-//   lineItems: [ /* only forAccounting=true lines */ ],
-//   totals: { subtotal: effectiveSubtotal },
-//   deposits: { lines: [...], total: 12.00 },
-//   filteringSummary: {
-//     originalLineCount: 60,
-//     accountingLineCount: 58,
-//     depositLineCount: 2,
-//     effectiveSubtotal: 3200.00,
-//     depositTotal: 12.00
-//   }
-// }
-```
+// Check connection
+const { connected } = await getQBStatus();
 
-#### `getInventoryLines(invoice)`
+// Start OAuth flow
+const { success, popup } = await connectQuickBooks();
 
-Get only lines that should create inventory items.
-
-```javascript
-import { getInventoryLines } from 'services/accounting/quickbooksService';
-
-const inventoryLines = getInventoryLines(invoice);
-// Returns: [ /* lines where forInventory=true */ ]
-```
-
-#### `syncInvoiceToQuickBooks(invoice, existingVendors, options)`
-
-Full workflow: filter invoice → find/create vendor → create bill.
-
-```javascript
+// Sync invoice to QB
 const result = await syncInvoiceToQuickBooks(invoice);
-// Returns: {
-//   success: true,
-//   billId: '123',
-//   vendorName: 'Sysco Foods',
-//   vendorId: '56',
-//   filteringSummary: { ... }
-// }
 ```
+
+### Business Service
+
+**Location:** `services/database/businessService.js`
+
+Business information management.
+
+```javascript
+import {
+  getBusinessInfo,
+  saveBusinessInfo,
+  isSetupComplete
+} from 'services/database/businessService';
+
+// Get business info
+const business = await getBusinessInfo(userId);
+
+// Save business info
+await saveBusinessInfo(userId, {
+  name: 'My Restaurant',
+  type: 'restaurant',
+  address: '123 Main St',
+  phone: '555-1234'
+});
+
+// Check setup status
+const complete = await isSetupComplete(userId);
+```
+
+### Export Services
+
+**Location:** `services/exports/pdfExportService.js`
+
+PDF generation for purchase orders and reports.
+
+```javascript
+import {
+  generatePurchaseOrderPDF,
+  generateInventoryReportPDF
+} from 'services/exports/pdfExportService';
+
+// Generate PO PDF
+const pdfBlob = await generatePurchaseOrderPDF(purchaseOrder, {
+  businessInfo: { name: 'My Kitchen' }
+});
+
+// Generate inventory report
+const reportBlob = await generateInventoryReportPDF(inventoryItems);
+```
+
+---
+
+## IndexedDB Schema
+
+The frontend uses IndexedDB for local-first data storage with the following tables:
+
+### Core Tables
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `recipes` | Recipe storage | name, category, department, portions |
+| `departments` | Kitchen departments | name, isDefault |
+| `categories` | Recipe categories | name, departmentId |
+| `vendors` | Supplier management | name, contactInfo, terms |
+| `inventoryItems` | Inventory tracking | name, vendorId, pricing, stock |
+| `invoices` | Invoice records | vendorId, status, total |
+| `invoiceLineItems` | Invoice line items | invoiceId, inventoryItemId, quantity |
+
+### Operational Tables
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `stockTransactions` | Inventory movements | itemId, type, quantity, reference |
+| `purchaseOrders` | Purchase orders | vendorId, status, total |
+| `purchaseOrderLines` | PO line items | purchaseOrderId, itemId, quantity |
+| `productionLogs` | Task completion tracking | recipeId, portions, costs |
+| `priceHistory` | Historical pricing | itemId, price, date |
+
+### Configuration Tables
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `kitchenSettings` | Application settings | key, value |
+| `sliders` | UI feature showcases | name, location, config |
+| `expenseCategories` | Non-inventory expenses | name, qbAccountId |
+| `expenseRecords` | Expense tracking | categoryId, amount, date |
 
 ---
 
@@ -968,253 +1043,6 @@ QuickBooks tokens are stored in Firestore:
 - Documents: `sandbox`, `production`
 
 Token refresh is automatic when access token expires.
-
----
-
-## IndexedDB Service Layer
-
-The frontend uses IndexedDB (via Dexie.js) for local-first data storage with cloud sync to Firestore.
-
-### Database Modules
-
-| Module | Description | Import |
-|--------|-------------|--------|
-| `recipeDB` | Recipe CRUD operations | `import { recipeDB } from 'services/database/indexedDB'` |
-| `vendorDB` | Vendor management | `import { vendorDB } from 'services/database/indexedDB'` |
-| `inventoryItemDB` | Inventory item management | `import { inventoryItemDB } from 'services/database/indexedDB'` |
-| `invoiceDB` | Invoice processing | `import { invoiceDB } from 'services/database/indexedDB'` |
-| `invoiceLineDB` | Invoice line items | `import { invoiceLineDB } from 'services/database/indexedDB'` |
-| `stockTransactionDB` | Stock movement audit trail | `import { stockTransactionDB } from 'services/database/orderDB'` |
-| `purchaseOrderDB` | Purchase order management | `import { purchaseOrderDB } from 'services/database/orderDB'` |
-| `supportingDB` | Departments, categories, settings | `import { supportingDB } from 'services/database/indexedDB'` |
-
-### Recipe Operations
-
-```javascript
-// Get all recipes
-const recipes = await recipeDB.getAll();
-
-// Get recipe by ID
-const recipe = await recipeDB.getById(id);
-
-// Search recipes by name
-const results = await recipeDB.search('chicken');
-
-// Create recipe
-const id = await recipeDB.create({ name: 'New Recipe', ingredients: [], method: [] });
-
-// Update recipe
-await recipeDB.update(id, { name: 'Updated Name' });
-
-// Delete recipe
-await recipeDB.delete(id);
-```
-
-### Vendor Operations
-
-```javascript
-// Get all vendors
-const vendors = await vendorDB.getAll();
-
-// Search vendors
-const results = await vendorDB.search('sysco');
-
-// Create vendor
-const id = await vendorDB.create({
-  name: 'Sysco Foods',
-  email: 'orders@sysco.com',
-  phone: '555-0100',
-  isActive: true
-});
-
-// Update vendor
-await vendorDB.update(id, { email: 'new@sysco.com' });
-
-// Delete vendor
-await vendorDB.delete(id);
-```
-
-### Inventory Item Operations
-
-```javascript
-// Get all inventory items
-const items = await inventoryItemDB.getAll();
-
-// Get by vendor
-const vendorItems = await inventoryItemDB.getByVendor(vendorId);
-
-// Search items
-const results = await inventoryItemDB.search('flour');
-
-// Create item
-const id = await inventoryItemDB.create({
-  name: 'All-Purpose Flour',
-  vendorId: 1,
-  unit: 'kg',
-  currentStock: 50,
-  reorderPoint: 10
-});
-
-// Update stock
-await inventoryItemDB.updateStock(id, 45);
-
-// Update price from invoice
-await inventoryItemDB.updatePriceFromInvoice(id, 2.50, { quantity: 10 });
-```
-
-### Invoice Operations
-
-```javascript
-// Invoice status constants
-const { INVOICE_STATUS, PAYMENT_STATUS } = invoiceDB;
-// INVOICE_STATUS: DRAFT, PENDING, EXTRACTING, EXTRACTED, PROCESSED, ARCHIVED
-// PAYMENT_STATUS: UNPAID, PARTIAL, PAID
-
-// Get pending invoices
-const pending = await invoiceDB.getPending();
-
-// Get invoices by vendor
-const vendorInvoices = await invoiceDB.getByVendor(vendorId);
-
-// Create invoice
-const id = await invoiceDB.create({
-  vendorId: 1,
-  vendorName: 'Sysco',
-  invoiceNumber: 'INV-001',
-  invoiceDate: '2025-01-15',
-  total: 500.00
-});
-
-// Update status
-await invoiceDB.updateStatus(id, INVOICE_STATUS.PROCESSED);
-
-// Record payment
-await invoiceDB.recordPayment(id, 250.00, { method: 'check', reference: '1234' });
-```
-
-### Invoice Line Operations
-
-```javascript
-// Line match status constants
-const { MATCH_STATUS } = invoiceLineDB;
-// UNMATCHED, AUTO_MATCHED, MANUAL_MATCHED, CONFIRMED, NEW_ITEM, SKIPPED, REJECTED
-
-// Get lines for invoice
-const lines = await invoiceLineDB.getByInvoice(invoiceId);
-
-// Create line item
-const lineId = await invoiceLineDB.create({
-  invoiceId: 1,
-  description: 'Beef Tenderloin',
-  quantity: 10,
-  unitPrice: 25.00,
-  totalPrice: 250.00
-});
-
-// Set match (link to inventory item)
-await invoiceLineDB.setMatch(lineId, inventoryItemId, { confidence: 95, matchedBy: 'ai' });
-
-// Confirm match and update inventory
-await invoiceLineDB.confirmMatch(lineId, { updateInventory: true });
-
-// Create new inventory item from unmatched line
-const { inventoryItemId } = await invoiceLineDB.createInventoryItemFromLine(lineId);
-```
-
-### Stock Transaction Operations
-
-```javascript
-// Transaction type constants
-const { TRANSACTION_TYPE, REFERENCE_TYPE } = stockTransactionDB;
-// TRANSACTION_TYPE: PURCHASE, TASK_USAGE, ADJUSTMENT, WASTE, TRANSFER, COUNT_CORRECTION, INITIAL
-// REFERENCE_TYPE: INVOICE, INVOICE_LINE, TASK, RECIPE, MANUAL, TRANSFER, COUNT, PO
-
-// Record purchase from invoice
-await stockTransactionDB.recordPurchase(itemId, 50, {
-  invoiceId: 1,
-  unitCost: 2.50,
-  currentStock: 100
-});
-
-// Record task usage (production)
-await stockTransactionDB.recordTaskUsage(itemId, 5, {
-  taskId: 'task_123',
-  recipeName: 'Chocolate Cake',
-  currentStock: 100
-});
-
-// Record manual adjustment
-await stockTransactionDB.recordAdjustment(itemId, -3, 'Damaged items', {
-  currentStock: 95
-});
-
-// Record waste
-await stockTransactionDB.recordWaste(itemId, 2, 'Expired', { currentStock: 92 });
-
-// Get item transaction history
-const history = await stockTransactionDB.getItemHistory(itemId, { limit: 50 });
-
-// Void a transaction
-await stockTransactionDB.void(transactionId, 'Entered in error');
-```
-
-### Purchase Order Operations
-
-```javascript
-// PO status constants
-const { PO_STATUS, PO_SEND_METHOD } = purchaseOrderDB;
-// PO_STATUS: DRAFT, PENDING, SENT, ACKNOWLEDGED, PARTIAL, RECEIVED, CANCELLED
-// PO_SEND_METHOD: EMAIL, FAX, PORTAL, PHONE, MANUAL
-
-// Generate unique order number
-const orderNumber = await purchaseOrderDB.generateOrderNumber(); // "PO-2025-001"
-
-// Create purchase order
-const poId = await purchaseOrderDB.create({
-  vendorId: 1,
-  expectedDeliveryDate: '2025-01-20',
-  notes: 'Rush order'
-});
-
-// Add line items
-await purchaseOrderLineDB.bulkCreate(poId, [
-  { inventoryItemId: 1, quantity: 50, unitPrice: 2.50 },
-  { inventoryItemId: 2, quantity: 20, unitPrice: 5.00 }
-]);
-
-// Send order
-await purchaseOrderDB.send(poId, PO_SEND_METHOD.EMAIL);
-
-// Receive order (partial or full)
-await purchaseOrderDB.receive(poId, { receivedBy: 'user123' });
-```
-
-### Cloud Sync Functions
-
-```javascript
-import {
-  pushRecipe,
-  pushVendor,
-  pushInventoryItem,
-  syncAllFromCloud,
-  getSyncStatusValue
-} from 'services/database/cloudSync';
-
-// Push single entity to cloud
-await pushRecipe(recipe);
-await pushVendor(vendor);
-await pushInventoryItem(item);
-
-// Full sync from cloud
-await syncAllFromCloud();
-
-// Check sync status
-const status = getSyncStatusValue(); // 'idle', 'syncing', 'synced', 'error'
-```
-
-### Database Schema
-
-See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for complete table definitions and relationships.
 
 ---
 

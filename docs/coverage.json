@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-01-29T23:32:32.010Z",
+  "generatedAt": "2026-01-30T23:04:29.707Z",
   "staleness": {
     "docs/SYSTEM_ARCHITECTURE.md": {
-      "lastDocUpdate": "2026-01-27",
+      "lastDocUpdate": "2026-01-29",
       "coversFiles": [
         "src/services/**",
         "src/components/**",
         "src/pages/**"
       ],
       "latestCodeChange": "2026-01-28",
-      "staleDays": 1,
-      "stale": true
+      "staleDays": 0,
+      "stale": false
     },
     "docs/INVOICE_ARCHITECTURE.md": {
-      "lastDocUpdate": "2026-01-27",
+      "lastDocUpdate": "2026-01-29",
       "coversFiles": [
         "src/services/invoice/**",
         "src/components/invoice/**"
@@ -23,16 +23,16 @@
       "stale": false
     },
     "docs/DATABASE_SCHEMA.md": {
-      "lastDocUpdate": "2025-12-19",
+      "lastDocUpdate": "2026-01-29",
       "coversFiles": [
         "src/services/database/**"
       ],
       "latestCodeChange": "2026-01-28",
-      "staleDays": 40,
-      "stale": true
+      "staleDays": 0,
+      "stale": false
     },
     "docs/INVENTORY_SYSTEM.md": {
-      "lastDocUpdate": "2026-01-27",
+      "lastDocUpdate": "2026-01-29",
       "coversFiles": [
         "src/services/inventory/**",
         "src/components/inventory/**"
@@ -42,35 +42,35 @@
       "stale": false
     },
     "docs/API_REFERENCE.md": {
-      "lastDocUpdate": "2026-01-27",
+      "lastDocUpdate": "2026-01-29",
       "coversFiles": [
         "src/services/**"
       ],
       "latestCodeChange": "2026-01-28",
-      "staleDays": 1,
-      "stale": true
+      "staleDays": 0,
+      "stale": false
     },
     "docs/VOICE_RECOGNITION_GUIDE.md": {
-      "lastDocUpdate": "2025-12-19",
+      "lastDocUpdate": "2026-01-29",
       "coversFiles": [
         "src/services/voice/**",
         "src/components/voice/**"
       ],
       "latestCodeChange": "2026-01-27",
-      "staleDays": 39,
-      "stale": true
+      "staleDays": 0,
+      "stale": false
     }
   },
   "jsdocCoverage": {
     "services": {
-      "total": 893,
-      "documented": 641,
-      "percent": "72%"
+      "total": 875,
+      "documented": 625,
+      "percent": "71%"
     },
     "components": {
-      "total": 158,
-      "documented": 5,
-      "percent": "3%"
+      "total": 151,
+      "documented": 3,
+      "percent": "2%"
     },
     "pages": {
       "total": 41,
@@ -78,9 +78,9 @@
       "percent": "0%"
     },
     "hooks": {
-      "total": 7,
-      "documented": 4,
-      "percent": "57%"
+      "total": 13,
+      "documented": 6,
+      "percent": "46%"
     },
     "utils": {
       "total": 268,
@@ -88,11 +88,6 @@
       "percent": "52%"
     }
   },
-  "staleDocCount": 4,
-  "staleDocs": [
-    "docs/SYSTEM_ARCHITECTURE.md (1 days behind)",
-    "docs/DATABASE_SCHEMA.md (40 days behind)",
-    "docs/API_REFERENCE.md (1 days behind)",
-    "docs/VOICE_RECOGNITION_GUIDE.md (39 days behind)"
-  ]
+  "staleDocCount": 0,
+  "staleDocs": []
 }

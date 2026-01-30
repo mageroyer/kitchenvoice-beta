@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-01-29T23:32:31.609Z",
+  "generatedAt": "2026-01-30T23:04:29.404Z",
   "summary": {
-    "totalFiles": 277,
-    "totalLines": 112170,
-    "totalExports": 1403,
-    "jsdocCount": 803,
+    "totalFiles": 274,
+    "totalLines": 110837,
+    "totalExports": 1384,
+    "jsdocCount": 787,
     "jsdocCoverage": "57%",
     "byType": {
       "other": 6,
-      "component": 117,
+      "component": 112,
+      "hook": 9,
       "constant": 5,
-      "hook": 5,
       "page": 35,
-      "service": 94,
+      "service": 92,
       "util": 15
     }
   },
@@ -395,48 +395,6 @@
         },
         {
           "from": "../../styles/components/accountingsetupmodal.module.css",
-          "names": [
-            "styles"
-          ]
-        }
-      ],
-      "propTypes": null
-    },
-    "src/components/common/AIImageGenerator.jsx": {
-      "type": "component",
-      "lines": 281,
-      "lastModified": null,
-      "exports": [
-        {
-          "name": "AIImageGenerator",
-          "kind": "default",
-          "hasJSDoc": false,
-          "line": 14
-        }
-      ],
-      "imports": [
-        {
-          "from": "../../services/database/firebase",
-          "names": [
-            "auth"
-          ]
-        },
-        {
-          "from": "../../services/storage/imageStorage",
-          "names": [
-            "uploadFromUrl"
-          ]
-        },
-        {
-          "from": "../../services/ai/imageGeneratorService",
-          "names": [
-            "FOOD_PROMPT_TEMPLATES",
-            "EXAMPLE_PROMPTS",
-            "IMAGE_GENERATION_COST"
-          ]
-        },
-        {
-          "from": "../../styles/components/aiimagegenerator.module.css",
           "names": [
             "styles"
           ]
@@ -1107,50 +1065,6 @@
       ],
       "propTypes": null
     },
-    "src/components/common/FeatureSlider/index.js": {
-      "type": "component",
-      "lines": 9,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "FeatureSlider",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 2,
-          "from": "./FeatureSlider"
-        },
-        {
-          "name": "BubbleText",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 3,
-          "from": "./BubbleText"
-        },
-        {
-          "name": "SliderDots",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 4,
-          "from": "./SliderDots"
-        },
-        {
-          "name": "SliderArrows",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 5,
-          "from": "./SliderArrows"
-        },
-        {
-          "name": "default",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 8,
-          "from": "./FeatureSlider"
-        }
-      ],
-      "imports": [],
-      "propTypes": null
-    },
     "src/components/common/FeatureSlider/SliderArrows.jsx": {
       "type": "component",
       "lines": 60,
@@ -1193,6 +1107,50 @@
           ]
         }
       ],
+      "propTypes": null
+    },
+    "src/components/common/FeatureSlider/index.js": {
+      "type": "component",
+      "lines": 9,
+      "lastModified": "2025-12-19",
+      "exports": [
+        {
+          "name": "FeatureSlider",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 2,
+          "from": "./FeatureSlider"
+        },
+        {
+          "name": "BubbleText",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 3,
+          "from": "./BubbleText"
+        },
+        {
+          "name": "SliderDots",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 4,
+          "from": "./SliderDots"
+        },
+        {
+          "name": "SliderArrows",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 5,
+          "from": "./SliderArrows"
+        },
+        {
+          "name": "default",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 8,
+          "from": "./FeatureSlider"
+        }
+      ],
+      "imports": [],
       "propTypes": null
     },
     "src/components/common/FeedbackButton.jsx": {
@@ -1895,106 +1853,6 @@
         "id",
         "name"
       ]
-    },
-    "src/components/inventory/index.js": {
-      "type": "component",
-      "lines": 22,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "StockProgressBar",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 9,
-          "from": "./StockProgressBar"
-        },
-        {
-          "name": "StockStatusBadge",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 10,
-          "from": "./StockStatusBadge"
-        },
-        {
-          "name": "VendorBadge",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 11,
-          "from": "./VendorBadge"
-        },
-        {
-          "name": "ItemSearchInput",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 12,
-          "from": "./ItemSearchInput"
-        },
-        {
-          "name": "InventoryDashboard",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 13,
-          "from": "./InventoryDashboard"
-        },
-        {
-          "name": "InventoryAlertSummary",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 14,
-          "from": "./InventoryAlertSummary"
-        },
-        {
-          "name": "InventoryFilters",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 15,
-          "from": "./InventoryFilters"
-        },
-        {
-          "name": "InventoryListByItem",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 16,
-          "from": "./InventoryListByItem"
-        },
-        {
-          "name": "InventoryListByVendor",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 17,
-          "from": "./InventoryListByVendor"
-        },
-        {
-          "name": "InventoryListItem",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 18,
-          "from": "./InventoryListItem"
-        },
-        {
-          "name": "InventoryItemDetail",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 19,
-          "from": "./InventoryItemDetail"
-        },
-        {
-          "name": "StockAdjustmentModal",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 20,
-          "from": "./StockAdjustmentModal"
-        },
-        {
-          "name": "AddInventoryItemModal",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 21,
-          "from": "./AddInventoryItemModal"
-        }
-      ],
-      "imports": [],
-      "propTypes": null
     },
     "src/components/inventory/InventoryAlertSummary.jsx": {
       "type": "component",
@@ -2765,38 +2623,101 @@
         "isPreferred"
       ]
     },
-    "src/components/invoice/index.js": {
+    "src/components/inventory/index.js": {
       "type": "component",
-      "lines": 11,
-      "lastModified": "2026-01-27",
+      "lines": 22,
+      "lastModified": "2025-12-19",
       "exports": [
         {
-          "name": "LineReviewModal",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 7,
-          "from": "./LineReviewModal"
-        },
-        {
-          "name": "InvoiceLineItem",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 8,
-          "from": "./InvoiceLineItem"
-        },
-        {
-          "name": "InvoiceLineList",
+          "name": "StockProgressBar",
           "kind": "re-export",
           "hasJSDoc": false,
           "line": 9,
-          "from": "./InvoiceLineList"
+          "from": "./StockProgressBar"
         },
         {
-          "name": "LineEditModal",
+          "name": "StockStatusBadge",
           "kind": "re-export",
           "hasJSDoc": false,
           "line": 10,
-          "from": "./LineEditModal"
+          "from": "./StockStatusBadge"
+        },
+        {
+          "name": "VendorBadge",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 11,
+          "from": "./VendorBadge"
+        },
+        {
+          "name": "ItemSearchInput",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 12,
+          "from": "./ItemSearchInput"
+        },
+        {
+          "name": "InventoryDashboard",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 13,
+          "from": "./InventoryDashboard"
+        },
+        {
+          "name": "InventoryAlertSummary",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 14,
+          "from": "./InventoryAlertSummary"
+        },
+        {
+          "name": "InventoryFilters",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 15,
+          "from": "./InventoryFilters"
+        },
+        {
+          "name": "InventoryListByItem",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 16,
+          "from": "./InventoryListByItem"
+        },
+        {
+          "name": "InventoryListByVendor",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 17,
+          "from": "./InventoryListByVendor"
+        },
+        {
+          "name": "InventoryListItem",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 18,
+          "from": "./InventoryListItem"
+        },
+        {
+          "name": "InventoryItemDetail",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 19,
+          "from": "./InventoryItemDetail"
+        },
+        {
+          "name": "StockAdjustmentModal",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 20,
+          "from": "./StockAdjustmentModal"
+        },
+        {
+          "name": "AddInventoryItemModal",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 21,
+          "from": "./AddInventoryItemModal"
         }
       ],
       "imports": [],
@@ -3040,6 +2961,43 @@
       ],
       "propTypes": null
     },
+    "src/components/invoice/index.js": {
+      "type": "component",
+      "lines": 11,
+      "lastModified": "2026-01-27",
+      "exports": [
+        {
+          "name": "LineReviewModal",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 7,
+          "from": "./LineReviewModal"
+        },
+        {
+          "name": "InvoiceLineItem",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 8,
+          "from": "./InvoiceLineItem"
+        },
+        {
+          "name": "InvoiceLineList",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 9,
+          "from": "./InvoiceLineList"
+        },
+        {
+          "name": "LineEditModal",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 10,
+          "from": "./LineEditModal"
+        }
+      ],
+      "imports": [],
+      "propTypes": null
+    },
     "src/components/layout/MenuBar.jsx": {
       "type": "component",
       "lines": 572,
@@ -3160,71 +3118,6 @@
         "unitPrice",
         "minOrderQty"
       ]
-    },
-    "src/components/orders/index.js": {
-      "type": "component",
-      "lines": 15,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "OrderCard",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 7,
-          "from": "./OrderCard"
-        },
-        {
-          "name": "OrderLineItem",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 8,
-          "from": "./OrderLineItem"
-        },
-        {
-          "name": "OrderList",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 9,
-          "from": "./OrderList"
-        },
-        {
-          "name": "OrderDetailModal",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 10,
-          "from": "./OrderDetailModal"
-        },
-        {
-          "name": "OrderEditor",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 11,
-          "from": "./OrderEditor"
-        },
-        {
-          "name": "GenerateOrdersModal",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 12,
-          "from": "./GenerateOrdersModal"
-        },
-        {
-          "name": "ReceiveOrderModal",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 13,
-          "from": "./ReceiveOrderModal"
-        },
-        {
-          "name": "OrdersTab",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 14,
-          "from": "./OrdersTab"
-        }
-      ],
-      "imports": [],
-      "propTypes": null
     },
     "src/components/orders/OrderCard.jsx": {
       "type": "component",
@@ -3618,6 +3511,71 @@
         "total"
       ]
     },
+    "src/components/orders/index.js": {
+      "type": "component",
+      "lines": 15,
+      "lastModified": "2025-12-19",
+      "exports": [
+        {
+          "name": "OrderCard",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 7,
+          "from": "./OrderCard"
+        },
+        {
+          "name": "OrderLineItem",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 8,
+          "from": "./OrderLineItem"
+        },
+        {
+          "name": "OrderList",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 9,
+          "from": "./OrderList"
+        },
+        {
+          "name": "OrderDetailModal",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 10,
+          "from": "./OrderDetailModal"
+        },
+        {
+          "name": "OrderEditor",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 11,
+          "from": "./OrderEditor"
+        },
+        {
+          "name": "GenerateOrdersModal",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 12,
+          "from": "./GenerateOrdersModal"
+        },
+        {
+          "name": "ReceiveOrderModal",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 13,
+          "from": "./ReceiveOrderModal"
+        },
+        {
+          "name": "OrdersTab",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 14,
+          "from": "./OrdersTab"
+        }
+      ],
+      "imports": [],
+      "propTypes": null
+    },
     "src/components/recipes/AddRecipeToolModal.jsx": {
       "type": "component",
       "lines": 252,
@@ -3857,211 +3815,6 @@
       ],
       "propTypes": null
     },
-    "src/components/recipes/IngredientList/constants.js": {
-      "type": "component",
-      "lines": 34,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "GROUP_COLORS",
-          "kind": "const",
-          "hasJSDoc": false,
-          "line": 6
-        },
-        {
-          "name": "DEFAULT_NEW_INGREDIENT",
-          "kind": "const",
-          "hasJSDoc": false,
-          "line": 16
-        },
-        {
-          "name": "DEFAULT_BULK_TRANSCRIPT",
-          "kind": "const",
-          "hasJSDoc": false,
-          "line": 29
-        }
-      ],
-      "imports": [],
-      "propTypes": null
-    },
-    "src/components/recipes/IngredientList/hooks/index.js": {
-      "type": "component",
-      "lines": 8,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "useIngredientListState",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 5,
-          "from": "./useIngredientListState"
-        },
-        {
-          "name": "useVoiceDictation",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 6,
-          "from": "./useVoiceDictation"
-        },
-        {
-          "name": "useScaling",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 7,
-          "from": "./useScaling"
-        }
-      ],
-      "imports": [],
-      "propTypes": null
-    },
-    "src/components/recipes/IngredientList/hooks/useIngredientListState.js": {
-      "type": "component",
-      "lines": 173,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "useIngredientListState",
-          "kind": "function",
-          "hasJSDoc": true,
-          "line": 133
-        }
-      ],
-      "imports": [
-        {
-          "from": "react",
-          "names": [
-            "useReducer",
-            "useMemo"
-          ]
-        },
-        {
-          "from": "../constants",
-          "names": [
-            "DEFAULT_NEW_INGREDIENT"
-          ]
-        }
-      ],
-      "propTypes": null
-    },
-    "src/components/recipes/IngredientList/hooks/useScaling.js": {
-      "type": "component",
-      "lines": 91,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "useScaling",
-          "kind": "function",
-          "hasJSDoc": true,
-          "line": 27
-        }
-      ],
-      "imports": [
-        {
-          "from": "react",
-          "names": [
-            "useMemo",
-            "useCallback"
-          ]
-        }
-      ],
-      "propTypes": null
-    },
-    "src/components/recipes/IngredientList/hooks/useVoiceDictation.js": {
-      "type": "component",
-      "lines": 243,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "useVoiceDictation",
-          "kind": "function",
-          "hasJSDoc": false,
-          "line": 32
-        }
-      ],
-      "imports": [
-        {
-          "from": "react",
-          "names": [
-            "useRef",
-            "useEffect",
-            "useCallback",
-            "useState"
-          ]
-        },
-        {
-          "from": "../../../../services/speech/googleCloudVoice",
-          "names": [
-            "GoogleCloudVoiceService",
-            "SILENCE_PRESETS"
-          ]
-        },
-        {
-          "from": "../../../../utils/logger",
-          "names": [
-            "createLogger"
-          ]
-        }
-      ],
-      "propTypes": null
-    },
-    "src/components/recipes/IngredientList/index.js": {
-      "type": "component",
-      "lines": 18,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "default",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 5,
-          "from": "./IngredientList"
-        },
-        {
-          "name": "IngredientList",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 6,
-          "from": "./IngredientList"
-        },
-        {
-          "name": "IngredientRow",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 7,
-          "from": "./IngredientRow"
-        },
-        {
-          "name": "SectionRow",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 8,
-          "from": "./SectionRow"
-        },
-        {
-          "name": "AddIngredientForm",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 9,
-          "from": "./AddIngredientForm"
-        },
-        {
-          "name": "ColorPickerModal",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 10,
-          "from": "./ColorPickerModal"
-        },
-        {
-          "name": "SectionInput",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 11,
-          "from": "./SectionInput"
-        }
-      ],
-      "imports": [],
-      "propTypes": null
-    },
     "src/components/recipes/IngredientList/IngredientLinkModal.jsx": {
       "type": "component",
       "lines": 737,
@@ -4144,14 +3897,14 @@
     },
     "src/components/recipes/IngredientList/IngredientList.jsx": {
       "type": "component",
-      "lines": 771,
+      "lines": 731,
       "lastModified": "2026-01-27",
       "exports": [
         {
           "name": "IngredientList",
           "kind": "default",
           "hasJSDoc": false,
-          "line": 770
+          "line": 730
         }
       ],
       "imports": [
@@ -4528,6 +4281,211 @@
           ]
         }
       ],
+      "propTypes": null
+    },
+    "src/components/recipes/IngredientList/constants.js": {
+      "type": "component",
+      "lines": 34,
+      "lastModified": "2025-12-19",
+      "exports": [
+        {
+          "name": "GROUP_COLORS",
+          "kind": "const",
+          "hasJSDoc": false,
+          "line": 6
+        },
+        {
+          "name": "DEFAULT_NEW_INGREDIENT",
+          "kind": "const",
+          "hasJSDoc": false,
+          "line": 16
+        },
+        {
+          "name": "DEFAULT_BULK_TRANSCRIPT",
+          "kind": "const",
+          "hasJSDoc": false,
+          "line": 29
+        }
+      ],
+      "imports": [],
+      "propTypes": null
+    },
+    "src/components/recipes/IngredientList/hooks/index.js": {
+      "type": "hook",
+      "lines": 8,
+      "lastModified": "2025-12-19",
+      "exports": [
+        {
+          "name": "useIngredientListState",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 5,
+          "from": "./useIngredientListState"
+        },
+        {
+          "name": "useVoiceDictation",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 6,
+          "from": "./useVoiceDictation"
+        },
+        {
+          "name": "useScaling",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 7,
+          "from": "./useScaling"
+        }
+      ],
+      "imports": [],
+      "propTypes": null
+    },
+    "src/components/recipes/IngredientList/hooks/useIngredientListState.js": {
+      "type": "hook",
+      "lines": 173,
+      "lastModified": "2025-12-19",
+      "exports": [
+        {
+          "name": "useIngredientListState",
+          "kind": "function",
+          "hasJSDoc": true,
+          "line": 133
+        }
+      ],
+      "imports": [
+        {
+          "from": "react",
+          "names": [
+            "useReducer",
+            "useMemo"
+          ]
+        },
+        {
+          "from": "../constants",
+          "names": [
+            "DEFAULT_NEW_INGREDIENT"
+          ]
+        }
+      ],
+      "propTypes": null
+    },
+    "src/components/recipes/IngredientList/hooks/useScaling.js": {
+      "type": "hook",
+      "lines": 91,
+      "lastModified": "2025-12-19",
+      "exports": [
+        {
+          "name": "useScaling",
+          "kind": "function",
+          "hasJSDoc": true,
+          "line": 27
+        }
+      ],
+      "imports": [
+        {
+          "from": "react",
+          "names": [
+            "useMemo",
+            "useCallback"
+          ]
+        }
+      ],
+      "propTypes": null
+    },
+    "src/components/recipes/IngredientList/hooks/useVoiceDictation.js": {
+      "type": "hook",
+      "lines": 243,
+      "lastModified": "2025-12-19",
+      "exports": [
+        {
+          "name": "useVoiceDictation",
+          "kind": "function",
+          "hasJSDoc": false,
+          "line": 32
+        }
+      ],
+      "imports": [
+        {
+          "from": "react",
+          "names": [
+            "useRef",
+            "useEffect",
+            "useCallback",
+            "useState"
+          ]
+        },
+        {
+          "from": "../../../../services/speech/googleCloudVoice",
+          "names": [
+            "GoogleCloudVoiceService",
+            "SILENCE_PRESETS"
+          ]
+        },
+        {
+          "from": "../../../../utils/logger",
+          "names": [
+            "createLogger"
+          ]
+        }
+      ],
+      "propTypes": null
+    },
+    "src/components/recipes/IngredientList/index.js": {
+      "type": "component",
+      "lines": 18,
+      "lastModified": "2025-12-19",
+      "exports": [
+        {
+          "name": "default",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 5,
+          "from": "./IngredientList"
+        },
+        {
+          "name": "IngredientList",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 6,
+          "from": "./IngredientList"
+        },
+        {
+          "name": "IngredientRow",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 7,
+          "from": "./IngredientRow"
+        },
+        {
+          "name": "SectionRow",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 8,
+          "from": "./SectionRow"
+        },
+        {
+          "name": "AddIngredientForm",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 9,
+          "from": "./AddIngredientForm"
+        },
+        {
+          "name": "ColorPickerModal",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 10,
+          "from": "./ColorPickerModal"
+        },
+        {
+          "name": "SectionInput",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 11,
+          "from": "./SectionInput"
+        }
+      ],
+      "imports": [],
       "propTypes": null
     },
     "src/components/recipes/MethodSteps.jsx": {
@@ -5404,50 +5362,6 @@
         "notes"
       ]
     },
-    "src/components/vendors/index.js": {
-      "type": "component",
-      "lines": 19,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "VendorsTab",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 10,
-          "from": "./VendorsTab"
-        },
-        {
-          "name": "VendorList",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 13,
-          "from": "./VendorList"
-        },
-        {
-          "name": "VendorCard",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 14,
-          "from": "./VendorCard"
-        },
-        {
-          "name": "VendorDetailModal",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 17,
-          "from": "./VendorDetailModal"
-        },
-        {
-          "name": "AddEditVendorModal",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 18,
-          "from": "./AddEditVendorModal"
-        }
-      ],
-      "imports": [],
-      "propTypes": null
-    },
     "src/components/vendors/VendorCard.jsx": {
       "type": "component",
       "lines": 452,
@@ -5648,90 +5562,150 @@
         "className"
       ]
     },
-    "src/components/website/steps/index.js": {
+    "src/components/vendors/index.js": {
       "type": "component",
-      "lines": 16,
-      "lastModified": "2026-01-28",
+      "lines": 19,
+      "lastModified": "2025-12-19",
       "exports": [
         {
-          "name": "StepBusinessType",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 5,
-          "from": "./StepBusinessType"
-        },
-        {
-          "name": "StepIdentity",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 6,
-          "from": "./StepIdentity"
-        },
-        {
-          "name": "StepDesign",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 7,
-          "from": "./StepDesign"
-        },
-        {
-          "name": "StepAbout",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 8,
-          "from": "./StepAbout"
-        },
-        {
-          "name": "StepContact",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 9,
-          "from": "./StepContact"
-        },
-        {
-          "name": "StepServices",
+          "name": "VendorsTab",
           "kind": "re-export",
           "hasJSDoc": false,
           "line": 10,
-          "from": "./StepServices"
+          "from": "./VendorsTab"
         },
         {
-          "name": "StepSocial",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 11,
-          "from": "./StepSocial"
-        },
-        {
-          "name": "StepGallery",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 12,
-          "from": "./StepGallery"
-        },
-        {
-          "name": "StepPromotions",
+          "name": "VendorList",
           "kind": "re-export",
           "hasJSDoc": false,
           "line": 13,
-          "from": "./StepPromotions"
+          "from": "./VendorList"
         },
         {
-          "name": "StepSEO",
+          "name": "VendorCard",
           "kind": "re-export",
           "hasJSDoc": false,
           "line": 14,
-          "from": "./StepSEO"
+          "from": "./VendorCard"
         },
         {
-          "name": "StepReview",
+          "name": "VendorDetailModal",
           "kind": "re-export",
           "hasJSDoc": false,
-          "line": 15,
-          "from": "./StepReview"
+          "line": 17,
+          "from": "./VendorDetailModal"
+        },
+        {
+          "name": "AddEditVendorModal",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 18,
+          "from": "./AddEditVendorModal"
         }
       ],
       "imports": [],
+      "propTypes": null
+    },
+    "src/components/website/WebsiteBuilder.jsx": {
+      "type": "component",
+      "lines": 352,
+      "lastModified": "2026-01-28",
+      "exports": [
+        {
+          "name": "WebsiteBuilder",
+          "kind": "default",
+          "hasJSDoc": false,
+          "line": 43
+        }
+      ],
+      "imports": [
+        {
+          "from": "react-router-dom",
+          "names": [
+            "useNavigate"
+          ]
+        },
+        {
+          "from": "../../services/database/websiteSchema",
+          "names": [
+            "BUSINESS_TYPES",
+            "CERTIFICATIONS",
+            "TEMPLATES",
+            "DAYS_OF_WEEK",
+            "DEFAULT_WEBSITE_DATA",
+            "WIZARD_STEPS"
+          ]
+        },
+        {
+          "from": "../../services/database/websiteDB",
+          "names": [
+            "getWebsiteData",
+            "saveWebsiteData",
+            "checkSlugAvailable",
+            "reserveSlug",
+            "publishWebsite"
+          ]
+        },
+        {
+          "from": "../../services/storage/imageStorage",
+          "names": [
+            "uploadDishPhoto"
+          ]
+        },
+        {
+          "from": "./steps",
+          "names": [
+            "StepBusinessType",
+            "StepIdentity",
+            "StepDesign",
+            "StepAbout",
+            "StepContact",
+            "StepServices",
+            "StepSocial",
+            "StepGallery",
+            "StepPromotions",
+            "StepSEO",
+            "StepReview"
+          ]
+        },
+        {
+          "from": "../../styles/components/websitebuilder.module.css",
+          "names": [
+            "styles"
+          ]
+        }
+      ],
+      "propTypes": null
+    },
+    "src/components/website/WebsiteSetupWizard.jsx": {
+      "type": "component",
+      "lines": 403,
+      "lastModified": "2026-01-27",
+      "exports": [
+        {
+          "name": "WebsiteSetupWizard",
+          "kind": "default",
+          "hasJSDoc": false,
+          "line": 31
+        }
+      ],
+      "imports": [
+        {
+          "from": "../../services/database/websiteSettingsDB",
+          "names": [
+            "checkSlugAvailable",
+            "reserveSlug",
+            "saveWebsiteSettings",
+            "DEFAULT_SETTINGS"
+          ]
+        },
+        {
+          "from": "../../styles/components/websitesetupwizard.module.css",
+          "names": [
+            "styles"
+          ]
+        }
+      ],
       "propTypes": null
     },
     "src/components/website/steps/StepAbout.jsx": {
@@ -5872,14 +5846,14 @@
     },
     "src/components/website/steps/StepGallery.jsx": {
       "type": "component",
-      "lines": 366,
+      "lines": 275,
       "lastModified": "2026-01-27",
       "exports": [
         {
           "name": "StepGallery",
           "kind": "default",
           "hasJSDoc": false,
-          "line": 13
+          "line": 9
         }
       ],
       "imports": [
@@ -5887,12 +5861,6 @@
           "from": "../../../services/storage/imageStorage",
           "names": [
             "uploadDishPhoto"
-          ]
-        },
-        {
-          "from": "../../common/AIImageGenerator",
-          "names": [
-            "AIImageGenerator"
           ]
         },
         {
@@ -6080,106 +6048,90 @@
       ],
       "propTypes": null
     },
-    "src/components/website/WebsiteBuilder.jsx": {
+    "src/components/website/steps/index.js": {
       "type": "component",
-      "lines": 352,
+      "lines": 16,
       "lastModified": "2026-01-28",
       "exports": [
         {
-          "name": "WebsiteBuilder",
-          "kind": "default",
+          "name": "StepBusinessType",
+          "kind": "re-export",
           "hasJSDoc": false,
-          "line": 43
-        }
-      ],
-      "imports": [
-        {
-          "from": "react-router-dom",
-          "names": [
-            "useNavigate"
-          ]
+          "line": 5,
+          "from": "./StepBusinessType"
         },
         {
-          "from": "../../services/database/websiteSchema",
-          "names": [
-            "BUSINESS_TYPES",
-            "CERTIFICATIONS",
-            "TEMPLATES",
-            "DAYS_OF_WEEK",
-            "DEFAULT_WEBSITE_DATA",
-            "WIZARD_STEPS"
-          ]
-        },
-        {
-          "from": "../../services/database/websiteDB",
-          "names": [
-            "getWebsiteData",
-            "saveWebsiteData",
-            "checkSlugAvailable",
-            "reserveSlug",
-            "publishWebsite"
-          ]
-        },
-        {
-          "from": "../../services/storage/imageStorage",
-          "names": [
-            "uploadDishPhoto"
-          ]
-        },
-        {
-          "from": "./steps",
-          "names": [
-            "StepBusinessType",
-            "StepIdentity",
-            "StepDesign",
-            "StepAbout",
-            "StepContact",
-            "StepServices",
-            "StepSocial",
-            "StepGallery",
-            "StepPromotions",
-            "StepSEO",
-            "StepReview"
-          ]
-        },
-        {
-          "from": "../../styles/components/websitebuilder.module.css",
-          "names": [
-            "styles"
-          ]
-        }
-      ],
-      "propTypes": null
-    },
-    "src/components/website/WebsiteSetupWizard.jsx": {
-      "type": "component",
-      "lines": 403,
-      "lastModified": "2026-01-27",
-      "exports": [
-        {
-          "name": "WebsiteSetupWizard",
-          "kind": "default",
+          "name": "StepIdentity",
+          "kind": "re-export",
           "hasJSDoc": false,
-          "line": 31
-        }
-      ],
-      "imports": [
-        {
-          "from": "../../services/database/websiteSettingsDB",
-          "names": [
-            "checkSlugAvailable",
-            "reserveSlug",
-            "saveWebsiteSettings",
-            "DEFAULT_SETTINGS"
-          ]
+          "line": 6,
+          "from": "./StepIdentity"
         },
         {
-          "from": "../../styles/components/websitesetupwizard.module.css",
-          "names": [
-            "styles"
-          ]
+          "name": "StepDesign",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 7,
+          "from": "./StepDesign"
+        },
+        {
+          "name": "StepAbout",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 8,
+          "from": "./StepAbout"
+        },
+        {
+          "name": "StepContact",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 9,
+          "from": "./StepContact"
+        },
+        {
+          "name": "StepServices",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 10,
+          "from": "./StepServices"
+        },
+        {
+          "name": "StepSocial",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 11,
+          "from": "./StepSocial"
+        },
+        {
+          "name": "StepGallery",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 12,
+          "from": "./StepGallery"
+        },
+        {
+          "name": "StepPromotions",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 13,
+          "from": "./StepPromotions"
+        },
+        {
+          "name": "StepSEO",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 14,
+          "from": "./StepSEO"
+        },
+        {
+          "name": "StepReview",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 15,
+          "from": "./StepReview"
         }
       ],
+      "imports": [],
       "propTypes": null
     },
     "src/constants/categories.js": {
@@ -6878,57 +6830,6 @@
       ],
       "propTypes": null
     },
-    "src/pages/ControlPanel/index.js": {
-      "type": "page",
-      "lines": 14,
-      "lastModified": "2025-12-19",
-      "exports": [
-        {
-          "name": "OverviewTab",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 8,
-          "from": "./OverviewTab"
-        },
-        {
-          "name": "RecipesTab",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 9,
-          "from": "./RecipesTab"
-        },
-        {
-          "name": "DepartmentsTab",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 10,
-          "from": "./DepartmentsTab"
-        },
-        {
-          "name": "InventoryTab",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 11,
-          "from": "./InventoryTab"
-        },
-        {
-          "name": "UsersTab",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 12,
-          "from": "./UsersTab"
-        },
-        {
-          "name": "BackupTab",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 13,
-          "from": "./BackupTab"
-        }
-      ],
-      "imports": [],
-      "propTypes": null
-    },
     "src/pages/ControlPanel/InventoryTab.jsx": {
       "type": "page",
       "lines": 109,
@@ -7155,6 +7056,57 @@
           ]
         }
       ],
+      "propTypes": null
+    },
+    "src/pages/ControlPanel/index.js": {
+      "type": "page",
+      "lines": 14,
+      "lastModified": "2025-12-19",
+      "exports": [
+        {
+          "name": "OverviewTab",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 8,
+          "from": "./OverviewTab"
+        },
+        {
+          "name": "RecipesTab",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 9,
+          "from": "./RecipesTab"
+        },
+        {
+          "name": "DepartmentsTab",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 10,
+          "from": "./DepartmentsTab"
+        },
+        {
+          "name": "InventoryTab",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 11,
+          "from": "./InventoryTab"
+        },
+        {
+          "name": "UsersTab",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 12,
+          "from": "./UsersTab"
+        },
+        {
+          "name": "BackupTab",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 13,
+          "from": "./BackupTab"
+        }
+      ],
+      "imports": [],
       "propTypes": null
     },
     "src/pages/ControlPanelPage.jsx": {
@@ -9802,51 +9754,6 @@
       ],
       "propTypes": null
     },
-    "src/services/ai/imageGeneratorService.js": {
-      "type": "service",
-      "lines": 227,
-      "lastModified": null,
-      "exports": [
-        {
-          "name": "FOOD_PROMPT_TEMPLATES",
-          "kind": "const",
-          "hasJSDoc": false,
-          "line": 15
-        },
-        {
-          "name": "IMAGE_GENERATION_COST",
-          "kind": "const",
-          "hasJSDoc": false,
-          "line": 67
-        },
-        {
-          "name": "generateImage",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 76
-        },
-        {
-          "name": "buildPromptFromTemplate",
-          "kind": "function",
-          "hasJSDoc": true,
-          "line": 145
-        },
-        {
-          "name": "getSuggestedPrompts",
-          "kind": "function",
-          "hasJSDoc": true,
-          "line": 161
-        },
-        {
-          "name": "EXAMPLE_PROMPTS",
-          "kind": "const",
-          "hasJSDoc": true,
-          "line": 196
-        }
-      ],
-      "imports": [],
-      "propTypes": null
-    },
     "src/services/ai/priceCalculator.js": {
       "type": "service",
       "lines": 244,
@@ -10087,96 +9994,6 @@
           "names": [
             "db",
             "auth"
-          ]
-        }
-      ],
-      "propTypes": null
-    },
-    "src/services/backup/backupService.js": {
-      "type": "service",
-      "lines": 605,
-      "lastModified": null,
-      "exports": [
-        {
-          "name": "exportData",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 43
-        },
-        {
-          "name": "exportRecipes",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 138
-        },
-        {
-          "name": "exportFullBackup",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 146
-        },
-        {
-          "name": "exportStructure",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 154
-        },
-        {
-          "name": "downloadJSON",
-          "kind": "function",
-          "hasJSDoc": true,
-          "line": 167
-        },
-        {
-          "name": "exportAndDownload",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 189
-        },
-        {
-          "name": "validateImportData",
-          "kind": "function",
-          "hasJSDoc": true,
-          "line": 294
-        },
-        {
-          "name": "importData",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 410
-        },
-        {
-          "name": "readJSONFile",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 532
-        },
-        {
-          "name": "EXPORT_FORMAT_VERSION",
-          "kind": "const",
-          "hasJSDoc": true,
-          "line": 20
-        },
-        {
-          "name": "EXPORT_TYPES",
-          "kind": "const",
-          "hasJSDoc": true,
-          "line": 25
-        }
-      ],
-      "imports": [
-        {
-          "from": "../database/indexedDB",
-          "names": [
-            "recipeDB",
-            "categoryDB",
-            "departmentDB"
-          ]
-        },
-        {
-          "from": "../../utils/logger",
-          "names": [
-            "createLogger"
           ]
         }
       ],
@@ -11535,7 +11352,7 @@
     },
     "src/services/database/websiteDB.js": {
       "type": "service",
-      "lines": 445,
+      "lines": 416,
       "lastModified": "2026-01-27",
       "exports": [
         {
@@ -11554,49 +11371,49 @@
           "name": "updateWebsiteSection",
           "kind": "async function",
           "hasJSDoc": true,
-          "line": 119
+          "line": 105
         },
         {
           "name": "publishWebsite",
           "kind": "async function",
           "hasJSDoc": true,
-          "line": 156
+          "line": 142
         },
         {
           "name": "unpublishWebsite",
           "kind": "async function",
           "hasJSDoc": true,
-          "line": 185
+          "line": 171
         },
         {
           "name": "checkSlugAvailable",
           "kind": "async function",
           "hasJSDoc": true,
-          "line": 213
+          "line": 199
         },
         {
           "name": "reserveSlug",
           "kind": "async function",
           "hasJSDoc": true,
-          "line": 256
+          "line": 242
         },
         {
           "name": "releaseSlug",
           "kind": "async function",
           "hasJSDoc": true,
-          "line": 309
+          "line": 280
         },
         {
           "name": "getPublicWebsiteBySlug",
           "kind": "async function",
           "hasJSDoc": true,
-          "line": 336
+          "line": 307
         },
         {
           "name": "getPublicRecipes",
           "kind": "async function",
           "hasJSDoc": true,
-          "line": 382
+          "line": 353
         }
       ],
       "imports": [
@@ -11978,6 +11795,41 @@
       ],
       "propTypes": null
     },
+    "src/services/inventory/inHousePriceService.js": {
+      "type": "service",
+      "lines": 453,
+      "lastModified": "2026-01-27",
+      "exports": [
+        {
+          "name": "recalculateItemPrice",
+          "kind": "async function",
+          "hasJSDoc": true,
+          "line": 299
+        },
+        {
+          "name": "recalculateAllInHousePrices",
+          "kind": "async function",
+          "hasJSDoc": true,
+          "line": 332
+        },
+        {
+          "name": "getInHousePricingSummary",
+          "kind": "async function",
+          "hasJSDoc": true,
+          "line": 411
+        }
+      ],
+      "imports": [
+        {
+          "from": "../database/indexedDB.js",
+          "names": [
+            "inventoryItemDB",
+            "recipeDB"
+          ]
+        }
+      ],
+      "propTypes": null
+    },
     "src/services/inventory/index.js": {
       "type": "service",
       "lines": 30,
@@ -12034,41 +11886,6 @@
         }
       ],
       "imports": [],
-      "propTypes": null
-    },
-    "src/services/inventory/inHousePriceService.js": {
-      "type": "service",
-      "lines": 453,
-      "lastModified": "2026-01-27",
-      "exports": [
-        {
-          "name": "recalculateItemPrice",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 299
-        },
-        {
-          "name": "recalculateAllInHousePrices",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 332
-        },
-        {
-          "name": "getInHousePricingSummary",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 411
-        }
-      ],
-      "imports": [
-        {
-          "from": "../database/indexedDB.js",
-          "names": [
-            "inventoryItemDB",
-            "recipeDB"
-          ]
-        }
-      ],
       "propTypes": null
     },
     "src/services/inventory/inventoryItemService.js": {
@@ -15813,78 +15630,6 @@
       ],
       "propTypes": null
     },
-    "src/services/organism/organs/index.js": {
-      "type": "service",
-      "lines": 17,
-      "lastModified": "2026-01-27",
-      "exports": [
-        {
-          "name": "Organ",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 9,
-          "from": "./Organ"
-        },
-        {
-          "name": "HEALTH_THRESHOLDS",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 9,
-          "from": "./Organ"
-        },
-        {
-          "name": "StomachOrgan",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 10,
-          "from": "./StomachOrgan"
-        },
-        {
-          "name": "createStomachOrgan",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 10,
-          "from": "./StomachOrgan"
-        },
-        {
-          "name": "DIGESTION_STATE",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 10,
-          "from": "./StomachOrgan"
-        },
-        {
-          "name": "BloodstreamOrgan",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 13,
-          "from": "./BloodstreamOrgan"
-        },
-        {
-          "name": "CellsOrgan",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 14,
-          "from": "./CellsOrgan"
-        },
-        {
-          "name": "DNAOrgan",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 15,
-          "from": "./DNAOrgan"
-        },
-        {
-          "name": "MuscleOrgan",
-          "kind": "re-export",
-          "hasJSDoc": false,
-          "line": 16,
-          "from": "./MuscleOrgan"
-        }
-      ],
-      "imports": [],
-      "propTypes": null
-    },
     "src/services/organism/organs/Organ.js": {
       "type": "service",
       "lines": 276,
@@ -15973,6 +15718,78 @@
           ]
         }
       ],
+      "propTypes": null
+    },
+    "src/services/organism/organs/index.js": {
+      "type": "service",
+      "lines": 17,
+      "lastModified": "2026-01-27",
+      "exports": [
+        {
+          "name": "Organ",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 9,
+          "from": "./Organ"
+        },
+        {
+          "name": "HEALTH_THRESHOLDS",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 9,
+          "from": "./Organ"
+        },
+        {
+          "name": "StomachOrgan",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 10,
+          "from": "./StomachOrgan"
+        },
+        {
+          "name": "createStomachOrgan",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 10,
+          "from": "./StomachOrgan"
+        },
+        {
+          "name": "DIGESTION_STATE",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 10,
+          "from": "./StomachOrgan"
+        },
+        {
+          "name": "BloodstreamOrgan",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 13,
+          "from": "./BloodstreamOrgan"
+        },
+        {
+          "name": "CellsOrgan",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 14,
+          "from": "./CellsOrgan"
+        },
+        {
+          "name": "DNAOrgan",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 15,
+          "from": "./DNAOrgan"
+        },
+        {
+          "name": "MuscleOrgan",
+          "kind": "re-export",
+          "hasJSDoc": false,
+          "line": 16,
+          "from": "./MuscleOrgan"
+        }
+      ],
+      "imports": [],
       "propTypes": null
     },
     "src/services/organism/signals/Signal.js": {
@@ -16336,7 +16153,7 @@
     },
     "src/services/storage/imageStorage.js": {
       "type": "service",
-      "lines": 174,
+      "lines": 114,
       "lastModified": "2026-01-27",
       "exports": [
         {
@@ -16356,12 +16173,6 @@
           "kind": "function",
           "hasJSDoc": true,
           "line": 101
-        },
-        {
-          "name": "uploadFromUrl",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 117
         }
       ],
       "imports": [
@@ -16514,6 +16325,46 @@
       "imports": [],
       "propTypes": null
     },
+    "src/services/tasks/taskSuggestionService.js": {
+      "type": "service",
+      "lines": 291,
+      "lastModified": "2026-01-27",
+      "exports": [
+        {
+          "name": "getSuggestionsForDay",
+          "kind": "async function",
+          "hasJSDoc": true,
+          "line": 44
+        },
+        {
+          "name": "createTasksFromSuggestions",
+          "kind": "async function",
+          "hasJSDoc": true,
+          "line": 143
+        },
+        {
+          "name": "getProductionByDayOfWeek",
+          "kind": "async function",
+          "hasJSDoc": true,
+          "line": 203
+        }
+      ],
+      "imports": [
+        {
+          "from": "../database/supportingDB",
+          "names": [
+            "productionLogDB"
+          ]
+        },
+        {
+          "from": "./tasksService",
+          "names": [
+            "createTask"
+          ]
+        }
+      ],
+      "propTypes": null
+    },
     "src/services/tasks/tasksService.js": {
       "type": "service",
       "lines": 1516,
@@ -16659,46 +16510,6 @@
           "names": [
             "convertUnits",
             "areUnitsCompatible"
-          ]
-        }
-      ],
-      "propTypes": null
-    },
-    "src/services/tasks/taskSuggestionService.js": {
-      "type": "service",
-      "lines": 291,
-      "lastModified": "2026-01-27",
-      "exports": [
-        {
-          "name": "getSuggestionsForDay",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 44
-        },
-        {
-          "name": "createTasksFromSuggestions",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 143
-        },
-        {
-          "name": "getProductionByDayOfWeek",
-          "kind": "async function",
-          "hasJSDoc": true,
-          "line": 203
-        }
-      ],
-      "imports": [
-        {
-          "from": "../database/supportingDB",
-          "names": [
-            "productionLogDB"
-          ]
-        },
-        {
-          "from": "./tasksService",
-          "names": [
-            "createTask"
           ]
         }
       ],
@@ -18830,11 +18641,6 @@
       "src/components/common/Input.jsx",
       "src/components/common/Alert.jsx"
     ],
-    "src/components/common/AIImageGenerator.jsx": [
-      "src/services/database/firebase.js",
-      "src/services/storage/imageStorage.js",
-      "src/services/ai/imageGeneratorService.js"
-    ],
     "src/components/common/Alert.jsx": [
       "src/components/common/Button.jsx"
     ],
@@ -18883,9 +18689,9 @@
       "src/components/common/FeatureSlider/SliderDots.jsx",
       "src/components/common/FeatureSlider/SliderArrows.jsx"
     ],
-    "src/components/common/FeatureSlider/index.js": [],
     "src/components/common/FeatureSlider/SliderArrows.jsx": [],
     "src/components/common/FeatureSlider/SliderDots.jsx": [],
+    "src/components/common/FeatureSlider/index.js": [],
     "src/components/common/FeedbackButton.jsx": [
       "src/components/common/Modal.jsx",
       "src/components/common/Button.jsx",
@@ -18928,7 +18734,6 @@
       "src/components/heartbeat/OrganCard.jsx"
     ],
     "src/components/inventory/AddInventoryItemModal.jsx": [],
-    "src/components/inventory/index.js": [],
     "src/components/inventory/InventoryAlertSummary.jsx": [],
     "src/components/inventory/InventoryDashboard.jsx": [
       "src/services/inventory/inventoryItemService.js",
@@ -18981,7 +18786,7 @@
     "src/components/inventory/StockProgressBar.jsx": [],
     "src/components/inventory/StockStatusBadge.jsx": [],
     "src/components/inventory/VendorBadge.jsx": [],
-    "src/components/invoice/index.js": [],
+    "src/components/inventory/index.js": [],
     "src/components/invoice/InvoiceLineItem.jsx": [
       "src/services/invoice/lineCategorizer.js"
     ],
@@ -18999,9 +18804,9 @@
     "src/components/invoice/TrainingConsentModal.jsx": [
       "src/services/settings/settingsStorage.js"
     ],
+    "src/components/invoice/index.js": [],
     "src/components/layout/MenuBar.jsx": [],
     "src/components/orders/GenerateOrdersModal.jsx": [],
-    "src/components/orders/index.js": [],
     "src/components/orders/OrderCard.jsx": [],
     "src/components/orders/OrderDetailModal.jsx": [
       "src/components/orders/OrderLineItem.jsx"
@@ -19027,6 +18832,7 @@
       "src/components/orders/ReceiveOrderModal.jsx"
     ],
     "src/components/orders/ReceiveOrderModal.jsx": [],
+    "src/components/orders/index.js": [],
     "src/components/recipes/AddRecipeToolModal.jsx": [
       "src/components/common/Button.jsx",
       "src/components/common/Input.jsx",
@@ -19052,17 +18858,6 @@
       "src/components/recipes/IngredientList/constants.js",
       "src/components/common/Button.jsx"
     ],
-    "src/components/recipes/IngredientList/constants.js": [],
-    "src/components/recipes/IngredientList/hooks/index.js": [],
-    "src/components/recipes/IngredientList/hooks/useIngredientListState.js": [
-      "src/components/recipes/IngredientList/constants.js"
-    ],
-    "src/components/recipes/IngredientList/hooks/useScaling.js": [],
-    "src/components/recipes/IngredientList/hooks/useVoiceDictation.js": [
-      "src/services/speech/googleCloudVoice.js",
-      "src/utils/logger.js"
-    ],
-    "src/components/recipes/IngredientList/index.js": [],
     "src/components/recipes/IngredientList/IngredientLinkModal.jsx": [
       "src/services/database/indexedDB.js",
       "src/services/ai/claudeTranslate.js",
@@ -19120,6 +18915,17 @@
     "src/components/recipes/IngredientList/ValidationSummary.jsx": [
       "src/components/common/Badge.jsx"
     ],
+    "src/components/recipes/IngredientList/constants.js": [],
+    "src/components/recipes/IngredientList/hooks/index.js": [],
+    "src/components/recipes/IngredientList/hooks/useIngredientListState.js": [
+      "src/components/recipes/IngredientList/constants.js"
+    ],
+    "src/components/recipes/IngredientList/hooks/useScaling.js": [],
+    "src/components/recipes/IngredientList/hooks/useVoiceDictation.js": [
+      "src/services/speech/googleCloudVoice.js",
+      "src/utils/logger.js"
+    ],
+    "src/components/recipes/IngredientList/index.js": [],
     "src/components/recipes/MethodSteps.jsx": [
       "src/services/speech/googleCloudVoice.js",
       "src/services/ai/claudeAPI.js",
@@ -19196,7 +19002,6 @@
     "src/components/vendors/AddEditVendorModal.jsx": [
       "src/services/inventory/vendorService.js"
     ],
-    "src/components/vendors/index.js": [],
     "src/components/vendors/VendorCard.jsx": [],
     "src/components/vendors/VendorDetailModal.jsx": [],
     "src/components/vendors/VendorList.jsx": [
@@ -19208,7 +19013,16 @@
       "src/components/vendors/VendorDetailModal.jsx",
       "src/components/vendors/AddEditVendorModal.jsx"
     ],
-    "src/components/website/steps/index.js": [],
+    "src/components/vendors/index.js": [],
+    "src/components/website/WebsiteBuilder.jsx": [
+      "src/services/database/websiteSchema.js",
+      "src/services/database/websiteDB.js",
+      "src/services/storage/imageStorage.js",
+      "src/components/website/steps/index.js"
+    ],
+    "src/components/website/WebsiteSetupWizard.jsx": [
+      "src/services/database/websiteSettingsDB.js"
+    ],
     "src/components/website/steps/StepAbout.jsx": [
       "src/services/database/websiteSchema.js",
       "src/services/storage/imageStorage.js"
@@ -19223,8 +19037,7 @@
       "src/services/database/websiteSchema.js"
     ],
     "src/components/website/steps/StepGallery.jsx": [
-      "src/services/storage/imageStorage.js",
-      "src/components/common/AIImageGenerator.jsx"
+      "src/services/storage/imageStorage.js"
     ],
     "src/components/website/steps/StepIdentity.jsx": [
       "src/services/storage/imageStorage.js"
@@ -19240,15 +19053,7 @@
     ],
     "src/components/website/steps/StepServices.jsx": [],
     "src/components/website/steps/StepSocial.jsx": [],
-    "src/components/website/WebsiteBuilder.jsx": [
-      "src/services/database/websiteSchema.js",
-      "src/services/database/websiteDB.js",
-      "src/services/storage/imageStorage.js",
-      "src/components/website/steps/index.js"
-    ],
-    "src/components/website/WebsiteSetupWizard.jsx": [
-      "src/services/database/websiteSettingsDB.js"
-    ],
+    "src/components/website/steps/index.js": [],
     "src/constants/categories.js": [],
     "src/constants/config.js": [],
     "src/constants/limits.js": [],
@@ -19294,7 +19099,6 @@
       "src/components/common/Modal.jsx",
       "src/components/common/Input.jsx"
     ],
-    "src/pages/ControlPanel/index.js": [],
     "src/pages/ControlPanel/InventoryTab.jsx": [
       "src/components/vendors/index.js",
       "src/components/orders/index.js",
@@ -19320,6 +19124,7 @@
       "src/components/common/Badge.jsx",
       "src/components/users/UserTaskList.jsx"
     ],
+    "src/pages/ControlPanel/index.js": [],
     "src/pages/ControlPanelPage.jsx": [
       "src/services/database/indexedDB.js",
       "src/services/tasks/tasksService.js",
@@ -19488,7 +19293,6 @@
       "src/services/database/firebase.js",
       "src/services/settings/settingsStorage.js",
       "src/services/database/indexedDB.js",
-      "src/services/backup/backupService.js",
       "src/services/database/cleanupService.js",
       "src/components/common/Card.jsx",
       "src/components/common/Button.jsx",
@@ -19545,7 +19349,6 @@
     "src/services/ai/claudeTranslate.js": [
       "src/services/ai/claudeBase.js"
     ],
-    "src/services/ai/imageGeneratorService.js": [],
     "src/services/ai/priceCalculator.js": [
       "src/services/database/indexedDB.js"
     ],
@@ -19554,10 +19357,6 @@
     ],
     "src/services/auth/privilegesService.js": [
       "src/services/database/firebase.js"
-    ],
-    "src/services/backup/backupService.js": [
-      "src/services/database/indexedDB.js",
-      "src/utils/logger.js"
     ],
     "src/services/credits/creditService.js": [
       "src/services/database/firebase.js"
@@ -19627,10 +19426,10 @@
       "src/services/inventory/inventoryItemService.js",
       "src/services/inventory/purchaseOrderService.js"
     ],
-    "src/services/inventory/index.js": [],
     "src/services/inventory/inHousePriceService.js": [
       "src/services/database/indexedDB.js"
     ],
+    "src/services/inventory/index.js": [],
     "src/services/inventory/inventoryItemService.js": [
       "src/services/database/indexedDB.js"
     ],
@@ -19764,7 +19563,6 @@
       "src/services/organism/systems/ImmuneSystem.js"
     ],
     "src/services/organism/index.js": [],
-    "src/services/organism/organs/index.js": [],
     "src/services/organism/organs/Organ.js": [
       "src/services/organism/signals/Signal.js",
       "src/services/organism/systems/NervousSystem.js"
@@ -19775,6 +19573,7 @@
       "src/services/organism/systems/Metabolism.js",
       "src/services/organism/systems/ImmuneSystem.js"
     ],
+    "src/services/organism/organs/index.js": [],
     "src/services/organism/signals/Signal.js": [],
     "src/services/organism/systems/Homeostasis.js": [
       "src/services/organism/signals/Signal.js",
@@ -19809,13 +19608,13 @@
       "src/services/tasks/tasksService.js"
     ],
     "src/services/tasks/taskParser.js": [],
-    "src/services/tasks/tasksService.js": [
-      "src/services/database/firebase.js",
-      "src/utils/unitConversion.js"
-    ],
     "src/services/tasks/taskSuggestionService.js": [
       "src/services/database/supportingDB.js",
       "src/services/tasks/tasksService.js"
+    ],
+    "src/services/tasks/tasksService.js": [
+      "src/services/database/firebase.js",
+      "src/utils/unitConversion.js"
     ],
     "src/services/training/trainingDataService.js": [],
     "src/services/utils/pdfParser.js": [],

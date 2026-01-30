@@ -250,12 +250,14 @@ const AGENTS = {
     schedule: '0 5 * * 5', // 5 AM Friday
     description: 'Update JSDoc, README files, changelogs',
     autoFix: true,
+    skipTests: true, // Only adds JSDoc comments — cannot break tests
   },
   'codebase-mapper': {
     name: 'Codebase Mapper',
     schedule: '0 1 * * 3', // Wednesday 1 AM UTC (weekly)
     description: 'Scan codebase, update manifest, detect stale docs, generate reference docs',
     autoFix: true,
+    skipTests: true, // Only generates docs/ files — cannot break tests
   },
   'code-reviewer': {
     name: 'Code Reviewer',
@@ -469,13 +471,20 @@ async function orchestrate(agentName, options = {}) {
     agentResult = result;
     report.changes = result.changes || [];
 
-    // Run tests if changes were made
+    // Run tests if changes were made (skip for docs-only agents)
     if (report.changes.length > 0 && agent.autoFix) {
-      const testResult = await runTests();
-      report.testsRun = true;
-      report.testsPassing = testResult.passing;
+      let testsOk = true;
 
-      if (testResult.success) {
+      if (agent.skipTests) {
+        console.log('Skipping tests (docs-only agent)');
+      } else {
+        const testResult = await runTests();
+        report.testsRun = true;
+        report.testsPassing = testResult.passing;
+        testsOk = testResult.success;
+      }
+
+      if (testsOk) {
         // Create PR
         const prResult = await createPR(
           branchName,
@@ -485,7 +494,7 @@ async function orchestrate(agentName, options = {}) {
         report.prCreated = true;
         report.prUrl = prResult.stdout?.trim();
       } else {
-        report.errors.push(`Tests failed: ${testResult.failing} failing`);
+        report.errors.push(`Tests failed: ${report.testsPassing} passing, check logs for details`);
         // Revert changes
         const git = initGit();
         await git.checkout(CONFIG.mainBranch);

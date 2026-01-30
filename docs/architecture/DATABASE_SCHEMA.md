@@ -34,6 +34,9 @@ SmartCookBook uses a **hybrid offline-first architecture**:
 │  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────┐   │    │
 │  │  │ vendors │ │invoices │ │stockTxns│ │purchaseOrds │   │    │
 │  │  └─────────┘ └─────────┘ └─────────┘ └─────────────┘   │    │
+│  │  ┌─────────┐ ┌─────────┐                               │    │
+│  │  │expenseCat││expenseRec│                              │    │
+│  │  └─────────┘ └─────────┘                               │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                              │                                   │
 │                         Cloud Sync                               │
@@ -49,17 +52,20 @@ SmartCookBook uses a **hybrid offline-first architecture**:
 │  │    ├── recipes/{recipeId}                               │    │
 │  │    ├── categories/{categoryId}                          │    │
 │  │    ├── departments/{departmentId}                       │    │
-│  │    ├── ingredients/{ingredientId}                       │    │
-│  │    └── invoices/{invoiceId}                             │    │
+│  │    ├── vendors/{vendorId}                               │    │
+│  │    └── inventoryItems/{itemId}                          │    │
 │  │                                                          │    │
 │  │  users/{userId}/                                         │    │
 │  │    ├── settings/{settingId}                             │    │
-│  │    ├── tasks/{taskId}                                   │    │
-│  │    └── privileges/{privilegeId}                         │    │
+│  │    └── business/{businessData}                          │    │
 │  │                                                          │    │
-│  │  quickbooks_tokens/{environment}                         │    │
+│  │  stores/{storeId}/                                       │    │
+│  │    ├── website/{websiteData}                            │    │
+│  │    └── settings/{websiteSettings}                       │    │
+│  │                                                          │    │
 │  │  waitlist/{entryId}                                      │    │
 │  │  feedback/{feedbackId}                                   │    │
+│  │  slugs/{slug}                                            │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -87,13 +93,14 @@ SmartCookBook uses a **hybrid offline-first architecture**:
 │  nameLower      │  │    │  departmentId   │──┘    │  nameLower      │
 │  isDefault      │  └───>│  isDefault      │       │  category       │
 │  createdAt      │       │  createdAt      │       │  department     │
-│  updatedAt      │       │  updatedAt      │       │  departmentId   │──┐
-└─────────────────┘       └─────────────────┘       │  portions       │  │
+└─────────────────┘       └─────────────────┘       │  departmentId   │──┐
+                                                     │  portions       │  │
                                                      │  ingredients[]  │  │
                                                      │  method[]       │  │
                                                      │  notes          │  │
                                                      │  plating        │  │
                                                      │  imageUrl       │  │
+                                                     │  plu            │  │
                                                      │  createdAt      │  │
                                                      │  updatedAt      │  │
                                                      │  syncId         │  │
@@ -103,56 +110,82 @@ SmartCookBook uses a **hybrid offline-first architecture**:
                           │                                               │
                           ▼                                               │
 ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐  │
-│PRODUCTION_LOGS  │       │   INGREDIENTS   │       │   SUPPLIERS     │  │
+│PRODUCTION_LOGS  │       │ INVENTORY_ITEMS │       │     VENDORS     │  │
 ├─────────────────┤       ├─────────────────┤       ├─────────────────┤  │
 │ *id (PK)        │       │ *id (PK)        │       │ *id (PK)        │  │
 │  recipeId (FK)  │───────│  name           │       │  name           │  │
-│  recipeName     │       │  nameLower      │       │  nameLower      │  │
-│  taskId         │       │  category       │       │  contactEmail   │  │
-│  employeeId     │       │  supplierId (FK)│──────>│  contactPhone   │  │
-│  employeeName   │       │  supplierName   │       │  address        │  │
-│  department     │───────│  unit           │       │  notes          │  │
-│  portions       │       │  currentPrice   │       │  isActive       │  │
-│  scaleFactor    │       │  pricePerUnit   │       │  createdAt      │  │
-│  startedAt      │       │  packageSize    │       │  updatedAt      │  │
-│  completedAt    │       │  lastInvoiceDate│       └─────────────────┘  │
-│  durationMs     │       │  lastInvoiceId  │                            │
-│  durationHours  │       │  notes          │                            │
-│  laborRate      │       │  isActive       │                            │
-│  laborCost      │       │  createdAt      │                            │
-│  foodCost       │       │  updatedAt      │                            │
-│  totalCost      │       └────────┬────────┘                            │
-│  costPerPortion │                │                                     │
-│  notes          │                │                                     │
-│  createdAt      │                │                                     │
+│  recipeName     │       │  nameNormalized │       │  nameLower      │  │
+│  taskId         │       │  sku            │       │  vendorCode     │  │
+│  employeeId     │       │  vendorId (FK)  │──────>│  contactName    │  │
+│  employeeName   │       │  vendorName     │       │  email          │  │
+│  department     │───────│  category       │       │  phone          │  │
+│  portions       │       │  currentPrice   │       │  address        │  │
+│  scaleFactor    │       │  lastPurchaseDate│      │  city           │  │
+│  startedAt      │       │  isActive       │       │  province       │  │
+│  completedAt    │       │  createdAt      │       │  isActive       │  │
+│  durationMs     │       │  updatedAt      │       │  isPrimary      │  │
+│  laborCost      │       └────────┬────────┘       │  isInternal     │  │
+│  foodCost       │                │                │  rating         │  │
+│  totalCost      │                │                │  createdAt      │  │
+│  costPerPortion │                │                │  updatedAt      │  │
+│  createdAt      │                │                └─────────────────┘  │
 └─────────────────┘                │                                     │
                                    │                                     │
 ┌─────────────────┐       ┌────────▼────────┐       ┌─────────────────┐  │
-│  PRICE_HISTORY  │       │    INVOICES     │       │KITCHEN_SETTINGS │  │
+│  PRICE_HISTORY  │       │    INVOICES     │       │EXPENSE_CATEGORIES│  │
 ├─────────────────┤       ├─────────────────┤       ├─────────────────┤  │
 │ *id (PK)        │       │ *id (PK)        │       │ *id (PK)        │  │
-│  ingredientId   │──────>│  supplierId (FK)│       │  key            │  │
-│  price          │       │  supplierName   │       │  value          │  │
-│  previousPrice  │       │  invoiceNumber  │       │  updatedAt      │  │
-│  priceChange    │       │  invoiceDate    │       └─────────────────┘  │
-│  priceChange%   │       │  totalAmount    │                            │
-│  invoiceId (FK) │──────>│  status         │       ┌─────────────────┐  │
-│  supplierId     │       │  parsedItems[]  │       │    SLIDERS      │  │
-│  recordedAt     │       │  rawText        │       ├─────────────────┤  │
-└─────────────────┘       │  sourceFile     │       │ *id (PK)        │  │
-                          │  qbBillId       │       │  name           │  │
-                          │  notes          │       │  location       │  │
-                          │  createdAt      │       │  autoPlay       │  │
-                          │  updatedAt      │       │  interval       │  │
-                          └─────────────────┘       │  animation      │  │
-                                                    │  showDots       │  │
-                                                    │  showArrows     │  │
-                                                    │  slides[]       │  │
-                                                    │  createdAt      │  │
-                                                    │  updatedAt      │  │
-                                                    └─────────────────┘  │
-                                                                         │
-                          Connects back to DEPARTMENTS ───────────────────┘
+│  inventoryItemId│──────>│  vendorId (FK)  │       │  name           │  │
+│  price          │       │  vendorName     │       │  isDefault      │  │
+│  previousPrice  │       │  invoiceNumber  │       │  isActive       │  │
+│  priceChange    │       │  invoiceDate    │       │  qbAccountId    │  │
+│  priceChange%   │       │  totalAmount    │       │  createdAt      │  │
+│  invoiceId (FK) │──────>│  status         │       │  updatedAt      │  │
+│  vendorId       │       │  paymentStatus  │       └─────────────────┘  │
+│  recordedAt     │       │  dueDate        │                            │
+└─────────────────┘       │  sourceFile     │       ┌─────────────────┐  │
+                          │  qbBillId       │       │EXPENSE_RECORDS  │  │
+                          │  notes          │       ├─────────────────┤  │
+                          │  createdAt      │       │ *id (PK)        │  │
+                          │  updatedAt      │       │  invoiceId (FK) │──┘
+                          └────────┬────────┘       │  vendorId (FK)  │
+                                   │                │  expenseCatId   │
+┌─────────────────┐                │                │  invoiceDate    │
+│INVOICE_LINE_ITEMS│               │                │  amount         │
+├─────────────────┤                │                │  qbSynced       │
+│ *id (PK)        │                │                │  createdAt      │
+│  invoiceId (FK) │────────────────┘                │  updatedAt      │
+│  inventoryItemId│                                 └─────────────────┘
+│  description    │       
+│  quantity       │       ┌─────────────────┐
+│  unitPrice      │       │STOCK_TRANSACTIONS│
+│  lineTotal      │       ├─────────────────┤
+│  matchStatus    │       │ *id (PK)        │
+│  createdAt      │       │  inventoryItemId│──────────────────────────┐
+└─────────────────┘       │  transactionType│                          │
+                          │  referenceType  │                          │
+                          │  referenceId    │                          │
+                          │  quantityChange │                          │
+                          │  stockBefore    │                          │
+                          │  stockAfter     │                          │
+                          │  isVoided       │                          │
+                          │  createdAt      │                          │
+                          └─────────────────┘                          │
+                                                                       │
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐ │
+│PURCHASE_ORDERS  │       │PURCHASE_ORDER   │       │KITCHEN_SETTINGS │ │
+├─────────────────┤       │    _LINES       │       ├─────────────────┤ │
+│ *id (PK)        │       ├─────────────────┤       │ *id (PK)        │ │
+│  orderNumber    │       │ *id (PK)        │       │  key            │ │
+│  vendorId (FK)  │──────>│  purchaseOrderId│       │  value          │ │
+│  status         │       │  inventoryItemId│──────>│  updatedAt      │ │
+│  total          │       │  quantity       │       └─────────────────┘ │
+│  createdAt      │       │  unitPrice      │                           │
+│  updatedAt      │       │  quantityReceived│                          │
+└─────────────────┘       │  createdAt      │                           │
+                          └─────────────────┘                           │
+                                                                        │
+                          Connects back to DEPARTMENTS ─────────────────┘
 
 LEGEND:
   *field    = Primary Key (PK)
@@ -167,19 +200,20 @@ LEGEND:
 ## IndexedDB Tables
 
 Database Name: `KitchenRecipeDB`
-Current Version: `1` (Clean schema - migrations collapsed 2025-12-13)
+Current Version: `2` (with deletion tracking)
 
 ### Version History
 
 | Version | Changes |
 |---------|---------|
-| v1 (2025-12-13) | **Clean schema** - All v1-v16 migrations collapsed into single clean v1. Removed deprecated `suppliers` and `ingredients` tables. Uses `vendors` and `inventoryItems` exclusively. |
+| v1 (2025-12-20) | **Clean schema** - vendors, inventoryItems, invoices, purchase orders, expense tracking |
+| v2 (Current) | Added `deletedItems` table for tracking intentional deletions (prevents phantom resurrection) |
 
-> **Note:** The original v1-v16 migration history was collapsed into a single clean v1 schema as part of the Week 2 architecture refactoring. No legacy users exist, so this is a clean break with no backwards compatibility shims.
+> **Note:** This is a clean database schema with no legacy migrations. All tables use the modern vendor/inventory naming conventions.
 
 ### recipes
 
-Core recipe data with full-text search support.
+Core recipe data with full-text search support and scale integration.
 
 | Field | Type | Indexed | Description |
 |-------|------|---------|-------------|
@@ -198,7 +232,7 @@ Core recipe data with full-text search support.
 | `syncId` | string | No | Firestore document ID |
 | `createdAt` | string | No | ISO timestamp |
 | `updatedAt` | string | Yes | ISO timestamp for sync |
-| **Scale Integration (v16, optional)** | | | |
+| **Scale Integration** | | | |
 | `plu` | string | Yes | Scale PLU code |
 | `sellPrice` | number | No | Sale price |
 | `sellPriceUnit` | string | No | 'kg', 'lb', 'portion', '100g' |
@@ -226,8 +260,6 @@ Kitchen department organization.
 | `isDefault` | boolean | Yes | System default (can't delete) |
 | `createdAt` | string | Yes | ISO timestamp |
 
-**Default Values:** Cuisine, Bistro, Poissonerie, Boucherie
-
 ### categories
 
 Recipe categories within departments.
@@ -240,138 +272,17 @@ Recipe categories within departments.
 | `isDefault` | boolean | Yes | System default (can't delete) |
 | `createdAt` | string | Yes | ISO timestamp |
 
-### ingredients (REMOVED)
-
-> **Note:** The `ingredients` table was removed. All ingredient/inventory data is now in the `inventoryItems` table. See [inventoryItems](#inventoryitems) for the current schema.
-
-### suppliers (REMOVED)
-
-> **Note:** The `suppliers` table was removed. Use the `vendors` table instead. See [vendors](#vendors) for the current schema.
-
-### invoices
-
-Parsed invoice records.
-
-| Field | Type | Indexed | Description |
-|-------|------|---------|-------------|
-| `id` | number | PK, auto | Unique identifier |
-| `supplierId` | number | Yes | Supplier reference |
-| `supplierName` | string | Yes | Supplier display name |
-| `invoiceNumber` | string | Yes | Invoice number |
-| `invoiceDate` | string | Yes | Invoice date |
-| `totalAmount` | number | Yes | Total invoice amount |
-| `status` | string | Yes | pending/processed/error/sent_to_qb |
-| `parsedItems` | array | No | Array of line items |
-| `rawText` | string | No | Original OCR text |
-| `sourceFile` | string | No | Original file name |
-| `qbBillId` | string | No | QuickBooks bill ID |
-| `qbVendorId` | string | No | QuickBooks vendor ID |
-| `qbAccountId` | string | No | QuickBooks account ID |
-| `notes` | string | No | Additional notes |
-| `createdAt` | string | Yes | ISO timestamp |
-| `updatedAt` | string | No | ISO timestamp |
-
-**Compound Index:** `[supplierId+invoiceDate]` for supplier history
-
-### productionLogs
-
-Auto-generated when tasks complete.
-
-| Field | Type | Indexed | Description |
-|-------|------|---------|-------------|
-| `id` | number | PK, auto | Unique identifier |
-| `recipeId` | number | Yes | Recipe reference |
-| `recipeName` | string | No | Recipe display name |
-| `taskId` | string | Yes | Task reference |
-| `employeeId` | string | Yes | Employee reference |
-| `employeeName` | string | Yes | Employee display name |
-| `department` | string | No | Department name |
-| `portions` | number | Yes | Portions produced |
-| `scaleFactor` | number | No | Recipe scale factor |
-| `startedAt` | string | Yes | Task start time |
-| `completedAt` | string | Yes | Task completion time |
-| `durationMs` | number | Yes | Duration in milliseconds |
-| `durationHours` | number | Yes | Duration in hours |
-| `laborRate` | number | Yes | Hourly rate used |
-| `laborCost` | number | Yes | Calculated labor cost |
-| `foodCost` | number | Yes | Calculated food cost |
-| `totalCost` | number | Yes | Total cost |
-| `costPerPortion` | number | Yes | Cost per portion |
-| `notes` | string | No | Additional notes |
-| `createdAt` | string | Yes | ISO timestamp |
-
-**Compound Index:** `[recipeId+createdAt]` for recipe history
-
-### priceHistory
-
-Tracks inventory item price changes over time.
-
-| Field | Type | Indexed | Description |
-|-------|------|---------|-------------|
-| `id` | number | PK, auto | Unique identifier |
-| `inventoryItemId` | number | Yes | Inventory item reference (v14+) |
-| `price` | number | Yes | New price |
-| `previousPrice` | number | No | Previous price |
-| `priceChange` | number | No | Absolute change |
-| `priceChangePercent` | number | No | Percentage change |
-| `invoiceId` | number | Yes | Source invoice reference |
-| `vendorId` | number | Yes | Vendor reference (v14+) |
-| `recordedAt` | string | Yes | ISO timestamp |
-
-> **Note (v14):** Changed from `ingredientId` to `inventoryItemId` and `supplierId` to `vendorId`.
-
-### kitchenSettings
-
-Key-value store for global settings.
-
-| Field | Type | Indexed | Description |
-|-------|------|---------|-------------|
-| `id` | number | PK, auto | Unique identifier |
-| `key` | string | Yes, unique | Setting key |
-| `value` | any | Yes | Setting value (JSON) |
-| `updatedAt` | string | Yes | ISO timestamp |
-
-**Common Keys:**
-- `restrictionLevel` - 1 (Quick), 2 (Standard), 3 (Accounting)
-- `defaultLaborRate` - Hourly labor rate (default: 18)
-- `businessName` - Business display name
-- `defaultDepartment` - Default department for new recipes
-
-### sliders
-
-Configurable feature showcase slides.
-
-| Field | Type | Indexed | Description |
-|-------|------|---------|-------------|
-| `id` | number | PK, auto | Unique identifier |
-| `name` | string | Yes | Slider name |
-| `location` | string | Yes | Page location (landing, etc.) |
-| `autoPlay` | boolean | Yes | Auto-advance slides |
-| `interval` | number | Yes | Slide interval (ms) |
-| `animation` | string | Yes | Animation type |
-| `showDots` | boolean | No | Show navigation dots |
-| `showArrows` | boolean | No | Show navigation arrows |
-| `slides` | array | No | Array of slide objects |
-| `createdAt` | string | No | ISO timestamp |
-| `updatedAt` | string | Yes | ISO timestamp |
-
----
-
-## Inventory Management Tables (v13+)
-
-The following tables were added in IndexedDB version 13 to support the inventory management system.
-
 ### vendors
 
-Supplier/vendor database with full contact and ordering information.
+Comprehensive vendor/supplier management with business details and ordering preferences.
 
 | Field | Type | Indexed | Description |
 |-------|------|---------|-------------|
 | `id` | number | PK, auto | Unique identifier |
-| `name` | string | Yes | Vendor name (required) |
-| `nameLower` | string | Yes | Lowercase for search |
+| `name` | string | Yes | Display name (required) |
+| `nameLower` | string | Yes | Lowercase for indexed search |
 | `legalName` | string | No | Legal business name |
-| `vendorCode` | string | Yes, unique | Unique vendor code |
+| `vendorCode` | string | Yes, unique | Internal vendor code |
 | `contactName` | string | No | Primary contact person |
 | `email` | string | No | Primary email |
 | `phone` | string | No | Primary phone |
@@ -393,152 +304,106 @@ Supplier/vendor database with full contact and ordering information.
 | `notes` | string | No | Additional notes |
 | `isActive` | boolean | Yes | Active status (soft delete) |
 | `isPrimary` | boolean | Yes | Primary vendor flag |
-| `isInternal` | boolean | Yes | Internal business vendor (v16) |
+| `isInternal` | boolean | Yes | Internal business vendor |
 | `createdAt` | string | No | ISO timestamp |
 | `updatedAt` | string | Yes | ISO timestamp |
 
 **Compound Index:** `[isActive+name]` for active vendor search
 
-> **Note (v16):** The `isInternal` flag identifies the business itself as a vendor for in-house production items. Internal vendors are hidden from the vendor list UI but used for inventory items produced by the business.
+> **Note:** The `isInternal` flag identifies the business itself as a vendor for in-house production items. Internal vendors are hidden from the vendor list UI but used for inventory items produced by the business.
 
 ### inventoryItems
 
-Stock items linked to vendors with par levels and reorder tracking.
+Comprehensive inventory management with fuzzy matching for invoice parsing and dual stock tracking.
 
 | Field | Type | Indexed | Description |
 |-------|------|---------|-------------|
 | `id` | number | PK, auto | Unique identifier |
 | `name` | string | Yes | Item name (required) |
 | `nameNormalized` | string | Yes | Normalized for fuzzy matching |
+| `description` | string | No | Item description |
 | `sku` | string | Yes | SKU/product code |
+| `upc` | string | No | Universal Product Code |
 | `vendorId` | number | Yes | Foreign key to vendors |
 | `vendorName` | string | No | Denormalized vendor name |
-| `description` | string | No | Item description |
 | `category` | string | Yes | Product category |
-| `unit` | string | Yes | Stock unit (kg, L, ea, etc.) |
-| `currentStock` | number | Yes | Current quantity on hand (legacy) |
-| `parLevel` | number | No | Target stock level (legacy) |
-| **Dual Stock Tracking (v15)** | | | |
-| `stockQuantity` | number | No | Current count (pieces, cases) |
+| `subcategory` | string | No | Item subcategory |
+| `unitType` | string | No | Classified unit type ('tool', 'weight', 'volume', 'count', 'unknown') |
+| `toolUnit` | string | No | Tool unit name (e.g., "canne", "botte", "caisse") |
+| `toolAbbrev` | string | No | Abbreviation for tool unit |
+| `weightPerUnit` | number | No | Weight in grams per unit |
+| `purchaseQty` | number | No | Purchase quantity |
+| `purchaseUnit` | string | No | Purchase unit |
+| `currentPrice` | number | No | Current price per package |
+| `pricePerG` | number | No | Price per gram (for weight-based) |
+| `previousPricePerG` | number | No | Previous pricePerG |
+| `pricePerML` | number | No | Price per milliliter (for volume-based) |
+| `previousPricePerML` | number | No | Previous pricePerML |
+| `pricePerUnit` | number | No | Price per unit/each |
+| `previousPricePerUnit` | number | No | Previous pricePerUnit |
+| `lastPrice` | number | No | Previous price |
+| `currency` | string | No | Currency code |
+| `taxRate` | number | No | Tax rate percentage (0-100) |
+| `isTaxable` | boolean | No | Whether item is taxable |
+| `lastPurchaseDate` | string | No | Last purchase date (ISO) |
+| `lastInvoiceId` | number | No | Reference to last invoice |
+| `aliases` | array | No | Alternative names for matching |
+| `tags` | array | No | Tags for filtering/grouping |
+| **Stock Tracking** | | | |
+| `stockQuantity` | number | No | Current quantity (pieces, cases) |
 | `stockQuantityUnit` | string | No | Unit for quantity ('pc', 'case') |
 | `parQuantity` | number | No | Par level for quantity |
 | `stockWeight` | number | No | Current weight |
 | `stockWeightUnit` | string | No | Unit for weight ('lb', 'kg') |
 | `parWeight` | number | No | Par level for weight |
-| **Reorder Settings** | | | |
-| `reorderPoint` | number | No | Trigger level for reordering |
+| `reorderPoint` | number | No | Reorder point quantity |
 | `reorderQuantity` | number | No | Default reorder quantity |
 | `criticalThreshold` | number | No | Critical % (default: 10) |
 | `lowStockThreshold` | number | No | Low stock % (default: 25) |
-| `currentPrice` | number | No | Current unit price |
-| `packageSize` | number | No | Package size |
-| `packageUnit` | string | No | Package unit |
-| `unitsPerPackage` | number | No | Units per package |
+| **Packaging** | | | |
+| `packagingFormat` | string | No | Raw format from invoice |
+| `packagingType` | string | No | Type of packaging notation |
+| `packCount` | number | No | Outer pack count |
+| `unitsPerPack` | number | No | Units per inner pack |
+| `unitsPerCase` | number | No | Individual units per case |
+| `unitSize` | number | No | Size per individual unit |
+| `unitSizeUnit` | string | No | Unit for unitSize |
+| `lastBoxingFormat` | string | No | Boxing format from most recent invoice |
+| `storageLocation` | string | No | Storage location in kitchen |
+| `storageTemp` | string | No | Storage temperature requirements |
 | `shelfLifeDays` | number | No | Shelf life in days |
-| `aliases` | array | No | Alternative names for matching |
 | `isActive` | boolean | Yes | Active status (soft delete) |
+| `isPreferred` | boolean | No | Preferred item flag |
+| `notes` | string | No | Additional notes |
+| `recipeTools` | array | No | User-defined measurement tools |
 | `createdAt` | string | No | ISO timestamp |
 | `updatedAt` | string | Yes | ISO timestamp |
 
 **Compound Indexes:**
 - `[vendorId+name]` for vendor item lookup
 - `[category+name]` for category filtering
-- `[isActive+currentStock]` for low stock queries
+- `[isActive+currentPrice]` for low stock queries
 
-### purchaseOrders
+### invoices
 
-Purchase orders with full lifecycle tracking.
+Invoice records with full lifecycle and payment tracking.
 
 | Field | Type | Indexed | Description |
 |-------|------|---------|-------------|
 | `id` | number | PK, auto | Unique identifier |
-| `orderNumber` | string | Yes, unique | Format: PO-YYYY-NNN |
 | `vendorId` | number | Yes | Foreign key to vendors |
-| `vendorName` | string | No | Denormalized vendor name |
-| `status` | string | Yes | Order status (see below) |
-| `createdAt` | string | Yes | ISO timestamp |
-| `createdBy` | string | No | User ID who created |
-| `createdByName` | string | No | User display name |
-| `approvedAt` | string | No | Approval timestamp |
-| `approvedBy` | string | No | Approver user ID |
-| `approvedByName` | string | No | Approver display name |
-| `sentAt` | string | Yes | Sent timestamp |
-| `sentMethod` | string | No | email/fax/phone/portal/in_person |
-| `sentBy` | string | No | User who sent |
-| `confirmedAt` | string | No | Vendor confirmation timestamp |
-| `expectedDeliveryDate` | string | Yes | Expected delivery date |
-| `receivedAt` | string | No | Receipt timestamp |
+| `vendorName` | string | Yes | Denormalized vendor name |
+| `invoiceNumber` | string | Yes | Vendor invoice number |
+| `invoiceDate` | string | Yes | Invoice date |
+| `dueDate` | string | Yes | Payment due date |
+| `status` | string | Yes | Processing status (draft/pending/extracted/processed/etc.) |
+| `paymentStatus` | string | Yes | Payment status (unpaid/partial/paid/overdue) |
+| `documentType` | string | No | Source format (pdf/image/email/manual) |
 | `subtotal` | number | No | Before tax |
 | `taxGST` | number | No | GST amount (5%) |
 | `taxQST` | number | No | QST amount (9.975%) |
 | `taxOther` | number | No | Other taxes/fees |
 | `total` | number | Yes | Total including taxes |
-| `currency` | string | No | Currency code (default: CAD) |
-| `deliveryAddress` | string | No | Delivery location |
-| `deliveryInstructions` | string | No | Special instructions |
-| `vendorConfirmationNumber` | string | No | Vendor's reference |
-| `vendorNotes` | string | No | Notes from vendor |
-| `internalNotes` | string | No | Internal notes |
-| `pdfUrl` | string | No | URL/path to PDF |
-| `lineCount` | number | No | Denormalized line count |
-| `updatedAt` | string | Yes | ISO timestamp |
-
-**Status Values:**
-- `draft` - Being edited
-- `pending_approval` - Awaiting approval
-- `approved` - Approved, ready to send
-- `sent` - Sent to vendor
-- `confirmed` - Vendor confirmed
-- `partially_received` - Some items received
-- `received` - All items received
-- `cancelled` - Order cancelled
-- `closed` - Order closed/archived
-
-**Compound Indexes:**
-- `[status+createdAt]` for status filtering
-- `[vendorId+status]` for vendor order lookup
-
-### purchaseOrderLines
-
-Line items for purchase orders.
-
-| Field | Type | Indexed | Description |
-|-------|------|---------|-------------|
-| `id` | number | PK, auto | Unique identifier |
-| `purchaseOrderId` | number | Yes | Foreign key to purchaseOrders |
-| `inventoryItemId` | number | Yes | Foreign key to inventoryItems |
-| `inventoryItemName` | string | No | Denormalized item name |
-| `inventoryItemSku` | string | No | Denormalized SKU |
-| `quantity` | number | No | Ordered quantity |
-| `unit` | string | No | Unit (kg, L, ea, etc.) |
-| `unitPrice` | number | No | Price per unit |
-| `lineTotal` | number | No | quantity × unitPrice |
-| `quantityReceived` | number | No | Amount received |
-| `quantityRemaining` | number | No | Still pending |
-| `stockAtOrder` | number | No | Stock level when ordered |
-| `notes` | string | No | Line-specific notes |
-| `createdAt` | string | No | ISO timestamp |
-
-**Compound Index:** `[purchaseOrderId+inventoryItemId]`
-
-### invoices (Updated for Inventory)
-
-Invoices updated with inventory processing fields.
-
-| Field | Type | Indexed | Description |
-|-------|------|---------|-------------|
-| `id` | number | PK, auto | Unique identifier |
-| `vendorId` | number | Yes | Foreign key to vendors |
-| `vendorName` | string | No | Denormalized vendor name |
-| `invoiceNumber` | string | Yes | Vendor invoice number |
-| `invoiceDate` | string | Yes | Invoice date |
-| `dueDate` | string | Yes | Payment due date |
-| `status` | string | Yes | Processing status |
-| `paymentStatus` | string | Yes | UNPAID/PARTIAL/PAID/OVERDUE |
-| `subtotal` | number | No | Before tax |
-| `taxGST` | number | No | GST amount |
-| `taxQST` | number | No | QST amount |
-| `total` | number | Yes | Total amount |
 | `paidAmount` | number | No | Amount paid so far |
 | `paidAt` | string | No | Payment date |
 | `paymentMethod` | string | No | Payment method |
@@ -546,24 +411,28 @@ Invoices updated with inventory processing fields.
 | `sourceFile` | string | No | Original PDF/image |
 | `extractedData` | object | No | AI extraction results |
 | `qbBillId` | string | No | QuickBooks bill ID |
+| `qbVendorId` | string | No | QuickBooks vendor ID |
+| `qbAccountId` | string | No | QuickBooks account ID |
 | `notes` | string | No | Additional notes |
-| `createdAt` | string | No | ISO timestamp |
-| `updatedAt` | string | Yes | ISO timestamp |
+| `createdAt` | string | Yes | ISO timestamp |
+| `updatedAt` | string | No | ISO timestamp |
 
-**Invoice Status Values:**
-- `draft` - Initial upload
-- `pending` - Ready for processing
-- `extracting` - AI extraction in progress
-- `extracted` - Extraction complete
-- `reviewed` - User reviewed lines
-- `approved` - Ready for inventory
-- `synced` - Synced to QuickBooks
-- `cancelled` - Invoice cancelled
-- `error` - Processing error
+**Status Values:**
+- `draft` - Just uploaded
+- `pending` - Awaiting OCR/AI extraction
+- `extracting` - Currently being processed
+- `extracted` - Data extracted, awaiting review
+- `reviewed` - User reviewed extracted data
+- `processed` - Line items matched to inventory
+- `sent_to_qb` - Synced to QuickBooks
+- `error` - Processing failed
+- `archived` - Completed and archived
 
-### invoiceLines
+**Compound Index:** `[vendorId+invoiceDate]` for vendor invoice history
 
-Line items extracted from invoices.
+### invoiceLineItems
+
+Individual line items extracted from invoices with inventory matching.
 
 | Field | Type | Indexed | Description |
 |-------|------|---------|-------------|
@@ -575,21 +444,34 @@ Line items extracted from invoices.
 | `unit` | string | No | Unit of measure |
 | `unitPrice` | number | No | Price per unit |
 | `lineTotal` | number | No | Line total |
+| `totalPrice` | number | No | Alias for lineTotal |
 | `matchConfidence` | number | No | AI match confidence (0-1) |
-| `matchStatus` | string | No | pending/matched/new_item/skipped |
+| `matchStatus` | string | No | Match status (unmatched/auto_matched/manual_matched/etc.) |
+| `lineNumber` | number | No | Order on invoice |
 | `notes` | string | No | Line notes |
 | `createdAt` | string | No | ISO timestamp |
 
+**Match Status Values:**
+- `unmatched` - Not yet matched
+- `auto_matched` - AI matched with confidence
+- `manual_matched` - User selected match
+- `new_item` - Created new inventory item
+- `skipped` - User skipped matching
+- `rejected` - User rejected suggested match
+- `confirmed` - Match confirmed by user
+
+**Compound Index:** `[invoiceId+lineNumber]`
+
 ### stockTransactions
 
-Audit trail for all stock movements.
+Complete audit trail of all inventory movements.
 
 | Field | Type | Indexed | Description |
 |-------|------|---------|-------------|
 | `id` | number | PK, auto | Unique identifier |
 | `inventoryItemId` | number | Yes | Foreign key to inventoryItems |
-| `transactionType` | string | Yes | purchase/adjustment/waste/transfer |
-| `referenceType` | string | Yes | invoice/purchase_order/task/manual |
+| `transactionType` | string | Yes | Type of transaction |
+| `referenceType` | string | Yes | What the transaction links to |
 | `referenceId` | number | Yes | ID of source document |
 | `quantityChange` | number | No | +/- quantity change |
 | `stockBefore` | number | No | Stock before transaction |
@@ -608,422 +490,71 @@ Audit trail for all stock movements.
 
 **Transaction Types:**
 - `purchase` - Stock added from invoice/PO
+- `task_usage` - Stock used for recipe/task production
 - `adjustment` - Manual stock correction
 - `waste` - Spoilage/damage loss
 - `transfer` - Transfer between locations
+- `count_correction` - Physical count correction
+- `return` - Returned to vendor
+- `sample` - Used for sampling/testing
+- `theft` - Suspected theft/loss
+- `initial` - Initial stock entry
 
 **Reference Types:**
-- `invoice` - From invoice processing
-- `purchase_order` - From PO receipt
-- `task` - From recipe task completion
-- `manual` - Manual adjustment
+- `invoice` - Links to invoices table
+- `invoice_line` - Links to invoiceLineItems table
+- `task` - Links to tasks/productionLogs
+- `recipe` - Links to recipes table
+- `manual` - No external reference
 
 **Compound Indexes:**
 - `[inventoryItemId+createdAt]` for item history
 - `[transactionType+createdAt]` for type filtering
-- `[referenceType+referenceId]` for document lookup
 
----
-
-## Firestore Collections
-
-### cookbooks/{userId}
-
-User-isolated cookbook data. Path format: `cookbooks/user_{uid}`
-
-#### recipes
-
-```javascript
-{
-  name: "Beef Wellington",
-  nameLower: "beef wellington",
-  category: "Main Courses",
-  department: "Cuisine",
-  departmentId: 1,
-  portions: 4,
-  ingredients: [
-    {
-      name: "beef tenderloin",
-      metric: "800g",
-      ingredientId: 45,  // Optional link to master ingredient
-      cost: 52.00        // Optional calculated cost
-    }
-  ],
-  method: [
-    "Season the beef...",
-    "Wrap in pastry..."
-  ],
-  notes: "Chef's special",
-  plating: "Slice and arrange...",
-  imageUrl: "https://...",
-  localId: 123,          // IndexedDB ID
-  createdAt: Timestamp,
-  updatedAt: Timestamp
-}
-```
-
-#### departments
-
-```javascript
-{
-  name: "Cuisine",
-  isDefault: true,
-  localId: 1,
-  createdAt: Timestamp
-}
-```
-
-#### categories
-
-```javascript
-{
-  name: "Appetizers",
-  departmentId: 1,
-  isDefault: false,
-  localId: 5,
-  createdAt: Timestamp
-}
-```
-
-#### ingredients
-
-```javascript
-{
-  name: "beef tenderloin",
-  nameLower: "beef tenderloin",
-  category: "Meat",
-  supplierId: 2,
-  supplierName: "Sysco Foods",
-  unit: "kg",
-  currentPrice: 65.00,
-  pricePerUnit: 65.00,
-  packageSize: 1,
-  lastInvoiceDate: "2025-12-01T...",
-  isActive: true,
-  localId: 45,
-  createdAt: Timestamp,
-  updatedAt: Timestamp
-}
-```
-
-#### invoices
-
-```javascript
-{
-  supplierId: 2,
-  supplierName: "Sysco Foods",
-  invoiceNumber: "INV-2025-001",
-  invoiceDate: "2025-12-01",
-  totalAmount: 1250.00,
-  status: "processed",
-  parsedItems: [
-    {
-      name: "Beef Tenderloin",
-      quantity: 5,
-      unit: "kg",
-      unitPrice: 65.00,
-      totalPrice: 325.00,
-      matchedIngredientId: 45
-    }
-  ],
-  qbBillId: "123",
-  localId: 10,
-  createdAt: Timestamp,
-  updatedAt: Timestamp
-}
-```
-
-### users/{userId}
-
-User-specific data not tied to cookbook.
-
-#### settings
-
-```javascript
-{
-  // Business info
-  businessName: "Le Petit Bistro",
-  businessAddress: "123 Main St",
-  businessPhone: "(555) 123-4567",
-
-  // Preferences
-  defaultDepartment: "Cuisine",
-  restrictionLevel: 2,
-  defaultLaborRate: 22.50,
-
-  // UI settings
-  theme: "light",
-  language: "fr-CA",
-
-  updatedAt: Timestamp
-}
-```
-
-#### tasks
-
-```javascript
-{
-  recipeId: 123,
-  recipeName: "Beef Wellington",
-  department: "Cuisine",
-  portions: 8,
-  scaleFactor: 2.0,
-  assignedTo: "user_abc",
-  assignedToName: "Chef John",
-  dueDate: "2025-12-07",
-  status: "pending",  // pending, in_progress, completed
-  priority: "high",
-  startedAt: null,
-  completedAt: null,
-  notes: "VIP dinner",
-  createdAt: Timestamp,
-  updatedAt: Timestamp
-}
-```
-
-#### privileges
-
-```javascript
-{
-  role: "editor",  // owner, editor, viewer
-  department: "Cuisine",
-  canEdit: true,
-  canDelete: false,
-  canManageUsers: false,
-  grantedBy: "user_owner",
-  createdAt: Timestamp
-}
-```
-
-### quickbooks_tokens/{environment}
-
-OAuth tokens for QuickBooks (sandbox/production).
-
-```javascript
-{
-  accessToken: "eyJ...",
-  refreshToken: "AB1...",
-  tokenType: "bearer",
-  expiresIn: 3600,
-  expiresAt: Timestamp,
-  realmId: "1234567890",
-  companyName: "Le Petit Bistro Inc",
-  createdAt: Timestamp,
-  updatedAt: Timestamp
-}
-```
-
-### waitlist/{entryId}
-
-Beta waitlist signups.
-
-```javascript
-{
-  email: "user@example.com",
-  timestamp: Timestamp,
-  source: "landing_page"
-}
-```
-
-### feedback/{feedbackId}
-
-User feedback submissions.
-
-```javascript
-{
-  type: "bug",  // bug, feature, general
-  message: "The voice input...",
-  page: "/recipes",
-  userAgent: "Mozilla/5.0...",
-  userId: "user_abc",
-  timestamp: Timestamp
-}
-```
-
----
-
-## Field Specifications
-
-### Data Types
-
-| Type | IndexedDB | Firestore | Notes |
-|------|-----------|-----------|-------|
-| ID | number (auto) | string (auto) | IndexedDB uses auto-increment |
-| String | string | string | Max 1MB in Firestore |
-| Number | number | number | 64-bit float |
-| Boolean | boolean | boolean | |
-| Date | string (ISO) | Timestamp | ISO 8601 in IndexedDB |
-| Array | array | array | Max 20,000 items in Firestore |
-| Object | object | map | Nested data |
-
-### Ingredient Object (in recipe)
-
-```typescript
-interface RecipeIngredient {
-  name: string;           // Required: ingredient name
-  metric: string;         // Required: quantity with unit (e.g., "500g")
-  ingredientId?: number;  // Optional: link to master ingredient
-  cost?: number;          // Optional: calculated cost
-  notes?: string;         // Optional: preparation notes
-}
-```
-
-### Parsed Invoice Item
-
-```typescript
-interface ParsedInvoiceItem {
-  name: string;              // Item description
-  quantity: number;          // Quantity
-  unit: string;              // Unit of measure
-  unitPrice: number;         // Price per unit
-  totalPrice: number;        // Line total
-  matchedIngredientId?: number;  // Linked ingredient ID
-  confidence?: number;       // AI confidence score (0-1)
-}
-```
-
-### Slide Object (in slider)
-
-```typescript
-interface Slide {
-  id: string;           // Unique slide ID
-  title: string;        // Slide title
-  description: string;  // Slide description
-  imageUrl?: string;    // Background image
-  buttonText?: string;  // CTA button text
-  buttonLink?: string;  // CTA button URL
-  order: number;        // Display order
-}
-```
-
----
-
-## Indexes
-
-### IndexedDB Indexes (Dexie)
-
-```javascript
-// Version 7 schema
-{
-  recipes: '++id, name, nameLower, category, department, departmentId, [department+category], portions, updatedAt',
-  departments: '++id, name, isDefault, createdAt',
-  categories: '++id, name, departmentId, isDefault, createdAt',
-  sliders: '++id, name, location, autoPlay, interval, animation, updatedAt',
-  ingredients: '++id, name, nameLower, category, supplierId, unit, currentPrice, lastInvoiceDate, updatedAt',
-  kitchenSettings: '++id, key, value, updatedAt',
-  productionLogs: '++id, recipeId, taskId, employeeId, employeeName, [recipeId+createdAt], portions, startedAt, completedAt, duration, laborCost, foodCost, totalCost, createdAt',
-  suppliers: '++id, name, nameLower, isActive, contactEmail, contactPhone, address, notes, createdAt',
-  invoices: '++id, supplierId, supplierName, invoiceNumber, invoiceDate, [supplierId+invoiceDate], totalAmount, status, createdAt',
-  priceHistory: '++id, ingredientId, price, invoiceId, supplierId, recordedAt'
-}
-```
-
-### Compound Indexes
-
-| Table | Index | Use Case |
-|-------|-------|----------|
-| recipes | `[department+category]` | Filter by dept and category |
-| productionLogs | `[recipeId+createdAt]` | Recipe production history |
-| invoices | `[supplierId+invoiceDate]` | Supplier invoice history |
-
-### Firestore Indexes
-
-Firestore automatically indexes all fields. Composite indexes created via `firestore.indexes.json`:
-
-```json
-{
-  "indexes": [
-    {
-      "collectionGroup": "recipes",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "department", "order": "ASCENDING" },
-        { "fieldPath": "category", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
-      ]
-    }
-  ]
-}
-```
-
----
-
-## Relationships
-
-### One-to-Many
-
-| Parent | Child | Foreign Key |
-|--------|-------|-------------|
-| departments | categories | `departmentId` |
-| departments | recipes | `departmentId` |
-| suppliers | ingredients | `supplierId` |
-| suppliers | invoices | `supplierId` |
-| ingredients | priceHistory | `ingredientId` |
-| invoices | priceHistory | `invoiceId` |
-| recipes | productionLogs | `recipeId` |
-
-### Soft References (by name)
-
-| From | To | Field |
-|------|-----|-------|
-| recipes | categories | `category` (name) |
-| recipes | departments | `department` (name) |
-| invoices | suppliers | `supplierName` |
-| ingredients | suppliers | `supplierName` |
-
----
-
-## Sync Strategy
-
-### Push to Cloud
-
-When data changes locally:
-
-1. Update IndexedDB
-2. Call `cloudSync.pushXxx(data)`
-3. Cloud function writes to Firestore
-4. `updatedAt` timestamp updated
-
-### Pull from Cloud
-
-On app load or reconnect:
-
-1. Fetch Firestore documents where `updatedAt > lastSync`
-2. Compare with local `updatedAt`
-3. Newer version wins (last-write-wins)
-4. Update IndexedDB
-
-### Conflict Resolution
-
-```javascript
-// From cloudSync.js
-if (cloudDate > localDate) {
-  // Cloud is newer - update local
-  await localDb.recipes.update(localId, cloudData);
-} else if (localDate > cloudDate) {
-  // Local is newer - push to cloud
-  await pushRecipe(localRecipe);
-}
-// Equal timestamps - prefer cloud for consistency
-```
-
-### Real-time Sync
-
-Using Firestore `onSnapshot`:
-
-```javascript
-onSnapshot(recipesCollection, (snapshot) => {
-  snapshot.docChanges().forEach((change) => {
-    if (change.type === 'added' || change.type === 'modified') {
-      syncRecipeToLocal(change.doc.data());
-    }
-    if (change.type === 'removed') {
-      removeLocalRecipe(change.doc.id);
-    }
-  });
-});
-```
-
----
-
-*Last Updated: 2025-12-13*
+### purchaseOrders
+
+Purchase orders with full lifecycle tracking.
+
+| Field | Type | Indexed | Description |
+|-------|------|---------|-------------|
+| `id` | number | PK, auto | Unique identifier |
+| `orderNumber` | string | Yes, unique | Format: PO-YYYY-NNN |
+| `vendorId` | number | Yes | Foreign key to vendors |
+| `vendorName` | string | No | Denormalized vendor name |
+| `status` | string | Yes | Order status |
+| `createdAt` | string | Yes | ISO timestamp |
+| `createdBy` | string | No | User ID who created |
+| `createdByName` | string | No | User display name |
+| `approvedAt` | string | No | Approval timestamp |
+| `approvedBy` | string | No | Approver user ID |
+| `sentAt` | string | Yes | Sent timestamp |
+| `sentMethod` | string | No | Send method (email/fax/phone/etc.) |
+| `confirmedAt` | string | No | Vendor confirmation timestamp |
+| `expectedDeliveryDate` | string | Yes | Expected delivery date |
+| `receivedAt` | string | No | Receipt timestamp |
+| `subtotal` | number | No | Before tax |
+| `taxGST` | number | No | GST amount |
+| `taxQST` | number | No | QST amount |
+| `total` | number | Yes | Total including taxes |
+| `currency` | string | No | Currency code (default: CAD) |
+| `deliveryAddress` | string | No | Delivery location |
+| `deliveryInstructions` | string | No | Special instructions |
+| `vendorConfirmationNumber` | string | No | Vendor's reference |
+| `notes` | string | No | Internal notes |
+| `lineCount` | number | No | Denormalized line count |
+| `updatedAt` | string | Yes | ISO timestamp |
+
+**Status Values:**
+- `draft` - Being edited
+- `pending_approval` - Awaiting approval
+- `approved` - Approved, ready to send
+- `sent` - Sent to vendor
+- `confirmed` - Vendor confirmed
+- `partially_received` - Some items received
+- `received` - All items received
+- `cancelled` - Order cancelled
+- `closed` - Order closed/archived
+
+### purchaseOrderLines
+
+Line items for purchase orders with

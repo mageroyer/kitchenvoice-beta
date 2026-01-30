@@ -203,6 +203,40 @@ async function saveSecurityAlerts(agentResult, reportId) {
   }
 }
 
+/**
+ * Report live progress to Firestore for the dashboard.
+ * Writes/updates a doc at `autopilot_progress/{agentName}`.
+ */
+async function reportProgress(agentName, phase, message, percent) {
+  if (!firestoreDB) return;
+
+  try {
+    await firestoreDB.collection('autopilot_progress').doc(agentName).set({
+      agentName,
+      phase,
+      message,
+      percent,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  } catch (err) {
+    // Non-critical — don't let progress writes break the agent
+    console.warn('[Firestore] Progress update failed:', err.message);
+  }
+}
+
+/**
+ * Clear progress doc when agent completes.
+ */
+async function clearProgress(agentName) {
+  if (!firestoreDB) return;
+
+  try {
+    await firestoreDB.collection('autopilot_progress').doc(agentName).delete();
+  } catch (err) {
+    console.warn('[Firestore] Progress clear failed:', err.message);
+  }
+}
+
 const execAsync = promisify(exec);
 
 // Configuration
@@ -451,6 +485,9 @@ async function orchestrate(agentName, options = {}) {
       console.log(`Created branch: ${branchName}`);
     }
 
+    // Report initial progress
+    await reportProgress(agentName, 'starting', 'Initializing agent...', 0);
+
     // Run the specific agent logic
     const agentModule = await import(`./agents/${agentName}.js`);
     const result = await agentModule.run({
@@ -458,6 +495,7 @@ async function orchestrate(agentName, options = {}) {
       runCommand,
       runTests,
       projectRoot: CONFIG.projectRoot,
+      reportProgress: (phase, message, percent) => reportProgress(agentName, phase, message, percent),
       ...options,
     });
 
@@ -499,6 +537,9 @@ async function orchestrate(agentName, options = {}) {
     report.errors.push(error.message);
     console.error('Agent error:', error);
   }
+
+  // Clear live progress now that agent is done
+  await clearProgress(agentName);
 
   report.endTime = new Date();
   report.duration = (report.endTime - report.startTime) / 1000;

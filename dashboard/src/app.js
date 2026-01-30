@@ -131,15 +131,6 @@ function getNextRunTime(agent) {
     if (next.getUTCDay() === 3 && next <= utcNow) next.setUTCDate(next.getUTCDate() + 7);
     return next;
   }
-  if (agent.id === 'docs-generator') {
-    // Friday at 5 AM UTC
-    const next = new Date(utcNow);
-    next.setUTCHours(5, 0, 0, 0);
-    if (next.getUTCDay() === 5 && next > utcNow) { /* already friday and in future */ }
-    else next.setUTCDate(next.getUTCDate() + ((5 - next.getUTCDay() + 7) % 7 || 7));
-    if (next.getUTCDay() === 5 && next <= utcNow) next.setUTCDate(next.getUTCDate() + 7);
-    return next;
-  }
   if (agent.id === 'full-audit') {
     // 1st of month at 2 AM UTC
     const next = new Date(utcNow);
@@ -317,6 +308,13 @@ async function loadLiveData() {
 
     // Start realtime listener for new reports
     window.electronAPI.startReportsListener();
+
+    // Start realtime listener for agent progress
+    window.electronAPI.startProgressListener();
+    window.electronAPI.onProgressUpdated((progress) => {
+      updateAgentCardsFromProgress(progress);
+    });
+
     window.electronAPI.onReportsUpdated((reports) => {
       console.log(`[Realtime] ${reports.length} reports received`);
       updateAgentCardsFromReports(reports);
@@ -421,6 +419,41 @@ function updateAgentCardsFromReports(reports) {
   }
 }
 
+// ── Update agent cards with live progress from running agents ──
+function updateAgentCardsFromProgress(progress) {
+  for (const [agentId, data] of Object.entries(progress)) {
+    const card = document.querySelector(`.agent-card[data-agent="${agentId}"]`);
+    if (!card) continue;
+
+    const metricEl = card.querySelector('.agent-card-metric');
+    const badge = card.querySelector('.badge');
+    const dot = card.querySelector('.status-dot');
+
+    // Show running state with phase info
+    if (metricEl) {
+      metricEl.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span>${data.message}</span>
+          <span style="font-size: 9px; color: var(--text-muted);">${data.percent}%</span>
+        </div>
+        <div style="height: 3px; background: var(--bg-surface); border-radius: 2px; margin-top: 4px; overflow: hidden;">
+          <div style="height: 100%; width: ${data.percent}%; background: var(--purple-400); border-radius: 2px; transition: width 0.3s ease;"></div>
+        </div>
+      `;
+    }
+
+    if (badge) {
+      badge.className = 'badge badge-purple';
+      badge.textContent = 'Running';
+    }
+
+    if (dot) {
+      dot.style.background = '#a855f7';
+      dot.style.boxShadow = '0 0 6px rgba(168,85,247,0.4)';
+    }
+  }
+}
+
 // ── Load GitHub workflow runs into schedule panel ──
 async function loadWorkflowRuns() {
   try {
@@ -477,7 +510,6 @@ function resolveAgentName(run) {
     if (hour === 1 && day === 3) return 'codebase-mapper';
     if (hour === 3 && day === 0) return 'deps-updater';
     if (hour === 4 && day === 1) return 'security-scanner';
-    if (hour === 5 && day === 5) return 'docs-generator';
     if (hour === 2 && date === 1) return 'full-audit';
   }
 

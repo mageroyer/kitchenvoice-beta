@@ -844,11 +844,14 @@ async function generateCoverageJson(files, projectRoot) {
 //  MAIN AGENT ENTRY POINT
 // ══════════════════════════════════════════════════
 
-export async function run({ projectRoot }) {
+export async function run({ projectRoot, reportProgress }) {
   const report = {
     changes: [],
     metrics: {},
   };
+
+  // Helper: report progress if callback provided
+  const progress = reportProgress || (() => {});
 
   console.log('Starting codebase mapper agent...\n');
 
@@ -856,16 +859,19 @@ export async function run({ projectRoot }) {
 
   // ── Phase 1: Scan codebase and build manifest ──
   console.log('Phase 1: Scanning codebase...');
+  await progress('scan', 'Scanning codebase...', 10);
   const files = await scanDirectory(srcRoot, projectRoot, srcRoot);
   const fileCount = Object.keys(files).length;
   console.log(`  Scanned ${fileCount} files\n`);
 
   console.log('Phase 1b: Building dependency map...');
+  await progress('dependencies', 'Building dependency map...', 30);
   const dependencies = buildDependencyMap(files, srcRoot);
   const depCount = Object.values(dependencies).reduce((sum, deps) => sum + deps.length, 0);
   console.log(`  Found ${depCount} dependency edges\n`);
 
   console.log('Phase 1c: Detecting circular dependencies...');
+  await progress('circular-deps', 'Detecting circular deps...', 40);
   const cycles = detectCircularDependencies(dependencies);
   console.log(`  Found ${cycles.length} circular dependency cycle(s)\n`);
 
@@ -887,6 +893,7 @@ export async function run({ projectRoot }) {
 
   // ── Phase 2: Generate Mermaid dependency graphs ──
   console.log('Phase 2: Generating dependency graphs...');
+  await progress('graphs', 'Generating dependency graphs...', 50);
   const systemMapMd = generateSystemMapMd(files, dependencies, cycles);
   const systemMapPath = path.join(DOCS_DIR, 'SYSTEM_MAP.md');
   await fs.writeFile(systemMapPath, systemMapMd);
@@ -895,6 +902,7 @@ export async function run({ projectRoot }) {
 
   // ── Phase 3: Generate reference docs ──
   console.log('Phase 3: Generating reference documentation...');
+  await progress('reference-docs', 'Generating reference docs...', 70);
 
   const componentCatalog = generateComponentCatalog(files);
   await fs.writeFile(path.join(DOCS_DIR, 'COMPONENT_CATALOG.md'), componentCatalog);
@@ -921,6 +929,7 @@ export async function run({ projectRoot }) {
 
   // ── Phase 4: Staleness detection + coverage ──
   console.log('Phase 4: Computing staleness + coverage...');
+  await progress('coverage', 'Computing coverage...', 90);
   const coverage = await generateCoverageJson(files, projectRoot);
   const coveragePath = path.join(DOCS_DIR, 'coverage.json');
   await fs.writeFile(coveragePath, JSON.stringify(coverage, null, 2));
@@ -971,6 +980,8 @@ ${coverage.staleDocs.length > 0 ? coverage.staleDocs.map(d => '- ' + d).join('\n
     fsMod.appendFileSync(process.env.GITHUB_STEP_SUMMARY, ghSummary);
     console.log('(Summary written to GitHub Actions)\n');
   }
+
+  await progress('complete', 'Complete', 100);
 
   // ── Summary ──
   console.log('=== CODEBASE MAPPER SUMMARY ===');

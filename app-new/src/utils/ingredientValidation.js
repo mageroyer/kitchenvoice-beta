@@ -71,6 +71,20 @@ function parseMetric(metricStr) {
   return { qty: isNaN(qty) ? null : qty, unit };
 }
 
+/**
+ * Validates an ingredient against inventory data and returns any issues found.
+ * Performs soft validation - flags issues but never blocks operations.
+ *
+ * @param {Object} ingredient - The ingredient object to validate
+ * @param {Object|null} [inventoryItem=null] - Optional inventory item to validate against
+ * @returns {Array} Array of validation issue objects with severity levels
+ * @example
+ * const issues = validateIngredient(
+ *   { name: 'flour', amount: 100, unit: 'g' },
+ *   { name: 'flour', stock: 50, unit: 'g' }
+ * );
+ * // Returns: [{ type: 'stock', severity: 'warning', message: '...' }]
+ */
 export function validateIngredient(ingredient, inventoryItem = null) {
   const issues = [];
 

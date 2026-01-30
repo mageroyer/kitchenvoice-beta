@@ -223,6 +223,11 @@ const getSyncId = () => {
   return null;
 };
 
+/**
+ * @deprecated This function is deprecated - sync ID is now based on authentication state
+ * @param {string} newSyncId - The new synchronization ID to set
+ * @returns {void}
+ */
 export const setSyncId = (newSyncId) => {
   // This is now deprecated - sync ID is based on user UID
   console.warn('⚠️ setSyncId is deprecated. Sync ID is now based on user UID.');
@@ -341,6 +346,17 @@ const setSyncStatus = (status) => {
   statusCallbacks.forEach(cb => cb(status));
 };
 
+/**
+ * Registers a callback function to be notified of sync status changes.
+ * @param {Function} callback - Function to call when sync status changes. Receives status object with current sync state.
+ * @returns {Function} Unsubscribe function to remove the callback from status notifications.
+ * @example
+ * const unsubscribe = onSyncStatusChange((status) => {
+ *   console.log('Sync status:', status.isOnline, status.lastSync);
+ * });
+ * // Later, to stop listening:
+ * unsubscribe();
+ */
 export const onSyncStatusChange = (callback) => {
   statusCallbacks.push(callback);
   return () => {
@@ -348,6 +364,11 @@ export const onSyncStatusChange = (callback) => {
   };
 };
 
+/**
+ * Gets the current synchronization status value.
+ * 
+ * @returns {string} The current sync status (e.g., 'idle', 'syncing', 'error')
+ */
 export const getSyncStatusValue = () => syncStatus;
 
 // ============================================
@@ -661,6 +682,14 @@ export const pushInvoice = async (invoice) => {
   }
 };
 
+/**
+ * Deletes an invoice from cloud storage and records the deletion locally first
+ * @param {string} invoiceId - The unique identifier of the invoice to delete
+ * @returns {Promise<void>} Promise that resolves when the invoice is successfully deleted from cloud
+ * @throws {Error} Throws error if deletion fails or user is not authenticated
+ * @example
+ * await deleteInvoiceFromCloud('invoice-123');
+ */
 export const deleteInvoiceFromCloud = async (invoiceId) => {
   // ALWAYS record deletion locally first (prevents phantom resurrection)
   await recordDeletion('invoice', invoiceId);
@@ -679,6 +708,16 @@ export const deleteInvoiceFromCloud = async (invoiceId) => {
   }
 };
 
+/**
+ * Pushes a new line item to an invoice in the database
+ * @param {Object} lineItem - The invoice line item to add
+ * @param {string} lineItem.id - Unique identifier for the line item
+ * @param {string} lineItem.description - Description of the item
+ * @param {number} lineItem.quantity - Quantity of the item
+ * @param {number} lineItem.price - Unit price of the item
+ * @returns {Promise<void>} Promise that resolves when the line item is successfully added
+ * @throws {Error} Throws error if database operation fails
+ */
 export const pushInvoiceLineItem = async (lineItem) => {
   if (!db) return;
   const linesRef = getInvoiceLineItemsCollection();
@@ -696,6 +735,12 @@ export const pushInvoiceLineItem = async (lineItem) => {
   }
 };
 
+/**
+ * Deletes an invoice line item from cloud storage and records the deletion locally first
+ * @param {string} lineItemId - The unique identifier of the invoice line item to delete
+ * @returns {Promise<void>} Promise that resolves when the line item is successfully deleted from cloud
+ * @throws {Error} If the line item deletion fails or if user is not authenticated
+ */
 export const deleteInvoiceLineItemFromCloud = async (lineItemId) => {
   // ALWAYS record deletion locally first (prevents phantom resurrection)
   await recordDeletion('invoiceLineItem', lineItemId);
@@ -710,6 +755,16 @@ export const deleteInvoiceLineItemFromCloud = async (lineItemId) => {
   }
 };
 
+/**
+ * Pushes a price record to the price history in Firestore
+ * @param {Object} priceRecord - The price record to add to history
+ * @param {string} priceRecord.id - Unique identifier for the price record
+ * @param {number} priceRecord.price - The price value
+ * @param {string} priceRecord.timestamp - ISO timestamp of when price was recorded
+ * @param {string} [priceRecord.store] - Store where price was recorded
+ * @returns {Promise<void>} Promise that resolves when price history is updated
+ * @throws {Error} Throws error if Firestore operation fails
+ */
 export const pushPriceHistory = async (priceRecord) => {
   if (!db) return;
   const historyRef = getPriceHistoryCollection();
@@ -727,6 +782,18 @@ export const pushPriceHistory = async (priceRecord) => {
   }
 };
 
+/**
+ * Pushes a stock transaction to Firebase Firestore for cloud synchronization.
+ * 
+ * @param {Object} transaction - The stock transaction object to sync
+ * @param {string} transaction.id - Unique transaction identifier
+ * @param {string} transaction.type - Transaction type (e.g., 'in', 'out', 'adjustment')
+ * @param {number} transaction.quantity - Transaction quantity
+ * @param {string} transaction.productId - Associated product identifier
+ * @param {Date|string} transaction.timestamp - Transaction timestamp
+ * @returns {Promise<void>} Promise that resolves when transaction is successfully pushed
+ * @throws {Error} When database is unavailable or transaction push fails
+ */
 export const pushStockTransaction = async (transaction) => {
   if (!db) return;
   const txRef = getStockTransactionsCollection();
@@ -744,6 +811,12 @@ export const pushStockTransaction = async (transaction) => {
   }
 };
 
+/**
+ * Pushes a purchase order to Firestore for cloud sync
+ * @param {Object} order - The purchase order object to sync
+ * @returns {Promise<void>} Promise that resolves when order is successfully pushed
+ * @throws {Error} If user is not authenticated or Firestore operation fails
+ */
 export const pushPurchaseOrder = async (order) => {
   if (!db) return;
   const ordersRef = getPurchaseOrdersCollection();
@@ -765,6 +838,12 @@ export const pushPurchaseOrder = async (order) => {
   }
 };
 
+/**
+ * Deletes a purchase order from the cloud and records deletion locally first.
+ * @param {string} orderId - The unique identifier of the purchase order to delete
+ * @returns {Promise<void>} Promise that resolves when the order is successfully deleted
+ * @throws {Error} Throws error if user is not authenticated or deletion fails
+ */
 export const deletePurchaseOrderFromCloud = async (orderId) => {
   // ALWAYS record deletion locally first (prevents phantom resurrection)
   await recordDeletion('purchaseOrder', orderId);
@@ -779,6 +858,16 @@ export const deletePurchaseOrderFromCloud = async (orderId) => {
   }
 };
 
+/**
+ * Pushes a purchase order line item to the cloud database
+ * @param {Object} line - The purchase order line item to sync
+ * @param {string} line.id - Unique identifier for the line item
+ * @param {string} line.productId - ID of the product
+ * @param {number} line.quantity - Quantity ordered
+ * @param {number} line.price - Price per unit
+ * @returns {Promise<void>} Promise that resolves when the line is successfully pushed
+ * @throws {Error} If database connection fails or line data is invalid
+ */
 export const pushPurchaseOrderLine = async (line) => {
   if (!db) return;
   const linesRef = getPurchaseOrderLinesCollection();
@@ -796,6 +885,12 @@ export const pushPurchaseOrderLine = async (line) => {
   }
 };
 
+/**
+ * Deletes a purchase order line item from cloud storage and records the deletion locally first.
+ * @param {string|number} lineId - The unique identifier of the purchase order line to delete
+ * @returns {Promise<void>} Promise that resolves when the line is successfully deleted from cloud
+ * @throws {Error} If the deletion fails or if user is not authenticated
+ */
 export const deletePurchaseOrderLineFromCloud = async (lineId) => {
   // ALWAYS record deletion locally first (prevents phantom resurrection)
   await recordDeletion('purchaseOrderLine', lineId);
@@ -1034,6 +1129,17 @@ export const pushWebsiteSettings = async (settings) => {
 // INITIAL SYNC (on app load)
 // ============================================
 
+/**
+ * Performs initial synchronization of data from local IndexedDB to Firebase Firestore.
+ * Uploads all local recipes, categories, and departments to the cloud if Firebase is available.
+ * 
+ * @returns {Promise<void>} Promise that resolves when initial sync is complete
+ * @throws {Error} Throws error if sync operations fail
+ * 
+ * @example
+ * // Perform initial sync on app startup
+ * await initialSync();
+ */
 export const initialSync = async () => {
   if (!db) {
     console.warn('⚠️ Firebase not initialized, skipping sync');
@@ -1784,6 +1890,18 @@ const syncPurchaseOrderLines = async () => {
 // REAL-TIME LISTENERS
 // ============================================
 
+/**
+ * Starts real-time synchronization with Firebase Firestore
+ * @param {Function} onDataChange - Callback function invoked when data changes are detected
+ * @returns {Function|null} Unsubscribe function to stop the real-time listener, or null if Firebase is not initialized
+ * @throws {Error} When Firebase authentication or connection fails
+ * @example
+ * const unsubscribe = startRealtimeSync((changedData) => {
+ *   console.log('Data updated:', changedData);
+ * });
+ * // Later, to stop syncing:
+ * unsubscribe();
+ */
 export const startRealtimeSync = (onDataChange) => {
   if (!db) {
     console.warn('⚠️ Firebase not initialized, skipping realtime sync');
@@ -2004,6 +2122,10 @@ export const startRealtimeSync = (onDataChange) => {
   ];
 };
 
+/**
+ * Stops all active real-time sync listeners and clears the listeners array.
+ * This function should be called when the user logs out or when sync needs to be disabled.
+ */
 export const stopRealtimeSync = () => {
   syncListeners.forEach(unsubscribe => unsubscribe());
   syncListeners = [];
@@ -2013,6 +2135,25 @@ export const stopRealtimeSync = () => {
 // LEGACY FUNCTIONS (keep for manual sync UI)
 // ============================================
 
+/**
+ * Uploads all local data (recipes, categories, departments) to Firebase Firestore.
+ * Requires user authentication and Firebase initialization.
+ * 
+ * @async
+ * @function
+ * @returns {Promise<void>} Promise that resolves when upload is complete
+ * @throws {Error} When Firebase is not initialized
+ * @throws {Error} When user is not authenticated
+ * @throws {Error} When upload operations fail
+ * 
+ * @example
+ * try {
+ *   await uploadToCloud();
+ *   console.log('Data uploaded successfully');
+ * } catch (error) {
+ *   console.error('Upload failed:', error.message);
+ * }
+ */
 export const uploadToCloud = async () => {
   if (!db) throw new Error('Firebase not initialized');
 
@@ -2043,6 +2184,22 @@ export const uploadToCloud = async () => {
   };
 };
 
+/**
+ * Downloads all user data from Firebase Firestore and saves it to local IndexedDB.
+ * Syncs recipes, categories, and departments from the cloud to the local device.
+ *
+ * @returns {Promise<void>} Promise that resolves when all data has been downloaded and saved locally
+ * @throws {Error} Throws if Firebase is not initialized or if user is not authenticated
+ * @throws {Error} Throws if there's an error accessing Firestore or saving to IndexedDB
+ *
+ * @example
+ * try {
+ *   await downloadFromCloud();
+ *   console.log('All data synced from cloud');
+ * } catch (error) {
+ *   console.error('Failed to download from cloud:', error);
+ * }
+ */
 export const downloadFromCloud = async () => {
   if (!db) throw new Error('Firebase not initialized');
 
@@ -2087,6 +2244,13 @@ export const downloadFromCloud = async () => {
   };
 };
 
+/**
+ * Gets the current synchronization status of the cloud sync service.
+ * 
+ * @returns {Promise<Object>} The sync status object containing connection state and message
+ * @returns {Promise<{connected: boolean, message: string}>} Status with connected flag and descriptive message
+ * @throws {Error} When there's an issue checking the sync status
+ */
 export const getSyncStatus = async () => {
   if (!db) {
     return { connected: false, message: 'Firebase not connected' };

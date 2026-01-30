@@ -40,6 +40,20 @@ import {
   StepReview,
 } from './steps';
 
+/**
+ * @component
+ * A multi-step wizard component for creating professional food industry websites.
+ * Guides users through a 10-step process including business type selection, identity setup,
+ * design customization, content creation, and website publishing.
+ * 
+ * @param {Object} props - The component props
+ * @param {Function} props.onComplete - Callback function called when the website creation process is completed
+ * 
+ * @returns {JSX.Element} The website builder wizard interface
+ * 
+ * @example
+ * <WebsiteBuilder onComplete={(websiteData) => console.log('Website created:', websiteData)} />
+ */
 export default function WebsiteBuilder({ onComplete }) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);

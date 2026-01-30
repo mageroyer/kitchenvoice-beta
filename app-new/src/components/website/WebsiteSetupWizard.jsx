@@ -28,6 +28,22 @@ const TEMPLATES = [
   // Future templates: urbain, chaleur
 ];
 
+/**
+ * @component
+ * Website Setup Wizard - Guides users through creating their public website for the first time.
+ * Multi-step process: Welcome → Choose URL → Select Template → Add Branding → Done
+ * 
+ * @param {Object} props - Component props
+ * @param {Function} props.onComplete - Callback function called when wizard is completed
+ * @param {string} [props.businessName=''] - Pre-filled business name for the setup process
+ * @returns {JSX.Element} The website setup wizard component
+ * 
+ * @example
+ * <WebsiteSetupWizard 
+ *   onComplete={() => console.log('Setup complete!')} 
+ *   businessName="My Restaurant" 
+ * />
+ */
 export default function WebsiteSetupWizard({ onComplete, businessName = '' }) {
   const [step, setStep] = useState(STEPS.WELCOME);
   const [settings, setSettings] = useState({

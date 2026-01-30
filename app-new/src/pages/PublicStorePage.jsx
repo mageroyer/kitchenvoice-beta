@@ -24,6 +24,17 @@ const TEMPLATES = {
   }
 };
 
+/**
+ * @component
+ * Public-facing store page that displays recipes marked as public for a specific store.
+ * No authentication required - accessible to anyone via store slug.
+ * 
+ * @returns {JSX.Element} The rendered public store page with recipes and store branding
+ * 
+ * @example
+ * // Accessed via URL: /s/my-store-slug
+ * <PublicStorePage />
+ */
 export default function PublicStorePage() {
   const { slug } = useParams();
   const [loading, setLoading] = useState(true);

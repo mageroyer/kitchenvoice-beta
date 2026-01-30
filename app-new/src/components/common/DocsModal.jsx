@@ -32,6 +32,23 @@ const DOCS = [
   },
 ];
 
+/**
+ * @component
+ * Modal component that displays a list of downloadable documentation PDFs including user guide, security overview, terms of service, and patch reports.
+ * 
+ * @param {Object} props - The component props
+ * @param {boolean} props.isOpen - Controls whether the modal is visible
+ * @param {Function} props.onClose - Callback function to close the modal
+ * @param {Function} props.onDownload - Callback function to handle document downloads, receives document id as parameter
+ * @returns {JSX.Element|null} The modal component or null if not open
+ * 
+ * @example
+ * <DocsModal 
+ *   isOpen={showDocs} 
+ *   onClose={() => setShowDocs(false)}
+ *   onDownload={(docId) => downloadDocument(docId)}
+ * />
+ */
 export default function DocsModal({ isOpen, onClose, onDownload }) {
   if (!isOpen) return null;
 

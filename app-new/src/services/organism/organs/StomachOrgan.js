@@ -283,6 +283,17 @@ export class StomachOrgan extends Organ {
 }
 
 // Factory function
+/**
+ * Creates and initializes a new StomachOrgan instance for invoice processing.
+ * The stomach organ handles the digestion of raw PDF/image invoice data through
+ * AI parsing to extract structured information.
+ * 
+ * @returns {StomachOrgan} A new initialized StomachOrgan instance ready for invoice processing
+ * 
+ * @example
+ * const stomach = createStomachOrgan();
+ * stomach.digest(invoicePdfData);
+ */
 export function createStomachOrgan() {
   const stomach = new StomachOrgan();
   stomach.initialize();

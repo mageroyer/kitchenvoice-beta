@@ -120,7 +120,15 @@ function SettingsPage() {
     navigate(-1); // Go back to previous page
   };
 
-  // Handle export
+  // Handle /**
+ * Handles exporting kitchen data in the specified format
+ * @async
+ * @function handleExport
+ * @param {string} type - The export format type (e.g., 'json', 'csv')
+ * @returns {Promise<void>} Promise that resolves when export is complete
+ * @throws {Error} When export operation fails
+ */
+export
   const handleExport = async (type) => {
     setExporting(true);
     setError('');

@@ -114,7 +114,7 @@ jobs:
 
       - name: Install app dependencies
         working-directory: app-new
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Configure Git
         run: |

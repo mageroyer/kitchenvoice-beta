@@ -101,7 +101,10 @@ export async function run({ runTests, runCommand, projectRoot }) {
     const testResult = await runTests();
     if (!testResult.success) {
       console.log('⚠️ Tests failed after documentation changes');
+      console.log(`   Passing: ${testResult.passing}, Failing: ${testResult.failing}`);
       report.changes.push('Warning: Tests may have been affected');
+    } else {
+      console.log(`✓ Tests passed (${testResult.passing} passing)`);
     }
   }
 

@@ -112,6 +112,10 @@ jobs:
         working-directory: scripts/autopilot
         run: npm install
 
+      - name: Install app dependencies
+        working-directory: app-new
+        run: npm install
+
       - name: Configure Git
         run: |
           git config --global user.name "SmartCookBook Autopilot"

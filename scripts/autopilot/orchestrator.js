@@ -212,7 +212,7 @@ const CONFIG = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   notifyEmail: process.env.NOTIFY_EMAIL || 'mageroyer@hotmail.com',
   maxChangesPerRun: 10,
-  testCommand: 'npm test -- --reporter=verbose',
+  testCommand: 'npx vitest run --reporter=verbose',
   buildCommand: 'npm run build',
 };
 
@@ -359,15 +359,30 @@ async function runTests() {
   console.log('Running tests...');
   const result = await runCommand(CONFIG.testCommand);
 
-  // Parse test output for summary
-  const passMatch = result.stdout?.match(/(\d+) passing/);
-  const failMatch = result.stdout?.match(/(\d+) failing/);
+  const output = result.stdout || '';
+  const errorOutput = result.stderr || '';
+
+  // Parse test output for summary (supports both Vitest and Mocha formats)
+  // Vitest: "Tests  1921 passed (1921)" / "Tests  3 failed (3)"
+  // Mocha:  "1921 passing" / "3 failing"
+  const passMatch = output.match(/(\d+)\s+pass(?:ed|ing)/) || errorOutput.match(/(\d+)\s+pass(?:ed|ing)/);
+  const failMatch = output.match(/(\d+)\s+fail(?:ed|ing)/) || errorOutput.match(/(\d+)\s+fail(?:ed|ing)/);
+
+  if (!result.success) {
+    console.log('⚠️ Test command exited with error');
+    // Log last 40 lines of output for debugging
+    const lines = (output + '\n' + errorOutput).split('\n').filter(l => l.trim());
+    const tail = lines.slice(-40).join('\n');
+    console.log('--- Test output (last 40 lines) ---');
+    console.log(tail);
+    console.log('--- End test output ---');
+  }
 
   return {
     success: result.success,
     passing: passMatch ? parseInt(passMatch[1]) : 0,
     failing: failMatch ? parseInt(failMatch[1]) : 0,
-    output: result.stdout || result.stderr,
+    output: output || errorOutput,
   };
 }
 

@@ -14,7 +14,7 @@
  *
  * Writes:
  *   docs/doc_health.json — Per-layer health scores
- *   docs/**/*.md         — Updated documentation files
+ *   docs/(various).md    — Updated documentation files
  */
 
 import fs from 'fs/promises';

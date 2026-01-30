@@ -351,6 +351,22 @@ async function createAgentBranch(agentName) {
 
   await git.checkout(CONFIG.mainBranch);
   await git.pull();
+
+  // Delete stale remote branch if it exists (from a previous run today)
+  try {
+    await git.push('origin', `:refs/heads/${branchName}`);
+    console.log(`Deleted stale remote branch: ${branchName}`);
+  } catch {
+    // Branch doesn't exist remotely — that's fine
+  }
+
+  // Delete stale local branch if it exists
+  try {
+    await git.deleteLocalBranch(branchName, true);
+  } catch {
+    // Branch doesn't exist locally — that's fine
+  }
+
   await git.checkoutLocalBranch(branchName);
 
   return branchName;

@@ -267,6 +267,7 @@ const execAsync = promisify(exec);
 
 // Configuration
 const CONFIG = {
+  repoRoot: path.resolve(process.cwd(), '../..'),
   projectRoot: path.resolve(process.cwd(), '../../app-new'),
   mainBranch: 'fresh-start',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
@@ -337,7 +338,7 @@ const AGENTS = {
  * Initialize Git for the project
  */
 function initGit() {
-  return simpleGit(CONFIG.projectRoot);
+  return simpleGit(CONFIG.repoRoot);
 }
 
 /**

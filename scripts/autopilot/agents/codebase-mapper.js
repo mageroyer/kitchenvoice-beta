@@ -26,10 +26,11 @@ const IGNORE_FILES = [/\.test\.(js|jsx)$/, /\.spec\.(js|jsx)$/, /setupTests\.js$
 // ── File Classification ──
 
 function classifyFile(relativePath) {
+  // Hooks check must come before components — hooks can live inside components/
+  if (/\/hooks\//.test(relativePath) || /\/use[A-Z]\w+\.(js|jsx)$/.test(relativePath)) return 'hook';
   if (/\/services\//.test(relativePath)) return 'service';
   if (/\/components\//.test(relativePath)) return 'component';
   if (/\/pages\//.test(relativePath)) return 'page';
-  if (/\/hooks\//.test(relativePath)) return 'hook';
   if (/\/utils\//.test(relativePath)) return 'util';
   if (/\/constants\//.test(relativePath)) return 'constant';
   if (/\/styles\//.test(relativePath)) return 'style';

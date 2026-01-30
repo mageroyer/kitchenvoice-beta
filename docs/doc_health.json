@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-01-30T22:49:42.276Z",
+  "generatedAt": "2026-01-30T23:44:02.530Z",
   "overallHealth": 100,
   "totalDocs": 24,
   "freshDocs": 24,
@@ -88,7 +88,7 @@
           "automation": "assisted",
           "stale": false,
           "staleDays": 0,
-          "justUpdated": false
+          "justUpdated": true
         }
       ],
       "totalDocs": 2,
@@ -105,7 +105,7 @@
           "automation": "assisted",
           "stale": false,
           "staleDays": 0,
-          "justUpdated": true
+          "justUpdated": false
         },
         {
           "name": "INVOICE_ARCHITECTURE.md",
@@ -121,7 +121,7 @@
           "automation": "assisted",
           "stale": false,
           "staleDays": 0,
-          "justUpdated": true
+          "justUpdated": false
         },
         {
           "name": "INVENTORY_SYSTEM.md",
@@ -145,7 +145,7 @@
           "automation": "assisted",
           "stale": false,
           "staleDays": 0,
-          "justUpdated": true
+          "justUpdated": false
         }
       ],
       "totalDocs": 6,
@@ -178,7 +178,7 @@
           "automation": "assisted",
           "stale": false,
           "staleDays": 0,
-          "justUpdated": true
+          "justUpdated": false
         },
         {
           "name": "TESTING_GUIDE.md",
@@ -219,7 +219,7 @@
           "automation": "auto",
           "stale": false,
           "staleDays": 0,
-          "justUpdated": false
+          "justUpdated": true
         }
       ],
       "totalDocs": 1,
@@ -236,7 +236,7 @@
           "automation": "assisted",
           "stale": false,
           "staleDays": 0,
-          "justUpdated": false
+          "justUpdated": true
         }
       ],
       "totalDocs": 1,
@@ -253,7 +253,7 @@
           "automation": "auto",
           "stale": false,
           "staleDays": 0,
-          "justUpdated": false
+          "justUpdated": true
         }
       ],
       "totalDocs": 1,
@@ -270,7 +270,7 @@
           "automation": "assisted",
           "stale": false,
           "staleDays": 0,
-          "justUpdated": false
+          "justUpdated": true
         }
       ],
       "totalDocs": 1,
@@ -280,9 +280,10 @@
     }
   },
   "lastUpdated": [
-    "DATABASE_SCHEMA.md",
-    "VOICE_RECOGNITION_GUIDE.md",
-    "SYSTEM_ARCHITECTURE.md",
-    "API_REFERENCE.md"
+    "GLOSSARY.md",
+    "CHANGELOG.md",
+    "ONBOARDING.md",
+    "RISK_REGISTER.md",
+    "adrs/INDEX.md"
   ]
 }

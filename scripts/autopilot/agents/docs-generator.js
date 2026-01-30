@@ -60,7 +60,13 @@ export async function run({ runTests, runCommand, projectRoot }) {
         messages: [{ role: 'user', content: prompt }],
       });
 
-      const jsdoc = response.content[0].text.trim();
+      let jsdoc = response.content[0].text.trim();
+
+      // Strip markdown code fences if Claude wrapped the response
+      jsdoc = jsdoc
+        .replace(/^```(?:javascript|js|jsdoc)?\s*\n?/i, '')
+        .replace(/\n?```\s*$/i, '')
+        .trim();
 
       // Validate it looks like JSDoc
       if (jsdoc.startsWith('/**') && jsdoc.endsWith('*/')) {
@@ -75,7 +81,7 @@ export async function run({ runTests, runCommand, projectRoot }) {
         report.changes.push(`Added JSDoc to ${item.name} in ${item.file}`);
         console.log(`  ✓ Added JSDoc`);
       } else {
-        console.log(`  ✗ Invalid JSDoc format`);
+        console.log(`  ✗ Invalid JSDoc format, got: ${jsdoc.substring(0, 80)}...`);
         report.skipped.push({ file: item.file, name: item.name, reason: 'Invalid format' });
       }
 

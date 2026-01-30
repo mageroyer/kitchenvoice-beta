@@ -16,7 +16,6 @@ const AGENTS = [
   { id: 'deps-updater',      name: 'Deps Updater',    icon: '\u{1F4E6}', schedule: 'Sunday 3 AM',      color: '#a855f7' },
   { id: 'security-scanner',  name: 'Security Scan',   icon: '\u{1F6E1}', schedule: 'Monday 4 AM',      color: '#ef4444' },
   { id: 'codebase-mapper',   name: 'Codebase Mapper', icon: '\u{1F5FA}', schedule: 'Wednesday 1 AM',   color: '#14b8a6' },
-  { id: 'docs-generator',    name: 'Docs Generator',  icon: '\u{1F4DD}', schedule: 'Friday 5 AM',      color: '#eab308' },
   { id: 'full-audit',        name: 'Full Audit',      icon: '\u{1F50D}', schedule: 'Monthly 1st',      color: '#06b6d4' },
 ];
 
@@ -444,7 +443,6 @@ const FRIENDLY_TO_ID = {
   'security scanner': 'security-scanner',
   'codebase mapper': 'codebase-mapper',
   'codebase map': 'codebase-mapper',
-  'docs generator': 'docs-generator',
   'full audit': 'full-audit',
 };
 

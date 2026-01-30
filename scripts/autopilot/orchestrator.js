@@ -245,13 +245,6 @@ const AGENTS = {
     description: 'Scan for vulnerabilities, fix if possible',
     autoFix: true,
   },
-  'docs-generator': {
-    name: 'Documentation Generator',
-    schedule: '0 5 * * 5', // 5 AM Friday
-    description: 'Update JSDoc, README files, changelogs',
-    autoFix: true,
-    skipTests: true, // Only adds JSDoc comments — cannot break tests
-  },
   'codebase-mapper': {
     name: 'Codebase Mapper',
     schedule: '0 1 * * 3', // Wednesday 1 AM UTC (weekly)

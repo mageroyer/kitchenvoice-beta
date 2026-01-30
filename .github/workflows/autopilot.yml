@@ -11,8 +11,6 @@ on:
     - cron: '0 3 * * 0'
     # Weekly security scan on Monday at 4 AM UTC
     - cron: '0 4 * * 1'
-    # Weekly docs update on Friday at 5 AM UTC
-    - cron: '0 5 * * 5'
     # Monthly full audit on 1st at 2 AM UTC
     - cron: '0 2 1 * *'
 
@@ -29,7 +27,6 @@ on:
           - test-fixer
           - deps-updater
           - security-scanner
-          - docs-generator
           - codebase-mapper
           - full-audit
 
@@ -80,8 +77,6 @@ jobs:
             echo "agent=deps-updater" >> $GITHUB_OUTPUT
           elif [ "$DOW" == "1" ] && [ "$HOUR" == "04" ]; then
             echo "agent=security-scanner" >> $GITHUB_OUTPUT
-          elif [ "$DOW" == "5" ] && [ "$HOUR" == "05" ]; then
-            echo "agent=docs-generator" >> $GITHUB_OUTPUT
           else
             echo "agent=daily-health" >> $GITHUB_OUTPUT
           fi

@@ -102,7 +102,7 @@ async function getWorkflowRuns({ limit = 20 } = {}) {
  * Extract agent name from workflow run
  */
 function extractAgentName(run) {
-  const agentNames = ['daily-health', 'test-fixer', 'deps-updater', 'security-scanner', 'codebase-mapper', 'docs-generator', 'full-audit'];
+  const agentNames = ['daily-health', 'test-fixer', 'deps-updater', 'security-scanner', 'codebase-mapper', 'full-audit'];
 
   // Check display_title for agent name patterns
   if (run.display_title) {

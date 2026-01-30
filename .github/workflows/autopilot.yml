@@ -90,6 +90,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
 
     steps:
       - name: Checkout repository
@@ -117,12 +119,10 @@ jobs:
           git config --global user.email "autopilot@smartcookbook.app"
 
       - name: Setup Firebase credentials
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' }}
+        if: env.FIREBASE_SA_JSON != ''
         run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT_JSON" > /tmp/firebase-sa.json
+          echo "$FIREBASE_SA_JSON" > /tmp/firebase-sa.json
           echo "FIREBASE_SERVICE_ACCOUNT=/tmp/firebase-sa.json" >> $GITHUB_ENV
-        env:
-          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
 
       - name: Run autopilot agent
         working-directory: scripts/autopilot

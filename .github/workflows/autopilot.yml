@@ -42,6 +42,7 @@ on:
           - update
           - init
           - digest
+          - review
 
   # Run on test failures
   workflow_run:

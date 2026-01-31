@@ -305,6 +305,22 @@ ipcMain.handle('submit-session-digest', async (event, summaryText) => {
   return firestoreService.submitSessionDigest(summaryText);
 });
 
+// ── Doc Reviews ──
+ipcMain.handle('get-doc-reviews', async () => {
+  if (!firestoreService) return [];
+  return firestoreService.getDocReviews();
+});
+
+ipcMain.handle('submit-review-answers', async (event, { reviewId, answers }) => {
+  if (!firestoreService) return false;
+  return firestoreService.submitReviewAnswers(reviewId, answers);
+});
+
+ipcMain.handle('skip-doc-review', async (event, reviewId) => {
+  if (!firestoreService) return false;
+  return firestoreService.skipDocReview(reviewId);
+});
+
 // ── Realtime report listener ──
 ipcMain.on('start-reports-listener', () => {
   if (!firestoreService) return;

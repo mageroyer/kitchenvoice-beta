@@ -400,6 +400,64 @@ async function submitSessionDigest(summaryText) {
 }
 
 // ════════════════════════════════════════════
+//  DOC REVIEWS (AI-Assisted Interactive Review)
+// ════════════════════════════════════════════
+
+async function getDocReviews() {
+  if (!db) return [];
+  try {
+    const snap = await db.collection('doc_reviews')
+      .orderBy('createdAt', 'desc')
+      .get();
+    return snap.docs.map(doc => serializeDoc(doc));
+  } catch (err) {
+    console.error('[Firestore] getDocReviews error:', err.message);
+    return [];
+  }
+}
+
+async function submitReviewAnswers(reviewId, answers) {
+  if (!db) return false;
+  try {
+    const docRef = db.collection('doc_reviews').doc(reviewId);
+    const doc = await docRef.get();
+    if (!doc.exists) return false;
+
+    const data = doc.data();
+    const updatedQuestions = data.questions.map(q => {
+      const match = answers.find(a => a.id === q.id);
+      return match ? { ...q, answer: match.answer } : q;
+    });
+
+    const allAnswered = updatedQuestions.every(q => q.answer && q.answer.trim());
+
+    await docRef.update({
+      questions: updatedQuestions,
+      status: allAnswered ? 'answered' : 'pending',
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return true;
+  } catch (err) {
+    console.error('[Firestore] submitReviewAnswers error:', err.message);
+    return false;
+  }
+}
+
+async function skipDocReview(reviewId) {
+  if (!db) return false;
+  try {
+    await db.collection('doc_reviews').doc(reviewId).update({
+      status: 'skipped',
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return true;
+  } catch (err) {
+    console.error('[Firestore] skipDocReview error:', err.message);
+    return false;
+  }
+}
+
+// ════════════════════════════════════════════
 //  DASHBOARD CONFIG
 // ════════════════════════════════════════════
 
@@ -450,6 +508,10 @@ module.exports = {
   // Doc Queue
   getDocQueue,
   submitSessionDigest,
+  // Doc Reviews
+  getDocReviews,
+  submitReviewAnswers,
+  skipDocReview,
   // Config
   getConfig,
 };

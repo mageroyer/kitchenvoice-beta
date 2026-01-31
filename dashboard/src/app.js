@@ -274,6 +274,11 @@ function initPanels() {
   if (window.HealthTrendsPanel) {
     window.HealthTrendsPanel.init();
   }
+
+  // Doc Review panel (AI-assisted)
+  if (window.DocReviewPanel) {
+    window.DocReviewPanel.init();
+  }
 }
 
 // ── Listen for tray-triggered agent runs ──
@@ -770,6 +775,7 @@ async function refreshAllPanels() {
       if (window.TaskQueuePanel) tasks.push(window.TaskQueuePanel.load());
       if (window.SecurityPanel) tasks.push(window.SecurityPanel.load());
       if (window.HealthTrendsPanel) tasks.push(window.HealthTrendsPanel.load());
+      if (window.DocReviewPanel) tasks.push(window.DocReviewPanel.load());
     }
     if (status.github) {
       tasks.push(loadWorkflowRuns());

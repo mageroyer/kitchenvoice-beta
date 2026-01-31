@@ -408,6 +408,187 @@
 }
 
 /* ════════════════════════════════════════════
+   DOC REVIEW PANEL
+   ════════════════════════════════════════════ */
+
+.review-panel-container {
+  padding: 0 var(--grid-gap);
+  padding-bottom: var(--grid-gap);
+}
+
+.review-panel-container .panel {
+  height: auto;
+  max-height: 400px;
+}
+
+.review-panel-container .panel-body {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(124, 58, 237, 0.1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.review-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.review-card-header:hover {
+  background: var(--bg-card-hover);
+}
+
+.review-card-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-doc-icon {
+  font-size: 14px;
+}
+
+.review-doc-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.review-card-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-progress {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.review-expand-icon {
+  font-size: 9px;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.review-card-body {
+  padding: 6px 10px 10px;
+  border-top: 1px solid rgba(124, 58, 237, 0.08);
+}
+
+.review-question {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(124, 58, 237, 0.05);
+}
+
+.review-question:last-of-type {
+  border-bottom: none;
+}
+
+.review-q-answered {
+  opacity: 0.7;
+}
+
+.review-q-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.review-q-badge {
+  font-size: 9px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid;
+}
+
+.review-q-line {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.review-q-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.review-q-current {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.review-q-current code {
+  background: var(--bg-input);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  color: var(--error);
+}
+
+.review-q-input {
+  width: 100%;
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.review-q-suggestion {
+  font-size: 9px;
+  color: var(--purple-400);
+  cursor: pointer;
+  margin-top: 2px;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.review-q-suggestion:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.review-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid rgba(124, 58, 237, 0.08);
+}
+
+.review-btn-accept {
+  color: var(--purple-400) !important;
+  border-color: var(--purple-400) !important;
+}
+
+.review-btn-skip {
+  opacity: 0.6;
+}
+
+.review-applied-summary {
+  padding: 6px 10px;
+  text-align: center;
+  opacity: 0.6;
+}
+
+/* ════════════════════════════════════════════
    MODAL
    ════════════════════════════════════════════ */
 

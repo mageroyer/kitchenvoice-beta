@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:;">
+  <title>Autopilot Command Center</title>
+  <link rel="stylesheet" href="styles/theme.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/panels.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ═══ Custom Titlebar ═══ -->
+    <div class="titlebar">
+      <div class="titlebar-left">
+        <div class="titlebar-icon">
+          <svg viewBox="0 0 24 24">
+            <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" stroke="currentColor" stroke-width="1.5" fill="rgba(124,58,237,0.2)"/>
+            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+          </svg>
+        </div>
+        <span class="titlebar-title">Autopilot Command Center</span>
+      </div>
+
+      <div class="titlebar-status">
+        <div class="status-indicator">
+          <span class="status-dot success" id="systemStatusDot"></span>
+          <span id="systemStatusText">All Systems Nominal</span>
+        </div>
+        <span id="clockDisplay">--:--:--</span>
+      </div>
+
+      <div class="titlebar-controls">
+        <button class="titlebar-btn" id="btn-minimize" title="Minimize to tray">
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button class="titlebar-btn" id="btn-maximize" title="Maximize">
+          <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></svg>
+        </button>
+        <button class="titlebar-btn close" id="btn-close" title="Close to tray">
+          <svg viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ 6-Panel Dashboard Grid ═══ -->
+    <div class="dashboard-grid">
+
+      <!-- Panel 1: Agent Status Grid -->
+      <div class="panel" id="panel-agents">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <span class="panel-icon">&#x2B22;</span>
+            <span class="panel-title">Agents</span>
+          </div>
+          <div class="panel-header-right">
+            <span class="panel-count" id="agents-online-count">6 agents</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="agent-grid" id="agent-grid">
+            <!-- Agent cards injected by agentGrid.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Schedule Timeline -->
+      <div class="panel" id="panel-schedule">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <span class="panel-icon">&#x23F1;</span>
+            <span class="panel-title">Schedule</span>
+          </div>
+          <div class="panel-header-right">
+            <span class="panel-count" id="next-run-countdown">--</span>
+          </div>
+        </div>
+        <div class="panel-body" id="schedule-body">
+          <!-- Schedule entries injected by schedule.js -->
+        </div>
+      </div>
+
+      <!-- Panel 3: Health Trends -->
+      <div class="panel" id="panel-trends">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <span class="panel-icon">&#x2197;</span>
+            <span class="panel-title">Health Trends</span>
+          </div>
+          <div class="panel-header-right">
+            <span class="panel-count">30 days</span>
+          </div>
+        </div>
+        <div class="panel-body" id="trends-body">
+          <!-- Charts injected by healthTrends.js -->
+        </div>
+      </div>
+
+      <!-- Panel 4: Reports Viewer -->
+      <div class="panel" id="panel-reports">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <span class="panel-icon">&#x1F4CB;</span>
+            <span class="panel-title">Reports</span>
+          </div>
+          <div class="panel-header-right">
+            <span class="panel-count" id="report-count">0 reports</span>
+          </div>
+        </div>
+        <div class="panel-body" id="reports-body">
+          <!-- Report list + detail injected by reports.js -->
+        </div>
+      </div>
+
+      <!-- Panel 5: Task Queue -->
+      <div class="panel" id="panel-tasks">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <span class="panel-icon">&#x2615;</span>
+            <span class="panel-title">Task Queue</span>
+          </div>
+          <div class="panel-header-right">
+            <button class="btn btn-sm" id="btn-create-task">+ Task</button>
+          </div>
+        </div>
+        <div class="panel-body" id="tasks-body">
+          <!-- Task list injected by taskQueue.js -->
+        </div>
+      </div>
+
+      <!-- Panel 6: Security Alerts -->
+      <div class="panel" id="panel-security">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <span class="panel-icon">&#x1F6E1;</span>
+            <span class="panel-title">Security</span>
+          </div>
+          <div class="panel-header-right">
+            <span class="badge badge-success" id="security-badge">0 alerts</span>
+          </div>
+        </div>
+        <div class="panel-body" id="security-body">
+          <!-- Security alerts injected by securityAlerts.js -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ Doc Review Panel (below grid, auto-hidden when empty) ═══ -->
+    <div class="review-panel-container" id="review-panel-container" style="display:none;">
+      <div class="panel" id="panel-reviews-doc">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <span class="panel-icon">&#x1F4DD;</span>
+            <span class="panel-title">Doc Reviews</span>
+          </div>
+          <div class="panel-header-right">
+            <span class="panel-count" id="review-count">0 reviews</span>
+            <button class="btn btn-sm" id="btn-collapse-reviews" title="Hide">&#x2715;</button>
+          </div>
+        </div>
+        <div class="panel-body" id="reviews-body">
+          <!-- Injected by docReview.js -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="../node_modules/chart.js/dist/chart.umd.js"></script>
+  <script src="utils/charts.js"></script>
+  <script src="panels/reports.js"></script>
+  <script src="panels/taskQueue.js"></script>
+  <script src="panels/securityAlerts.js"></script>
+  <script src="panels/healthTrends.js"></script>
+  <script src="panels/docReview.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

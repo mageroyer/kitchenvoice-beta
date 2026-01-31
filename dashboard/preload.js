@@ -52,6 +52,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDocQueue: () => ipcRenderer.invoke('get-doc-queue'),
   submitSessionDigest: (text) => ipcRenderer.invoke('submit-session-digest', text),
 
+  // ── Doc Reviews ──
+  getDocReviews: () => ipcRenderer.invoke('get-doc-reviews'),
+  submitReviewAnswers: (reviewId, answers) => ipcRenderer.invoke('submit-review-answers', { reviewId, answers }),
+  skipDocReview: (reviewId) => ipcRenderer.invoke('skip-doc-review', reviewId),
+
   // ── GitHub Actions ──
   getWorkflowRuns: (options) => ipcRenderer.invoke('get-workflow-runs', options),
   triggerWorkflow: (agentName) => ipcRenderer.invoke('trigger-workflow', agentName),

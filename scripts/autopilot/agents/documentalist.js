@@ -7,6 +7,7 @@
  *   update  — (default) Detect stale docs via coverage.json, refresh top 5 via Claude
  *   init    — First-run: generate all missing doc layers (Increment 2)
  *   digest  — Process session summaries into structured docs (Increment 4)
+ *   review  — AI-assisted interactive review of generated docs (Increment 5)
  *
  * Reads:
  *   docs/manifest.json  — Machine-readable codebase map (from codebase-mapper)
@@ -583,6 +584,8 @@ export async function run(context) {
       return runInit({ runClaudeAgent, projectRoot, progress });
     case 'digest':
       return runDigest({ runClaudeAgent, projectRoot, progress });
+    case 'review':
+      return runReview({ runClaudeAgent, projectRoot, progress });
     default:
       console.error(`[Documentalist] Unknown mode: ${mode}`);
       return { changes: [], metrics: {}, errors: [`Unknown mode: ${mode}`] };
@@ -1716,6 +1719,336 @@ async function runDigest({ runClaudeAgent, projectRoot, progress }) {
   console.log(`Changelog entries: ${totalChanges}`);
   console.log(`Glossary terms: ${totalTerms}`);
   console.log(`Deferred work: ${totalDeferred}`);
+
+  return report;
+}
+
+// ══════════════════════════════════════════════════
+//  SECTION 10: REVIEW MODE — AI-Assisted Interactive Doc Review
+// ══════════════════════════════════════════════════
+
+/**
+ * Review mode entry point.
+ * Phase 1: If no doc_reviews exist → analyze docs and generate questions.
+ * Phase 2: If answered reviews exist → apply corrections to docs.
+ * Waiting: If pending (unanswered) reviews exist → report and exit.
+ */
+async function runReview({ runClaudeAgent, projectRoot, progress }) {
+  const report = { changes: [], metrics: {}, errors: [] };
+
+  await progress('loading', 'Checking review status...', 5);
+
+  const db = getDB();
+  if (!db) {
+    report.changes.push('Firestore not available — cannot run review mode');
+    report.errors.push('No Firestore connection');
+    return report;
+  }
+
+  // Check existing review state
+  let pendingSnap, answeredSnap;
+  try {
+    pendingSnap = await db.collection('doc_reviews')
+      .where('status', '==', 'pending').get();
+    answeredSnap = await db.collection('doc_reviews')
+      .where('status', '==', 'answered').get();
+  } catch (err) {
+    report.errors.push(`Firestore query failed: ${err.message}`);
+    return report;
+  }
+
+  // Phase 2: Apply answers if any are ready
+  if (answeredSnap.size > 0) {
+    console.log(`\n  Found ${answeredSnap.size} answered review(s) — applying corrections...\n`);
+    return runReviewApply({ runClaudeAgent, projectRoot, progress, answeredDocs: answeredSnap.docs, db, report });
+  }
+
+  // Waiting: questions generated but not yet answered
+  if (pendingSnap.size > 0) {
+    const totalQs = pendingSnap.docs.reduce((sum, d) => sum + (d.data().questions || []).length, 0);
+    report.changes.push(`Waiting for user to answer ${totalQs} question(s) across ${pendingSnap.size} doc(s) in dashboard`);
+    report.metrics = { mode: 'review', phase: 'waiting', pendingReviews: pendingSnap.size, pendingQuestions: totalQs };
+    await progress('complete', `${pendingSnap.size} review(s) awaiting answers in dashboard`, 100);
+    return report;
+  }
+
+  // Phase 1: Analyze docs and generate questions
+  console.log('\n  No existing reviews — analyzing docs for gaps...\n');
+  return runReviewAnalyze({ runClaudeAgent, projectRoot, progress, db, report });
+}
+
+/**
+ * Phase 1: Read each doc flagged for review, ask Claude to find specific gaps,
+ * store targeted questions in Firestore doc_reviews collection.
+ */
+async function runReviewAnalyze({ runClaudeAgent, projectRoot, progress, db, report }) {
+  await progress('loading', 'Loading init-report.json...', 10);
+
+  const initReportPath = path.join(projectRoot, '..', 'docs', 'init-report.json');
+  const initReport = await loadJSON(initReportPath);
+
+  if (!initReport || !initReport.humanReviewNeeded || initReport.humanReviewNeeded.length === 0) {
+    report.changes.push('No docs flagged for review in init-report.json');
+    await progress('complete', 'No reviews needed', 100);
+    return report;
+  }
+
+  const reviewItems = initReport.humanReviewNeeded;
+  let totalQuestions = 0;
+
+  for (let i = 0; i < reviewItems.length; i++) {
+    const item = reviewItems[i];
+    const pct = 15 + Math.round(((i + 1) / reviewItems.length) * 70);
+    await progress('analyzing', `Analyzing ${item.doc}...`, pct);
+    console.log(`  Analyzing: ${item.doc}`);
+
+    // Read doc content
+    let docContent;
+    let docPath;
+
+    if (item.doc.endsWith('/')) {
+      // Directory (ADRs) — concatenate all files
+      docContent = await readADRsForReview(projectRoot);
+      docPath = item.doc;
+    } else {
+      // Look up in DOC_REGISTRY first, fallback to docs/ prefix
+      const regKey = Object.keys(DOC_REGISTRY).find(k =>
+        k === item.doc || DOC_REGISTRY[k].path.endsWith(item.doc)
+      );
+      const entry = regKey ? DOC_REGISTRY[regKey] : null;
+      docPath = entry ? entry.path : `docs/${item.doc}`;
+      docContent = await readDocFile(docPath, projectRoot);
+    }
+
+    if (!docContent) {
+      console.log(`    Skipped: file not found (${docPath})`);
+      report.changes.push(`Skipped ${item.doc}: file not found`);
+      continue;
+    }
+
+    // Ask Claude to find specific gaps
+    const questions = await analyzeDocForGaps(item.doc, docContent, runClaudeAgent);
+
+    if (questions.length > 0) {
+      await db.collection('doc_reviews').add({
+        docName: item.doc,
+        docPath,
+        priority: item.priority,
+        status: 'pending',
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        questions: questions.map((q, idx) => ({ ...q, id: `q${idx + 1}`, answer: null })),
+        appliedAt: null,
+        linesChanged: 0,
+      });
+
+      totalQuestions += questions.length;
+      console.log(`    Generated ${questions.length} question(s)`);
+      report.changes.push(`Generated ${questions.length} question(s) for ${item.doc}`);
+    } else {
+      console.log(`    No gaps found`);
+    }
+  }
+
+  report.metrics = {
+    mode: 'review',
+    phase: 'analyze',
+    docsAnalyzed: reviewItems.length,
+    questionsGenerated: totalQuestions,
+  };
+  report.changedFiles = [];
+
+  await progress('complete', `Generated ${totalQuestions} questions for ${reviewItems.length} docs`, 100);
+
+  console.log('\n=== REVIEW ANALYZE SUMMARY ===');
+  console.log(`Docs analyzed: ${reviewItems.length}`);
+  console.log(`Questions generated: ${totalQuestions}`);
+  console.log('User should now answer questions in the Command Center dashboard.\n');
+
+  return report;
+}
+
+/**
+ * Concatenate all ADR files for bulk review analysis.
+ */
+async function readADRsForReview(projectRoot) {
+  const adrsDir = path.join(projectRoot, '..', 'docs', 'adrs');
+  try {
+    const files = await fs.readdir(adrsDir);
+    const adrFiles = files.filter(f => f.startsWith('ADR-') && f.endsWith('.md')).sort();
+    let combined = '';
+    for (const f of adrFiles) {
+      const content = await fs.readFile(path.join(adrsDir, f), 'utf-8');
+      combined += `\n=== ${f} ===\n${content}\n`;
+    }
+    return combined;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Core gap detection: send doc to Claude with project facts, get specific questions back.
+ */
+async function analyzeDocForGaps(docName, docContent, runClaudeAgent) {
+  const prompt = `You are a documentation quality auditor for SmartCookBook, a commercial kitchen management app built in Montreal, Quebec.
+
+PROJECT FACTS (use these to detect inaccuracies):
+- Tech stack: React 19 (stable release), Vite 7, Firebase (Firestore + Auth + Functions + Storage)
+- All components use .jsx extension (NOT .tsx/.ts — this is a JavaScript project)
+- Git repo: https://github.com/mageroyer/kitchenvoice-beta
+- App entry point: app-new/src/App.jsx (NOT App.tsx)
+- Tests: Vitest framework, ~1,921 tests across 63 test files (NOT Jest)
+- No Storybook is used in this project
+- No TypeScript is used — all files are .js/.jsx
+- This is a solo developer project (owner: Mage Royer, mageroyer@hotmail.com)
+- There is NO Slack channel, NO team standups, NO separate teams
+- Address: 4640 rue Adam, Montreal, QC H1V 1V3
+- Docs directory structure: docs/architecture/, docs/guides/, docs/legal/, docs/status/, docs/adrs/
+- Key doc paths: docs/architecture/API_REFERENCE.md, docs/architecture/SYSTEM_ARCHITECTURE.md
+- "Handler" in this codebase means invoice type processor (foodSupplyHandler, packagingHandler, etc.), NOT a person
+- Quebec taxes: TPS (5%) / TVQ (9.975%)
+- API credit system: 50 credits/month per user, owner bypass for unlimited
+- The app has a custom voice dictation system for hands-free kitchen use
+- Public website builder generates Next.js sites deployed on Vercel
+- "Slug" means URL path for public website (e.g., /my-store)
+- No separate UX team, DevOps team, Architecture team, Legal team, or Security Consultant exists
+
+TASK: Analyze this document and find ALL specific issues that need human input or correction.
+
+DOCUMENT NAME: ${docName}
+\`\`\`
+${docContent}
+\`\`\`
+
+Find these issue types:
+1. PLACEHOLDER — Template values like <repository-url>, TODO, TBD, or generic placeholder text
+2. INCORRECT_REF — Wrong file paths, wrong extensions (.tsx instead of .jsx), references to non-existent files or directories
+3. MISSING_INFO — Information gaps that only the project owner can fill (though many can be filled using the PROJECT FACTS above)
+4. OUTDATED — Facts that may have been true when generated but conflict with the PROJECT FACTS
+5. INACCURATE — Definitions or descriptions that are factually wrong based on the PROJECT FACTS
+
+For each issue found, return a JSON object:
+{
+  "lineRef": "approximate line number or section heading",
+  "category": "placeholder" | "incorrect_ref" | "missing_info" | "outdated" | "inaccurate",
+  "question": "A SPECIFIC question for the user, including the current wrong value in quotes",
+  "currentValue": "the exact text that is wrong or missing",
+  "suggestion": "your best correction based on PROJECT FACTS, or null if you cannot guess"
+}
+
+Return ONLY a JSON array. No commentary before or after. If no issues found, return [].`;
+
+  try {
+    const raw = await runClaudeAgent(prompt, { task: `analyze ${docName} for review gaps` });
+    const cleaned = stripFences(raw);
+    return JSON.parse(cleaned);
+  } catch (err) {
+    console.error(`  [Review] Failed to analyze ${docName}: ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Phase 2: Read answered questions from Firestore, load each doc,
+ * send doc + answers to Claude for merging, write updated files.
+ */
+async function runReviewApply({ runClaudeAgent, projectRoot, progress, answeredDocs, db, report }) {
+  let totalApplied = 0;
+
+  for (let i = 0; i < answeredDocs.length; i++) {
+    const docSnap = answeredDocs[i];
+    const review = docSnap.data();
+    const pct = 10 + Math.round(((i + 1) / answeredDocs.length) * 75);
+    await progress('applying', `Applying answers to ${review.docName}...`, pct);
+    console.log(`  Applying corrections to: ${review.docName}`);
+
+    // ADR directory — skip auto-apply, mark done
+    if (review.docPath.endsWith('/')) {
+      await docSnap.ref.update({
+        status: 'applied',
+        appliedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      report.changes.push(`Marked ADR review as applied (manual review only)`);
+      totalApplied++;
+      continue;
+    }
+
+    // Load current doc content
+    const currentContent = await readDocFile(review.docPath, projectRoot);
+    if (!currentContent) {
+      report.changes.push(`Skipped ${review.docName}: file not found`);
+      continue;
+    }
+
+    // Build Q&A pairs from answered questions
+    const answeredQuestions = (review.questions || []).filter(q => q.answer && q.answer.trim());
+    if (answeredQuestions.length === 0) {
+      await docSnap.ref.update({ status: 'applied', updatedAt: FieldValue.serverTimestamp() });
+      continue;
+    }
+
+    const qaText = answeredQuestions.map(q =>
+      `ISSUE (${q.category}, near line ${q.lineRef}): ${q.question}\nCURRENT VALUE: "${q.currentValue}"\nCORRECTION: ${q.answer}`
+    ).join('\n\n');
+
+    const applyPrompt = `You are a documentation editor for SmartCookBook.
+
+TASK: Apply the following corrections to this document. The project owner has answered specific questions about issues found during review.
+
+CURRENT DOCUMENT (${review.docName}):
+\`\`\`
+${currentContent}
+\`\`\`
+
+CORRECTIONS TO APPLY:
+${qaText}
+
+RULES:
+1. Apply each correction precisely where indicated
+2. Preserve ALL other content exactly as-is (do not rewrite sections that have no corrections)
+3. Maintain the document's formatting, headings, and style
+4. If a correction says "remove" or "delete", remove that section/line cleanly
+5. If a correction provides new content, integrate it naturally into the existing structure
+6. Do NOT add new sections, commentary, or "Updated by" notes
+7. Return the COMPLETE updated document — every line, updated or not
+
+Return ONLY the updated markdown content. No code fences, no commentary.`;
+
+    try {
+      const updated = await runClaudeAgent(applyPrompt, { task: `apply review corrections to ${review.docName}` });
+      const cleaned = stripFences(updated);
+
+      // Write updated doc
+      const fullPath = path.join(projectRoot, '..', review.docPath);
+      await fs.writeFile(fullPath, cleaned.endsWith('\n') ? cleaned : cleaned + '\n');
+
+      // Mark as applied in Firestore
+      await docSnap.ref.update({
+        status: 'applied',
+        appliedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        linesChanged: Math.abs(cleaned.split('\n').length - currentContent.split('\n').length),
+      });
+
+      totalApplied++;
+      console.log(`    Applied ${answeredQuestions.length} correction(s)`);
+      report.changes.push(`Applied ${answeredQuestions.length} correction(s) to ${review.docName}`);
+      if (!report.changedFiles) report.changedFiles = [];
+      report.changedFiles.push(review.docPath);
+    } catch (err) {
+      console.error(`    Failed: ${err.message}`);
+      report.changes.push(`Failed to apply corrections to ${review.docName}: ${err.message}`);
+      report.errors.push(`Apply failed for ${review.docName}: ${err.message}`);
+    }
+  }
+
+  report.metrics = { mode: 'review', phase: 'apply', docsApplied: totalApplied };
+  await progress('complete', `Applied corrections to ${totalApplied} doc(s)`, 100);
+
+  console.log('\n=== REVIEW APPLY SUMMARY ===');
+  console.log(`Docs updated: ${totalApplied}`);
 
   return report;
 }

@@ -1,6 +1,7 @@
 /* ══════════════════════════════════════════════════
    DOC REVIEW PANEL — AI-Assisted Interactive Review
    ══════════════════════════════════════════════════ */
+(function () {
 
 const CATEGORY_LABELS = {
   placeholder:   { label: 'Placeholder',   color: '#f59e0b' },
@@ -294,3 +295,5 @@ window.DocReviewPanel = {
   setData: setReviewsAndRender,
   getActiveCount: () => allReviews.filter(r => r.status === 'pending' || r.status === 'answered').length,
 };
+
+})();

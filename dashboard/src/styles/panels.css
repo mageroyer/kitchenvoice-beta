@@ -132,6 +132,7 @@
   margin-bottom: 14px;
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(124, 58, 237, 0.12);
+  overflow: hidden;
 }
 
 .report-detail-title {
@@ -140,6 +141,7 @@
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
+  flex-wrap: wrap;
 }
 
 .report-detail-meta {
@@ -149,6 +151,7 @@
   margin-top: 6px;
   font-size: 10px;
   color: var(--text-muted);
+  flex-wrap: wrap;
 }
 
 /* Metrics grid */
@@ -187,6 +190,9 @@
 /* Sections */
 .report-section {
   margin-bottom: 12px;
+  position: relative;
+  clear: both;
+  overflow: hidden;
 }
 
 .report-section-title {
@@ -208,19 +214,25 @@
 .report-changes-list {
   list-style: none;
   padding: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .report-changes-list li {
-  padding: 3px 0 3px 12px;
+  padding: 4px 0 4px 14px;
   font-size: 11px;
+  line-height: 1.5;
   color: var(--text-secondary);
   position: relative;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .report-changes-list li::before {
-  content: '\u{2022}';
+  content: '\2022';
   position: absolute;
   left: 0;
+  top: 4px;
   color: var(--purple-400);
 }
 

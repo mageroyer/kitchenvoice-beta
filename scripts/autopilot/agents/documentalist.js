@@ -1430,45 +1430,65 @@ async function runInit({ runClaudeAgent, projectRoot, progress }) {
  * Returns { decisions[], codeChanges[], glossaryTerms[], deferredWork[] }.
  */
 async function extractSessionKnowledge(summaryText, runClaudeAgent) {
-  const prompt = `You are a documentation analyst for SmartCookBook, a commercial kitchen management app.
+  const prompt = `You are a JSON extraction tool. Your ENTIRE response must be a single valid JSON object with no text before or after it.
 
-TASK: Extract structured knowledge from this Claude Code session summary.
+Extract structured knowledge from this session summary for SmartCookBook (a commercial kitchen management app).
 
 SESSION SUMMARY:
 ${summaryText}
 
-Extract the following categories:
+Extract these categories:
 
-1. DECISIONS: Architectural or design decisions made during the session.
+1. DECISIONS: Architectural or design decisions made.
    Each: { "title": "...", "context": "...", "decision": "...", "rationale": "..." }
 
-2. CODE_CHANGES: Files modified with WHY they were changed.
+2. CODE_CHANGES: Files modified with WHY.
    Each: { "files": ["..."], "description": "...", "category": "feature|fix|refactor|docs" }
 
-3. GLOSSARY_TERMS: Domain terms that were defined, clarified, or used significantly.
+3. GLOSSARY_TERMS: Domain terms defined, clarified, or used significantly.
    Each: { "term": "...", "definition": "..." }
 
-4. DEFERRED_WORK: Tasks mentioned but not completed during the session.
+4. DEFERRED_WORK: Tasks mentioned but not completed.
    Each: { "task": "...", "priority": "high|medium|low" }
 
-Return ONLY valid JSON with this structure:
+CRITICAL: Output ONLY the JSON object below. No markdown fences. No explanation. No text before or after. Start with { and end with }.
+
 {
   "decisions": [...],
   "codeChanges": [...],
   "glossaryTerms": [...],
   "deferredWork": [...]
-}
-
-If a category has no items, return an empty array. No commentary.`;
+}`;
 
   try {
     const raw = await runClaudeAgent(prompt, { task: 'extract session knowledge' });
-    const cleaned = stripFences(raw);
-    return JSON.parse(cleaned);
+    const json = extractJSON(raw);
+    return JSON.parse(json);
   } catch (err) {
     console.error(`  [Digest] Failed to extract knowledge: ${err.message}`);
     return { decisions: [], codeChanges: [], glossaryTerms: [], deferredWork: [] };
   }
+}
+
+/**
+ * Extract a JSON object from a string that may contain surrounding text.
+ * Finds the first { and last } to isolate the JSON.
+ */
+function extractJSON(text) {
+  let cleaned = stripFences(text.trim());
+
+  // If it already starts with {, try as-is
+  if (cleaned.startsWith('{')) return cleaned;
+
+  // Find the first { and last }
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return cleaned.slice(firstBrace, lastBrace + 1);
+  }
+
+  // Last resort: return cleaned and let JSON.parse throw
+  return cleaned;
 }
 
 /**

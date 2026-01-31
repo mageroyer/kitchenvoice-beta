@@ -195,48 +195,53 @@ function wireDocumentalistActions() {
 
 // ── Review prompt modal — when no reviews exist ──
 function showReviewPromptModal(directResult, directError) {
-  document.querySelector('.modal-overlay')?.remove();
+  // Remove any existing modal
+  document.getElementById('review-modal-overlay')?.remove();
 
   // Build diagnostic line
   let debugLine;
   if (directResult === null && directError === null) {
-    debugLine = '<span style="color:var(--purple-400);">Loading from Firestore...</span>';
+    debugLine = '<span style="color:#a855f7;">Loading from Firestore...</span>';
   } else if (directError) {
     debugLine = `<span style="color:#ef4444;">Error: ${directError}</span>`;
   } else {
     debugLine = `IPC returned ${(directResult || []).length} doc(s)${(directResult || []).length > 0 ? ' [' + directResult.map(r => r.status).join(', ') + ']' : ''}`;
   }
 
+  // Use all inline styles — no CSS class dependencies
   const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
+  overlay.id = 'review-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:1;';
   overlay.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <span class="modal-title">Doc Reviews</span>
-        <button class="modal-close">&times;</button>
+    <div style="background:#110f22;border:1px solid rgba(124,58,237,0.25);border-radius:12px;width:420px;max-width:90%;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(124,58,237,0.12);">
+        <span style="font-size:13px;font-weight:600;color:#c084fc;">Doc Reviews</span>
+        <button id="review-modal-x" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:14px;padding:2px 6px;">&times;</button>
       </div>
-      <div class="modal-body">
-        <div style="text-align: center; padding: 10px 0;">
-          <div style="font-size: 28px; opacity: 0.4; margin-bottom: 8px;">&#x1F4DD;</div>
-          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">No pending reviews</div>
-          <div style="font-size: 10px; color: var(--text-muted); line-height: 1.5;">
-            Run the documentalist in <strong>review</strong> mode to analyze<br>
-            your docs for gaps, placeholders, and inaccuracies.<br>
-            It will generate targeted questions for you to answer.
-          </div>
-          <div style="font-size: 9px; color: var(--text-muted); opacity: 0.5; margin-top: 10px; font-family: monospace;">
-            ${debugLine}
-          </div>
+      <div style="padding:16px;text-align:center;">
+        <div style="font-size:28px;opacity:0.4;margin-bottom:8px;">&#x1F4DD;</div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">No pending reviews</div>
+        <div style="font-size:10px;color:#64748b;line-height:1.5;">
+          Run the documentalist in <strong>review</strong> mode to analyze<br>
+          your docs for gaps, placeholders, and inaccuracies.<br>
+          It will generate targeted questions for you to answer.
+        </div>
+        <div style="font-size:9px;color:#64748b;opacity:0.5;margin-top:10px;font-family:monospace;">
+          ${debugLine}
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-sm" id="review-modal-cancel">Close</button>
-        <button class="btn btn-sm btn-primary" id="review-modal-generate">Generate Reviews</button>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid rgba(124,58,237,0.12);">
+        <button id="review-modal-cancel" class="btn btn-sm">Close</button>
+        <button id="review-modal-generate" class="btn btn-sm btn-primary">Generate Reviews</button>
       </div>
     </div>
   `;
 
-  document.body.appendChild(overlay);
+  // Append to #app instead of body
+  const appEl = document.getElementById('app') || document.body;
+  appEl.appendChild(overlay);
+
+  console.log('[DocReview] Modal appended to', appEl.tagName, '- overlay visible:', overlay.offsetWidth > 0);
 
   // Generate reviews — trigger documentalist in review mode
   document.getElementById('review-modal-generate').addEventListener('click', async () => {
@@ -255,7 +260,7 @@ function showReviewPromptModal(directResult, directError) {
   });
 
   // Close handlers
-  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+  document.getElementById('review-modal-x').addEventListener('click', () => overlay.remove());
   document.getElementById('review-modal-cancel').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
 }

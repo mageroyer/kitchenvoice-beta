@@ -166,7 +166,7 @@ async function getRunJobs(runId) {
 /**
  * Trigger the autopilot workflow for a specific agent
  */
-async function triggerWorkflow(agentName) {
+async function triggerWorkflow(agentName, extraInputs = {}) {
   if (!octokit) {
     return { success: false, error: 'GitHub not connected' };
   }
@@ -179,10 +179,11 @@ async function triggerWorkflow(agentName) {
       ref: 'fresh-start',
       inputs: {
         agent: agentName,
+        ...extraInputs,
       },
     });
 
-    console.log(`[GitHub] Workflow triggered for agent: ${agentName}`);
+    console.log(`[GitHub] Workflow triggered for agent: ${agentName}`, extraInputs);
     return { success: true };
   } catch (err) {
     console.error('[GitHub] triggerWorkflow error:', err.message);

@@ -426,6 +426,7 @@
 .review-panel-container {
   padding: 0 var(--grid-gap);
   padding-bottom: var(--grid-gap);
+  flex-shrink: 0;
 }
 
 .review-panel-container .panel {
@@ -772,6 +773,105 @@
   position: relative;
   min-height: 0;
   padding-right: 8px;
+}
+
+/* ════════════════════════════════════════════
+   MAPPER AGENT CARD ACTIONS
+   ════════════════════════════════════════════ */
+
+.agent-card-actions {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px 8px;
+  border-top: 1px solid rgba(124, 58, 237, 0.08);
+}
+
+.mapper-btn {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--bg-input);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mapper-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--purple-400);
+  color: var(--purple-300);
+}
+
+.mapper-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mapper-btn-review {
+  position: relative;
+}
+
+.mapper-review-count {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  font-size: 8px;
+  font-weight: 700;
+  background: var(--error);
+  color: #fff;
+  border-radius: 7px;
+  padding: 0 3px;
+  margin-left: 3px;
+}
+
+/* ════════════════════════════════════════════
+   TARGET SELECTION MODAL
+   ════════════════════════════════════════════ */
+
+.target-profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.target-profile-option {
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid rgba(124, 58, 237, 0.1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.target-profile-option:hover {
+  border-color: var(--purple-400);
+  background: var(--bg-card-hover);
+}
+
+.target-profile-option.selected {
+  border-color: var(--purple-400);
+  background: rgba(124, 58, 237, 0.1);
+  box-shadow: 0 0 0 1px var(--purple-400);
+}
+
+.target-profile-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.target-profile-desc {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 1px;
 }
 
 /* ════════════════════════════════════════════

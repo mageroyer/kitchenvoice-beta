@@ -15,7 +15,7 @@ const AGENTS = [
   { id: 'test-fixer',        name: 'Test Fixer',      icon: '\u{1F527}', schedule: 'On CI failure',    color: '#3b82f6' },
   { id: 'deps-updater',      name: 'Deps Updater',    icon: '\u{1F4E6}', schedule: 'Sunday 3 AM',      color: '#a855f7' },
   { id: 'security-scanner',  name: 'Security Scan',   icon: '\u{1F6E1}', schedule: 'Monday 4 AM',      color: '#ef4444' },
-  { id: 'codebase-mapper',   name: 'Codebase Mapper', icon: '\u{1F5FA}', schedule: 'Wednesday 1 AM',   color: '#14b8a6' },
+  { id: 'codebase-mapper',   name: 'Codebase Mapper', icon: '\u{1F5FA}', schedule: 'Monthly 1st 1 AM', color: '#14b8a6' },
   { id: 'documentalist',     name: 'Documentalist',   icon: '\u{1F4DA}', schedule: 'Thursday 2 AM',    color: '#f59e0b' },
   { id: 'full-audit',        name: 'Full Audit',      icon: '\u{1F50D}', schedule: 'Monthly 1st',      color: '#06b6d4' },
 ];
@@ -61,8 +61,11 @@ function initClock() {
 function renderAgentGrid() {
   const grid = document.getElementById('agent-grid');
 
-  const html = AGENTS.map(agent => `
-    <div class="agent-card" data-agent="${agent.id}">
+  const html = AGENTS.map(agent => {
+    const isMapper = agent.id === 'codebase-mapper';
+    const isDocumentalist = agent.id === 'documentalist';
+    return `
+    <div class="agent-card ${isMapper ? 'agent-card-mapper' : ''} ${isDocumentalist ? 'agent-card-documentalist' : ''}" data-agent="${agent.id}">
       <div class="agent-card-header">
         <div class="agent-card-name">
           <span>${agent.icon}</span>
@@ -75,8 +78,20 @@ function renderAgentGrid() {
         <span class="agent-card-time">${agent.schedule}</span>
         <span class="badge badge-purple">Idle</span>
       </div>
-    </div>
-  `).join('');
+      ${isMapper ? `
+      <div class="agent-card-actions">
+        <button class="mapper-btn" data-mapper-action="full-scan" title="Run full codebase scan">Full Scan</button>
+        <button class="mapper-btn" data-mapper-action="process-session" title="Scan recent changes (git-diff)">Process Session</button>
+        <button class="mapper-btn" data-mapper-action="give-task" title="Targeted scan on specific files">Give Task</button>
+      </div>` : ''}
+      ${isDocumentalist ? `
+      <div class="agent-card-actions">
+        <button class="mapper-btn mapper-btn-review" data-doc-action="reviews" title="Pending doc reviews">
+          Reviews <span class="mapper-review-count" id="mapper-review-count"></span>
+        </button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
 
   grid.innerHTML = html;
 
@@ -89,6 +104,267 @@ function renderAgentGrid() {
       }
     });
   });
+}
+
+// ── Wire up Codebase Mapper action buttons ──
+function wireMapperActions() {
+  // Full Scan — trigger codebase-mapper with no target (= full scan)
+  document.querySelector('[data-mapper-action="full-scan"]')?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    btn.textContent = '...';
+    btn.disabled = true;
+    const result = await window.electronAPI.triggerWorkflow('codebase-mapper');
+    btn.textContent = result.success ? 'Sent!' : 'Err';
+    setTimeout(() => { btn.textContent = 'Full Scan'; btn.disabled = false; }, 3000);
+  });
+
+  // Process Session — trigger codebase-mapper with git-diff (auto-detect recent changes -> documentalist)
+  document.querySelector('[data-mapper-action="process-session"]')?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    btn.textContent = '...';
+    btn.disabled = true;
+    const result = await window.electronAPI.triggerWorkflow('codebase-mapper', { scan_target: 'git-diff' });
+    btn.textContent = result.success ? 'Sent!' : 'Err';
+    if (result.success) showToast('Session scan dispatched (git-diff)');
+    setTimeout(() => { btn.textContent = 'Process Session'; btn.disabled = false; }, 3000);
+  });
+
+  // Give Task — open target selection modal
+  document.querySelector('[data-mapper-action="give-task"]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showTargetModal();
+  });
+}
+
+// ── Wire up Documentalist action buttons ──
+function wireDocumentalistActions() {
+  const btn = document.querySelector('[data-doc-action="reviews"]');
+  if (!btn) {
+    console.warn('[DocReview] Reviews button not found in DOM');
+    return;
+  }
+
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    // Show immediate loading feedback on the button
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Loading...';
+    btn.disabled = true;
+
+    let result = [];
+    let error = null;
+    try {
+      // Race the IPC call against a 5-second timeout
+      result = await Promise.race([
+        window.electronAPI.getDocReviews(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout (5s)')), 5000))
+      ]) || [];
+    } catch (err) {
+      error = err.message || String(err);
+      console.error('[DocReview] Fetch failed:', error);
+    }
+
+    // Restore button
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+
+    const active = result.filter(r => r.status === 'pending' || r.status === 'answered');
+
+    if (active.length > 0) {
+      // Has reviews — pass data directly to panel (skip second IPC call)
+      if (window.DocReviewPanel && window.DocReviewPanel.setData) {
+        window.DocReviewPanel.setData(result);
+      }
+      const reviewPanel = document.getElementById('review-panel-container');
+      if (reviewPanel) {
+        reviewPanel.style.display = 'block';
+        reviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        reviewPanel.style.outline = '2px solid var(--purple-400)';
+        reviewPanel.style.outlineOffset = '2px';
+        setTimeout(() => { reviewPanel.style.outline = ''; reviewPanel.style.outlineOffset = ''; }, 2000);
+      }
+    } else {
+      showReviewPromptModal(result, error);
+    }
+  });
+}
+
+// ── Review prompt modal — when no reviews exist ──
+function showReviewPromptModal(directResult, directError) {
+  document.querySelector('.modal-overlay')?.remove();
+
+  // Build diagnostic line
+  let debugLine;
+  if (directResult === null && directError === null) {
+    debugLine = '<span style="color:var(--purple-400);">Loading from Firestore...</span>';
+  } else if (directError) {
+    debugLine = `<span style="color:#ef4444;">Error: ${directError}</span>`;
+  } else {
+    debugLine = `IPC returned ${(directResult || []).length} doc(s)${(directResult || []).length > 0 ? ' [' + directResult.map(r => r.status).join(', ') + ']' : ''}`;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-title">Doc Reviews</span>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="text-align: center; padding: 10px 0;">
+          <div style="font-size: 28px; opacity: 0.4; margin-bottom: 8px;">&#x1F4DD;</div>
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">No pending reviews</div>
+          <div style="font-size: 10px; color: var(--text-muted); line-height: 1.5;">
+            Run the documentalist in <strong>review</strong> mode to analyze<br>
+            your docs for gaps, placeholders, and inaccuracies.<br>
+            It will generate targeted questions for you to answer.
+          </div>
+          <div style="font-size: 9px; color: var(--text-muted); opacity: 0.5; margin-top: 10px; font-family: monospace;">
+            ${debugLine}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm" id="review-modal-cancel">Close</button>
+        <button class="btn btn-sm btn-primary" id="review-modal-generate">Generate Reviews</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Generate reviews — trigger documentalist in review mode
+  document.getElementById('review-modal-generate').addEventListener('click', async () => {
+    const btn = document.getElementById('review-modal-generate');
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+
+    const result = await window.electronAPI.triggerWorkflow('documentalist', { mode: 'review' });
+    if (result.success) {
+      showToast('Documentalist review mode dispatched');
+      overlay.remove();
+    } else {
+      btn.textContent = 'Failed';
+      setTimeout(() => { btn.textContent = 'Generate Reviews'; btn.disabled = false; }, 3000);
+    }
+  });
+
+  // Close handlers
+  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+  document.getElementById('review-modal-cancel').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+// ── Target selection modal for codebase-mapper ──
+function showTargetModal() {
+  document.querySelector('.modal-overlay')?.remove();
+
+  const profiles = [
+    { id: 'git-diff', label: 'Git Diff', desc: 'Auto-detect from recent commits' },
+    { id: 'autopilot-files', label: 'Autopilot Files', desc: 'scripts/autopilot/' },
+    { id: 'cloud-functions', label: 'Cloud Functions', desc: 'functions/' },
+    { id: 'dashboard-files', label: 'Dashboard', desc: 'dashboard/src/' },
+    { id: 'all-external', label: 'All External', desc: 'All non-app areas' },
+  ];
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-title">Targeted Scan</span>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label>Scan Profile</label>
+          <div class="target-profile-list">
+            ${profiles.map(p => `
+              <div class="target-profile-option" data-profile="${p.id}">
+                <div class="target-profile-name">${p.label}</div>
+                <div class="target-profile-desc">${p.desc}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <div class="modal-field">
+          <label>Or enter custom file list</label>
+          <input class="modal-input" id="custom-files-input" placeholder="files:path/a.js,path/b.js" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm" id="target-modal-cancel">Cancel</button>
+        <button class="btn btn-sm btn-primary" id="target-modal-send" disabled>Send Task</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  let selectedProfile = null;
+
+  // Profile selection
+  overlay.querySelectorAll('.target-profile-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      overlay.querySelectorAll('.target-profile-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedProfile = opt.dataset.profile;
+      document.getElementById('custom-files-input').value = '';
+      document.getElementById('target-modal-send').disabled = false;
+    });
+  });
+
+  // Custom input clears profile selection
+  document.getElementById('custom-files-input').addEventListener('input', (e) => {
+    if (e.target.value.trim()) {
+      overlay.querySelectorAll('.target-profile-option').forEach(o => o.classList.remove('selected'));
+      selectedProfile = null;
+      document.getElementById('target-modal-send').disabled = false;
+    } else if (!selectedProfile) {
+      document.getElementById('target-modal-send').disabled = true;
+    }
+  });
+
+  // Send
+  document.getElementById('target-modal-send').addEventListener('click', async () => {
+    const customFiles = document.getElementById('custom-files-input').value.trim();
+    const target = customFiles || selectedProfile;
+    if (!target) return;
+
+    const btn = document.getElementById('target-modal-send');
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+
+    const result = await window.electronAPI.triggerWorkflow('codebase-mapper', { scan_target: target });
+    if (result.success) {
+      showToast('Targeted scan dispatched');
+      overlay.remove();
+    } else {
+      btn.textContent = 'Failed';
+      setTimeout(() => { btn.textContent = 'Send Task'; btn.disabled = false; }, 3000);
+    }
+  });
+
+  // Close handlers
+  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+  document.getElementById('target-modal-cancel').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+// ── Update review count badge on mapper card ──
+function updateMapperReviewBadge() {
+  const countEl = document.getElementById('mapper-review-count');
+  if (!countEl) return;
+  const active = (window.DocReviewPanel && window.DocReviewPanel.getActiveCount)
+    ? window.DocReviewPanel.getActiveCount()
+    : 0;
+  countEl.textContent = active > 0 ? active : '';
+  countEl.style.display = active > 0 ? 'inline-flex' : 'none';
 }
 
 // ── Schedule countdown calculation ──
@@ -124,12 +400,11 @@ function getNextRunTime(agent) {
     return next;
   }
   if (agent.id === 'codebase-mapper') {
-    // Wednesday at 1 AM UTC
+    // Monthly 1st at 1 AM UTC
     const next = new Date(utcNow);
     next.setUTCHours(1, 0, 0, 0);
-    if (next.getUTCDay() === 3 && next > utcNow) { /* already wednesday and in future */ }
-    else next.setUTCDate(next.getUTCDate() + ((3 - next.getUTCDay() + 7) % 7 || 7));
-    if (next.getUTCDay() === 3 && next <= utcNow) next.setUTCDate(next.getUTCDate() + 7);
+    next.setUTCDate(1);
+    if (next <= utcNow) next.setUTCMonth(next.getUTCMonth() + 1);
     return next;
   }
   if (agent.id === 'documentalist') {
@@ -526,7 +801,7 @@ function resolveAgentName(run) {
     const date = new Date(run.createdAt).getUTCDate();
 
     if (hour === 6) return 'daily-health';
-    if (hour === 1 && day === 3) return 'codebase-mapper';
+    if (hour === 1 && date === 1) return 'codebase-mapper';
     if (hour === 2 && day === 4) return 'documentalist';
     if (hour === 3 && day === 0) return 'deps-updater';
     if (hour === 4 && day === 1) return 'security-scanner';
@@ -782,6 +1057,7 @@ async function refreshAllPanels() {
     }
 
     await Promise.allSettled(tasks);
+    updateMapperReviewBadge();
     await evaluateSystemHealth();
   } catch (err) {
     console.error('[Refresh] Error:', err);
@@ -881,6 +1157,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initClock();
   initKeyboardShortcuts();
   renderAgentGrid();
+  wireMapperActions();
+  wireDocumentalistActions();
   renderSchedulePlaceholder();
   initPanels();
   initTrayListeners();
@@ -896,6 +1174,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load live data (will gracefully handle disconnected services)
   await loadLiveData();
+
+  // Update mapper review badge after panels load
+  updateMapperReviewBadge();
 
   // Evaluate system health and sync tray icon
   await evaluateSystemHealth();

@@ -59,7 +59,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ── GitHub Actions ──
   getWorkflowRuns: (options) => ipcRenderer.invoke('get-workflow-runs', options),
-  triggerWorkflow: (agentName) => ipcRenderer.invoke('trigger-workflow', agentName),
+  triggerWorkflow: (agentName, extraInputs) => ipcRenderer.invoke('trigger-workflow', agentName, extraInputs),
   getRunStatus: (runId) => ipcRenderer.invoke('get-run-status', runId),
 
   // ── Pull Requests ──

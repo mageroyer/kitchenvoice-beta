@@ -404,12 +404,21 @@ async function submitSessionDigest(summaryText) {
 // ════════════════════════════════════════════
 
 async function getDocReviews() {
-  if (!db) return [];
+  if (!db) {
+    console.warn('[Firestore] getDocReviews: db is null');
+    return [];
+  }
   try {
-    const snap = await db.collection('doc_reviews')
-      .orderBy('createdAt', 'desc')
-      .get();
-    return snap.docs.map(doc => serializeDoc(doc));
+    const snap = await db.collection('doc_reviews').get();
+    console.log(`[Firestore] getDocReviews: found ${snap.size} doc(s)`);
+    const docs = snap.docs.map(doc => serializeDoc(doc));
+    // Sort client-side
+    docs.sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
+    return docs;
   } catch (err) {
     console.error('[Firestore] getDocReviews error:', err.message);
     return [];

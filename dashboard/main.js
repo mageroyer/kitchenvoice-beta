@@ -259,9 +259,9 @@ ipcMain.handle('get-workflow-runs', async (event, options) => {
   return githubService.getWorkflowRuns(options);
 });
 
-ipcMain.handle('trigger-workflow', async (event, agentName) => {
+ipcMain.handle('trigger-workflow', async (event, agentName, extraInputs) => {
   if (!githubService) return { success: false, error: 'GitHub not connected' };
-  const result = await githubService.triggerWorkflow(agentName);
+  const result = await githubService.triggerWorkflow(agentName, extraInputs || {});
 
   // Send desktop notification
   if (result.success && Notification.isSupported()) {
@@ -391,12 +391,27 @@ async function initServices() {
   }
 }
 
-// App lifecycle
-app.whenReady().then(() => {
-  createWindow();
-  createTray();
-  initServices();
-});
+// ── Single instance lock ──
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Another instance is already running — focus it and quit this one
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  // App lifecycle
+  app.whenReady().then(() => {
+    createWindow();
+    createTray();
+    initServices();
+  });
+}
 
 app.on('window-all-closed', () => {
   // Don't quit on macOS

@@ -24,11 +24,24 @@ function initDocReview() {
   loadReviews();
 }
 
+let _lastLoadError = null;
+
 async function loadReviews() {
+  _lastLoadError = null;
+  console.log('[DocReview] loadReviews() called...');
   try {
-    allReviews = await window.electronAPI.getDocReviews();
+    const result = await Promise.race([
+      window.electronAPI.getDocReviews(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout (5s)')), 5000))
+    ]);
+    console.log('[DocReview] Received:', result.length, 'reviews');
+    if (result.length > 0) {
+      console.log('[DocReview] First review:', JSON.stringify({ id: result[0].id, status: result[0].status, docName: result[0].docName, qCount: (result[0].questions || []).length }));
+    }
+    allReviews = result;
   } catch (err) {
     console.error('[DocReview] Load failed:', err);
+    _lastLoadError = err.message || String(err);
     allReviews = [];
   }
   renderReviewList();
@@ -57,11 +70,15 @@ function renderReviewList() {
   }
 
   if (active.length === 0 && applied.length === 0) {
+    const debugInfo = _lastLoadError
+      ? `<div style="font-size:9px;color:#ef4444;margin-top:6px;">Error: ${esc(_lastLoadError)}</div>`
+      : `<div style="font-size:9px;color:var(--text-muted);opacity:0.4;margin-top:6px;">IPC returned ${allReviews.length} doc(s), 0 active</div>`;
     body.innerHTML = `
       <div class="panel-placeholder" style="padding: 30px 0; text-align: center;">
         <div style="font-size: 24px; opacity: 0.3;">&#x1F4DD;</div>
         <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">No doc reviews pending</div>
         <div style="font-size: 10px; color: var(--text-muted); opacity: 0.5; margin-top: 4px;">Run documentalist in "review" mode to generate</div>
+        ${debugInfo}
       </div>`;
     return;
   }
@@ -262,4 +279,18 @@ function esc(str) {
 
 // ── Export ──
 
-window.DocReviewPanel = { init: initDocReview, load: loadReviews };
+/**
+ * Set reviews from external data (skip IPC) and render.
+ */
+function setReviewsAndRender(data) {
+  allReviews = data || [];
+  console.log('[DocReview] setReviewsAndRender:', allReviews.length, 'reviews, statuses:', allReviews.map(r => r.status));
+  renderReviewList();
+}
+
+window.DocReviewPanel = {
+  init: initDocReview,
+  load: loadReviews,
+  setData: setReviewsAndRender,
+  getActiveCount: () => allReviews.filter(r => r.status === 'pending' || r.status === 'answered').length,
+};

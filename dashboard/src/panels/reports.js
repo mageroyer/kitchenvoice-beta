@@ -195,6 +195,36 @@ function renderReportDetail(reportId) {
     `;
   }
 
+  // Doc changes (diff viewer)
+  let docChangesHTML = '';
+  if (report.docChanges && report.docChanges.length > 0) {
+    const items = report.docChanges.map((dc, idx) => {
+      const icon = dc.changeType === 'created' ? '\u{2795}' : '\u{270F}\u{FE0F}';
+      const badge = dc.changeType === 'created' ? 'new' : 'modified';
+      return `
+        <div class="doc-change-item" data-diff-idx="${idx}">
+          <span class="doc-change-icon">${icon}</span>
+          <div class="doc-change-info">
+            <span class="doc-change-name">${escapeHTML(dc.docName)}</span>
+            <span class="doc-change-path">${escapeHTML(dc.docPath)}</span>
+          </div>
+          <div class="doc-change-stats">
+            <span class="added">+${dc.linesAdded || 0}</span>
+            <span class="removed">-${dc.linesRemoved || 0}</span>
+          </div>
+          <span class="doc-change-badge ${badge}">${badge}</span>
+        </div>
+      `;
+    }).join('');
+
+    docChangesHTML = `
+      <div class="report-section">
+        <div class="report-section-title">Documents Modified (${report.docChanges.length})</div>
+        <div class="doc-changes-list">${items}</div>
+      </div>
+    `;
+  }
+
   detail.innerHTML = `
     <div class="report-detail-scroll">
       <!-- Header -->
@@ -221,6 +251,9 @@ function renderReportDetail(reportId) {
       <!-- Issues -->
       ${issuesHTML}
 
+      <!-- Documents Modified -->
+      ${docChangesHTML}
+
       <!-- PR -->
       ${prHTML}
 
@@ -246,6 +279,76 @@ function renderReportDetail(reportId) {
       toggle.querySelector('span').textContent = isHidden ? '[click to collapse]' : '[click to expand]';
     });
   }
+
+  // Doc change click handlers → open diff modal
+  if (report.docChanges && report.docChanges.length > 0) {
+    detail.querySelectorAll('.doc-change-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const idx = parseInt(item.dataset.diffIdx);
+        const docChange = report.docChanges[idx];
+        if (docChange) showDiffModal(docChange);
+      });
+    });
+  }
+}
+
+/**
+ * Show a diff modal for a doc change
+ */
+function showDiffModal(docChange) {
+  // Remove any existing modal
+  const existing = document.querySelector('.modal-overlay');
+  if (existing) existing.remove();
+
+  const badge = docChange.changeType === 'created' ? 'new' : 'modified';
+
+  // Parse diff lines into classified HTML
+  const diffLines = (docChange.diff || '').split('\n');
+  const linesHTML = diffLines.map(line => {
+    let cls = 'diff-context';
+    if (line.startsWith('+') && !line.startsWith('+++')) cls = 'diff-added';
+    else if (line.startsWith('-') && !line.startsWith('---')) cls = 'diff-removed';
+    else if (line.startsWith('@@')) cls = 'diff-hunk';
+    else if (line.startsWith('diff ') || line.startsWith('index ') || line.startsWith('---') || line.startsWith('+++') || line.startsWith('new file')) cls = 'diff-meta';
+    return `<div class="diff-line ${cls}">${escapeHTML(line)}</div>`;
+  }).join('');
+
+  const truncatedHTML = docChange.truncated
+    ? '<div class="diff-truncated-notice">\u{26A0} Diff was truncated (file too large)</div>'
+    : '';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="diff-modal-content">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          ${escapeHTML(docChange.docName)}
+          <span class="doc-change-badge ${badge}">${badge}</span>
+        </div>
+        <button class="modal-close">\u{2715}</button>
+      </div>
+      <div class="diff-modal-meta">
+        <span class="diff-meta-path">${escapeHTML(docChange.docPath)}</span>
+        <div class="diff-meta-stats">
+          <span class="added">+${docChange.linesAdded || 0}</span>
+          <span class="removed">-${docChange.linesRemoved || 0}</span>
+        </div>
+      </div>
+      <div class="diff-modal-body">
+        <div class="diff-content">${linesHTML}</div>
+        ${truncatedHTML}
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Close handlers
+  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
 }
 
 /**

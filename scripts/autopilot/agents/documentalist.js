@@ -27,6 +27,87 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 // ── Configuration ──
 
 const DOCS_DIR = path.resolve(process.cwd(), '../../docs');
+
+// ── Doc Changes Accumulator (for dashboard diff viewer) ──
+let docChangesAccumulator = [];
+
+/**
+ * Capture a git diff for a file that was just written.
+ * Pushes a diff entry to docChangesAccumulator for inclusion in the report.
+ *
+ * @param {string} filePath - Absolute path to the file that was written
+ * @param {string} projectRoot - Project root (scripts/autopilot)
+ */
+async function captureDiff(filePath, projectRoot) {
+  try {
+    const repoRoot = path.resolve(projectRoot, '..');
+    const relPath = path.relative(repoRoot, filePath).replace(/\\/g, '/');
+    const docName = path.basename(filePath);
+
+    let diff = '';
+    let changeType = 'updated';
+    let linesAdded = 0;
+    let linesRemoved = 0;
+
+    // Check if file is tracked by git
+    let isTracked = false;
+    try {
+      execSync(`git ls-files --error-unmatch "${relPath}"`, { cwd: repoRoot, stdio: 'pipe' });
+      isTracked = true;
+    } catch {
+      isTracked = false;
+    }
+
+    if (isTracked) {
+      // Tracked file: get unified diff (unstaged first, then staged)
+      try {
+        diff = execSync(`git diff -- "${relPath}"`, { cwd: repoRoot, encoding: 'utf-8', maxBuffer: 1024 * 1024 });
+      } catch { diff = ''; }
+
+      if (!diff) {
+        try {
+          diff = execSync(`git diff --cached -- "${relPath}"`, { cwd: repoRoot, encoding: 'utf-8', maxBuffer: 1024 * 1024 });
+        } catch { diff = ''; }
+      }
+    } else {
+      // New file: show entire content as additions
+      changeType = 'created';
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        const lines = content.split('\n');
+        diff = `diff --git a/${relPath} b/${relPath}\nnew file mode 100644\n--- /dev/null\n+++ b/${relPath}\n@@ -0,0 +1,${lines.length} @@\n` +
+          lines.map(l => `+${l}`).join('\n');
+      } catch { diff = ''; }
+    }
+
+    if (!diff) return; // No changes detected
+
+    // Count additions and removals
+    for (const line of diff.split('\n')) {
+      if (line.startsWith('+') && !line.startsWith('+++')) linesAdded++;
+      if (line.startsWith('-') && !line.startsWith('---')) linesRemoved++;
+    }
+
+    // Truncate large diffs at 8KB
+    const truncated = diff.length > 8192;
+    if (truncated) {
+      diff = diff.slice(0, 8192) + '\n... (truncated)';
+    }
+
+    docChangesAccumulator.push({
+      docName,
+      docPath: relPath,
+      changeType,
+      linesAdded,
+      linesRemoved,
+      diff,
+      truncated,
+    });
+  } catch (err) {
+    // Non-critical — don't break the agent if diff capture fails
+    console.error(`  [captureDiff] Warning: ${err.message}`);
+  }
+}
 const MANIFEST_PATH = path.join(DOCS_DIR, 'manifest.json');
 const COVERAGE_PATH = path.join(DOCS_DIR, 'coverage.json');
 const HEALTH_PATH = path.join(DOCS_DIR, 'doc_health.json');
@@ -461,6 +542,7 @@ Return ONLY the updated markdown content. No commentary or explanation before/af
     // Write updated doc
     const fullPath = path.join(projectRoot, '..', staleDoc.docPath);
     await fs.writeFile(fullPath, cleaned + '\n');
+    await captureDiff(fullPath, projectRoot);
 
     return {
       docName: staleDoc.docName,
@@ -810,6 +892,9 @@ ${Object.values(health.layers).map(l => `| Layer ${l.layer} | ${l.healthScore}% 
   console.log(`Docs updated: ${successCount}/${toUpdate.length}`);
   console.log(`Overall health: ${health.overallHealth}%`);
   console.log(`Still stale: ${health.staleDocs}`);
+
+  report.docChanges = [...docChangesAccumulator];
+  docChangesAccumulator.length = 0;
 
   return report;
 }
@@ -1314,6 +1399,7 @@ async function runInit({ runClaudeAgent, projectRoot, progress }) {
         // Ensure directory exists
         await fs.mkdir(path.dirname(fullPath), { recursive: true });
         await fs.writeFile(fullPath, content + '\n');
+        await captureDiff(fullPath, projectRoot);
         generatedDocs.push(docName);
         report.changes.push(`Generated ${docName} (${content.split('\n').length} lines)`);
         console.log(`    Written: ${entry.path}`);
@@ -1341,14 +1427,18 @@ async function runInit({ runClaudeAgent, projectRoot, progress }) {
         const number = i + 1;
         const formatted = formatADR(number, adr);
 
-        await fs.writeFile(path.join(adrsDir, formatted.filename), formatted.content);
+        const adrPath = path.join(adrsDir, formatted.filename);
+        await fs.writeFile(adrPath, formatted.content);
+        await captureDiff(adrPath, projectRoot);
         adrEntries.push({ number, title: adr.title, date: adr.date, filename: formatted.filename });
         console.log(`    Written: docs/adrs/${formatted.filename}`);
       }
 
       // Generate INDEX.md
       const indexContent = generateADRIndex(adrEntries);
-      await fs.writeFile(path.join(adrsDir, 'INDEX.md'), indexContent);
+      const indexPath = path.join(adrsDir, 'INDEX.md');
+      await fs.writeFile(indexPath, indexContent);
+      await captureDiff(indexPath, projectRoot);
       console.log(`    Written: docs/adrs/INDEX.md`);
 
       report.changes.push(`Generated ${adrData.length} ADRs from git history + INDEX.md`);
@@ -1417,6 +1507,9 @@ async function runInit({ runClaudeAgent, projectRoot, progress }) {
       console.log(`  [${q.priority.toUpperCase()}] ${q.doc}: ${q.question}`);
     }
   }
+
+  report.docChanges = [...docChangesAccumulator];
+  docChangesAccumulator.length = 0;
 
   return report;
 }
@@ -1516,6 +1609,7 @@ async function appendToGlossary(terms, projectRoot) {
   }
 
   await fs.writeFile(glossaryPath, existing.trimEnd() + '\n' + appendText);
+  await captureDiff(glossaryPath, projectRoot);
   return true;
 }
 
@@ -1559,6 +1653,7 @@ async function appendToChangelog(changes, projectRoot) {
   } else {
     await fs.writeFile(changelogPath, existing.trimEnd() + '\n' + entry);
   }
+  await captureDiff(changelogPath, projectRoot);
 
   return true;
 }
@@ -1601,7 +1696,9 @@ async function createADRsFromDecisions(decisions, projectRoot) {
       consequences_negative: 'Not documented in session.',
     });
 
-    await fs.writeFile(path.join(adrsDir, formatted.filename), formatted.content);
+    const adrFilePath = path.join(adrsDir, formatted.filename);
+    await fs.writeFile(adrFilePath, formatted.content);
+    await captureDiff(adrFilePath, projectRoot);
     console.log(`    Written: docs/adrs/${formatted.filename}`);
     created++;
   }
@@ -1621,7 +1718,9 @@ async function createADRsFromDecisions(decisions, projectRoot) {
       }
       adrEntries.sort((a, b) => a.number - b.number);
       const indexContent = generateADRIndex(adrEntries);
-      await fs.writeFile(path.join(adrsDir, 'INDEX.md'), indexContent);
+      const indexFilePath = path.join(adrsDir, 'INDEX.md');
+      await fs.writeFile(indexFilePath, indexContent);
+      await captureDiff(indexFilePath, projectRoot);
     } catch {
       // Index rebuild failed — not critical
     }
@@ -1739,6 +1838,9 @@ async function runDigest({ runClaudeAgent, projectRoot, progress }) {
   console.log(`Changelog entries: ${totalChanges}`);
   console.log(`Glossary terms: ${totalTerms}`);
   console.log(`Deferred work: ${totalDeferred}`);
+
+  report.docChanges = [...docChangesAccumulator];
+  docChangesAccumulator.length = 0;
 
   return report;
 }
@@ -2043,6 +2145,7 @@ Return ONLY the updated markdown content. No code fences, no commentary.`;
       // Write updated doc
       const fullPath = path.join(projectRoot, '..', review.docPath);
       await fs.writeFile(fullPath, cleaned.endsWith('\n') ? cleaned : cleaned + '\n');
+      await captureDiff(fullPath, projectRoot);
 
       // Mark as applied in Firestore
       await docSnap.ref.update({
@@ -2069,6 +2172,9 @@ Return ONLY the updated markdown content. No code fences, no commentary.`;
 
   console.log('\n=== REVIEW APPLY SUMMARY ===');
   console.log(`Docs updated: ${totalApplied}`);
+
+  report.docChanges = [...docChangesAccumulator];
+  docChangesAccumulator.length = 0;
 
   return report;
 }

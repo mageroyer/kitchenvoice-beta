@@ -63,6 +63,20 @@ async function saveReportToFirestore(report, agentResult = {}) {
       testsPassing: report.testsPassing || 0,
       // Agent-specific metrics (from the agent's return value)
       metrics: agentResult.metrics || {},
+      // Doc changes with diffs (for dashboard diff viewer)
+      docChanges: (() => {
+        const dc = agentResult.docChanges;
+        if (!dc || dc.length === 0) return null;
+        // Size guard: keep total under 80KB for Firestore
+        const raw = JSON.stringify(dc);
+        if (raw.length <= 80000) return dc;
+        // Truncate each diff to 5KB if total is too large
+        return dc.map(d => ({
+          ...d,
+          diff: d.diff && d.diff.length > 5120 ? d.diff.slice(0, 5120) + '\n... (truncated)' : d.diff,
+          truncated: d.diff && d.diff.length > 5120 ? true : d.truncated,
+        }));
+      })(),
       // Store full result for detail view
       fullResult: JSON.stringify(agentResult).slice(0, 900000), // Keep under 1MB Firestore limit
     };
